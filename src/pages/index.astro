@@ -1,0 +1,578 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { supabase } from "../lib/supabase";
+import ProductCarousel from "../components/ui/ProductCarousel.astro";
+
+// Obtener categorías principales (sin parent_id)
+const { data: categories } = await supabase
+  .from("categories")
+  .select("*")
+  .is("parent_id", null)
+  .order("name");
+
+// Obtener la fecha actual para filtrar ofertas y novedades activas
+const now = new Date().toISOString();
+
+// Obtener productos seleccionados como novedades por el admin
+const { data: novedades } = await supabase
+  .from("products")
+  .select(`*, category:categories(name, slug), product_variants(*)`)
+  .eq("is_new_arrival", true)
+  .order("created_at", { ascending: false });
+
+// Obtener todas las ofertas activas para el carrusel de inicio
+const { data: ofertas } = await supabase
+  .from("products")
+  .select(`*, category:categories(name, slug), product_variants(*)`)
+  .gt("discount_percentage", 0)
+  .or(`discount_ends_at.is.null,discount_ends_at.gt.${now}`)
+  .order("discount_percentage", { ascending: false });
+
+function formatPrice(cents: number) {
+  return `${(cents / 100).toFixed(2)}€`;
+}
+---
+
+<BaseLayout title="Catálogo - FashionStore">
+  <!-- Hero Slider -->
+  <section
+    class="relative h-[85vh] lg:h-[91vh] overflow-hidden bg-slate-900 font-sans"
+  >
+    <div id="hero-slider" class="absolute inset-0">
+      <!-- SLIDE 1: URBAN COLLECTION (Image 3) -->
+      <div
+        class="hero-slide absolute inset-0 opacity-100 transition-opacity duration-1000 ease-in-out z-10"
+        data-active
+      >
+        <img
+          src="/hero/slide-5.jpg"
+          alt="Colección Urbana"
+          class="w-full h-full object-cover"
+        />
+        <div class="absolute inset-0 bg-black/30"></div>
+        <div
+          class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6"
+        >
+          <div class="max-w-2xl animate-fade-in-up">
+            <div
+              class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-brand-gold mb-6"
+            >
+              <span class="w-12 h-px bg-brand-gold"></span>
+              Streetwear Premium
+            </div>
+            <h1
+              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
+            >
+              URBAN<br /><span
+                class="text-brand-gold italic font-serif font-light"
+                >Essentials</span
+              >
+            </h1>
+            <p
+              class="text-xl text-gray-200 mb-10 max-w-lg font-medium leading-relaxed"
+            >
+              Redefiniendo la moda urbana con materiales premium y cortes
+              contemporáneos.
+            </p>
+            <a
+              href="#novedades"
+              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all shadow-xl"
+            >
+              Ver Novedades
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg
+              >
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 2: EXECUTIVE (Image 0) -->
+      <div
+        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
+      >
+        <img
+          src="/hero/slide-1.jpg"
+          alt="Executive Look"
+          class="w-full h-full object-cover"
+        />
+        <div class="absolute inset-0 bg-black/30"></div>
+        <div
+          class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6"
+        >
+          <div class="max-w-2xl">
+            <div
+              class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-white/80 mb-6"
+            >
+              <span class="w-12 h-px bg-white/80"></span>
+              The Modern Professional
+            </div>
+            <h2
+              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
+            >
+              ESTILO<br /><span class="text-white italic font-serif font-light"
+                >Ejecutivo</span
+              >
+            </h2>
+            <p
+              class="text-xl text-white/90 mb-10 max-w-lg font-medium leading-relaxed"
+            >
+              Prendas que proyectan confianza. Diseñadas para el hombre que
+              lidera.
+            </p>
+            <a
+              href="/catalogo/ropa"
+              class="inline-flex items-center gap-4 bg-brand-gold text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-white hover:text-brand-black transition-all shadow-xl"
+            >
+              Explorar Sastrería
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 3: SPORT (Image 1) -->
+      <div
+        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
+      >
+        <img
+          src="/hero/slide-2.jpg"
+          alt="Sport Performance"
+          class="w-full h-full object-cover"
+        />
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div
+          class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6"
+        >
+          <div class="max-w-2xl">
+            <div
+              class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-white mb-6"
+            >
+              <span class="w-12 h-px bg-white"></span>
+              Performance Wear
+            </div>
+            <h2
+              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
+            >
+              MOVIMIENTO<br /><span
+                class="text-white italic font-serif font-light uppercase"
+                >Puro</span
+              >
+            </h2>
+            <p
+              class="text-xl text-white/90 mb-10 max-w-lg font-medium leading-relaxed"
+            >
+              Libertad total. Innovación textil para tu rendimiento diario.
+            </p>
+            <a
+              href="/catalogo/ropa"
+              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all"
+            >
+              Línea Training
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 4: ACCESSORIES (Image 2) -->
+      <div
+        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
+      >
+        <img
+          src="/hero/slide-4.jpg"
+          alt="Accesorios de Lujo"
+          class="w-full h-full object-cover"
+        />
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div
+          class="relative z-20 h-full flex items-center justify-center max-w-7xl mx-auto px-6 text-center"
+        >
+          <div class="max-w-3xl">
+            <div
+              class="text-[10px] font-black uppercase tracking-[0.6em] text-brand-gold mb-6"
+            >
+              El Toque Final
+            </div>
+            <h2
+              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
+            >
+              PIEZAS<br /><span
+                class="text-brand-gold italic font-serif font-light"
+                >Maestras</span
+              >
+            </h2>
+            <p class="text-xl text-gray-200 mb-10 max-w-xl mx-auto font-medium">
+              Complementos de alta gama que definen tu personalidad única.
+            </p>
+            <a
+              href="/catalogo/complementos"
+              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all shadow-xl"
+            >
+              Ver Relojería y Gafas
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 5: FOOTWEAR (Image 4) -->
+      <div
+        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
+      >
+        <img
+          src="/hero/slide-3.jpg"
+          alt="Calzado Premium"
+          class="w-full h-full object-cover"
+        />
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div
+          class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6 justify-end text-right"
+        >
+          <div class="max-w-2xl">
+            <div
+              class="flex items-center gap-2 justify-end text-[10px] font-black uppercase tracking-[0.5em] text-brand-black/80 mb-6 font-sans"
+            >
+              Footwear Selection
+              <span class="w-12 h-px bg-brand-black/80"></span>
+            </div>
+            <h2
+              class="text-6xl md:text-8xl font-black text-brand-black mb-6 tracking-tighter leading-[0.9]"
+            >
+              PASO<br /><span
+                class="text-brand-gold italic font-serif font-light"
+                >Elegante</span
+              >
+            </h2>
+            <p
+              class="text-xl text-slate-700 mb-10 max-w-lg ml-auto font-medium leading-relaxed"
+            >
+              Desde las últimas sneakers hasta zapatos de vestir artesanales.
+            </p>
+            <a
+              href="/catalogo/calzado"
+              class="inline-flex items-center gap-4 bg-brand-black text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold transition-all shadow-xl"
+            >
+              Explorar Sneakers
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles Minimalistas -->
+    <div
+      class="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex gap-4 items-center"
+    >
+      {
+        [0, 1, 2, 3, 4].map((i) => (
+          <button
+            class="hero-dot w-2 h-2 rounded-full bg-white/40 transition-all duration-300 hover:bg-white"
+            data-index={i}
+            aria-label={`Ir a slide ${i + 1}`}
+          />
+        ))
+      }
+    </div>
+
+    <!-- Indicador de Scroll -->
+    <div
+      class="absolute bottom-10 right-10 z-30 hidden lg:flex flex-col items-center gap-4"
+    >
+      <span
+        class="text-[9px] font-black uppercase tracking-[0.4em] text-white/50 rotate-90 mb-8 origin-right"
+        >Scroll</span
+      >
+      <div class="w-px h-16 bg-gradient-to-t from-white/80 to-transparent">
+      </div>
+    </div>
+  </section>
+
+  <!-- Carrusel de Novedades (Spotlight) -->
+  <ProductCarousel
+    id="novedades"
+    products={novedades || []}
+    title="Nuevas Tendencias"
+    subtitle="Últimas"
+    accentTitle="Novedades"
+    iconColor="text-brand-gold"
+    bgColor="bg-slate-50"
+  />
+
+  <!-- Categorías Principales -->
+  <section class="max-w-7xl mx-auto px-4 py-16">
+    <div class="text-center mb-12">
+      <div
+        class="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-4"
+      >
+        <span class="w-8 h-px bg-brand-gold"></span>
+        Explora nuestra colección
+        <span class="w-8 h-px bg-brand-gold"></span>
+      </div>
+      <h2
+        class="text-4xl md:text-5xl font-black text-slate-800 tracking-tighter"
+      >
+        Compra por <span class="text-brand-gold italic font-serif"
+          >Categoría</span
+        >
+      </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Ropa -->
+      <a
+        href="/catalogo/ropa"
+        class="group relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] hover:shadow-2xl transition-all duration-500"
+      >
+        <img
+          src="/categoria-ropa.jpg"
+          alt="Ropa"
+          class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+        />
+        <div
+          class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"
+        >
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 p-8 z-20">
+          <h3
+            class="text-3xl font-serif font-bold text-white mb-2 group-hover:text-brand-gold transition-colors"
+          >
+            Ropa
+          </h3>
+          <p class="text-white/80 text-sm mb-4">
+            Camisas, pantalones, chaquetas
+          </p>
+          <span
+            class="inline-flex items-center text-white font-bold text-xs uppercase tracking-widest"
+            >Explorar <svg
+              class="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg
+            ></span
+          >
+        </div>
+      </a>
+      <!-- Calzado -->
+      <a
+        href="/catalogo/calzado"
+        class="group relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] hover:shadow-2xl transition-all duration-500"
+      >
+        <img
+          src="/categoria-calzado.jpg"
+          alt="Calzado"
+          class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+        />
+        <div
+          class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"
+        >
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 p-8 z-20">
+          <h3
+            class="text-3xl font-serif font-bold text-white mb-2 group-hover:text-brand-gold transition-colors"
+          >
+            Calzado
+          </h3>
+          <p class="text-white/80 text-sm mb-4">Sneakers, botas y zapatos</p>
+          <span
+            class="inline-flex items-center text-white font-bold text-xs uppercase tracking-widest"
+            >Explorar <svg
+              class="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg
+            ></span
+          >
+        </div>
+      </a>
+      <!-- Complementos -->
+      <a
+        href="/catalogo/complementos"
+        class="group relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] hover:shadow-2xl transition-all duration-500"
+      >
+        <img
+          src="/categoria-complementos.jpg"
+          alt="Complementos"
+          class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+        />
+        <div
+          class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"
+        >
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 p-8 z-20">
+          <h3
+            class="text-3xl font-serif font-bold text-white mb-2 group-hover:text-brand-gold transition-colors"
+          >
+            Complementos
+          </h3>
+          <p class="text-white/80 text-sm mb-4">Relojes, gafas y más</p>
+          <span
+            class="inline-flex items-center text-white font-bold text-xs uppercase tracking-widest"
+            >Explorar <svg
+              class="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg
+            ></span
+          >
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Carrusel de Ofertas -->
+  <ProductCarousel
+    id="offers"
+    products={ofertas || []}
+    title="Ofertas Flash"
+    subtitle="Oportunidades"
+    accentTitle="Únicas"
+    iconColor="text-red-600"
+  />
+
+  <!-- Banner Promocional -->
+  <section class="max-w-7xl mx-auto px-4 py-16">
+    <div
+      class="bg-brand-black text-white rounded-3xl overflow-hidden shadow-2xl relative"
+    >
+      <div
+        class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-gold/10 to-transparent pointer-events-none"
+      >
+      </div>
+      <div class="grid md:grid-cols-2 gap-8 items-center">
+        <div class="p-12 md:p-16 relative z-10">
+          <h2 class="text-5xl font-black mb-6 tracking-tighter">
+            ÚNETE AL CLUB
+          </h2>
+          <p class="text-xl mb-10 text-gray-300 font-medium leading-relaxed">
+            Regístrate hoy y recibe un <strong class="text-brand-gold"
+              >cupón exclusivo del 10%</strong
+            > para tu primera compra, además de acceso anticipado a nuevas colecciones
+            y eventos privados.
+          </p>
+          <a
+            href="/registro"
+            class="inline-flex items-center gap-4 bg-brand-gold text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-white hover:text-brand-black transition-all shadow-xl"
+          >
+            Registrarse Gratis
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg
+            >
+          </a>
+        </div>
+        <div class="h-80 md:h-[450px] relative">
+          <img
+            src="/hero/slide-5.jpg"
+            alt="Fidelización"
+            class="absolute inset-0 w-full h-full object-cover opacity-60"
+          />
+          <div
+            class="absolute inset-0 bg-gradient-to-r from-brand-black via-brand-black/40 to-transparent"
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in-up {
+    animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .hero-dot[data-active] {
+    width: 40px;
+    background-color: #c6a87c;
+    opacity: 1;
+  }
+</style>
+
+<script>
+  const slides = document.querySelectorAll(".hero-slide");
+  const dots = document.querySelectorAll(".hero-dot");
+  let currentSlide = 0;
+  let autoPlayInterval: any;
+
+  function showSlide(index: number) {
+    if (!slides.length) return;
+
+    slides.forEach((slide, i) => {
+      if (i === index) {
+        slide.classList.remove("opacity-0", "z-0");
+        slide.classList.add("opacity-100", "z-10");
+      } else {
+        slide.classList.remove("opacity-100", "z-10");
+        slide.classList.add("opacity-0", "z-0");
+      }
+    });
+
+    dots.forEach((dot, i) => {
+      if (i === index) {
+        dot.setAttribute("data-active", "");
+      } else {
+        dot.removeAttribute("data-active");
+      }
+    });
+    currentSlide = index;
+  }
+
+  function nextSlide() {
+    showSlide((currentSlide + 1) % slides.length);
+  }
+
+  function startAutoPlay() {
+    clearInterval(autoPlayInterval);
+    autoPlayInterval = setInterval(nextSlide, 7000);
+  }
+
+  dots.forEach((dot, i) => {
+    dot.addEventListener("click", () => {
+      showSlide(i);
+      startAutoPlay();
+    });
+  });
+
+  // Iniciar
+  if (slides.length > 0) {
+    showSlide(0);
+    startAutoPlay();
+  }
+</script>

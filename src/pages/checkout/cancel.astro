@@ -1,0 +1,43 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Pago Cancelado - FashionStore">
+    <div class="max-w-4xl mx-auto px-4 py-32 text-center">
+        <div class="mb-8 flex justify-center">
+            <div
+                class="w-24 h-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center"
+            >
+                <svg
+                    class="w-12 h-12"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+        </div>
+
+        <h1 class="text-4xl font-serif font-bold text-gray-900 mb-4">
+            Pago Cancelado
+        </h1>
+        <p class="text-xl text-gray-600 mb-12">
+            No se ha realizado ningún cargo. Tu cesta sigue guardada por si
+            quieres intentarlo de nuevo.
+        </p>
+
+        <div class="flex justify-center">
+            <a
+                href="/checkout"
+                class="bg-brand-black text-white px-8 py-4 rounded-lg font-bold hover:bg-gray-800 transition-all"
+            >
+                Volver al Checkout
+            </a>
+        </div>
+    </div>
+</BaseLayout>

@@ -1,0 +1,236 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+// Crear cliente autenticado con el token del usuario
+const supabaseAuth = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+    {
+        global: {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        },
+    },
+);
+
+// Verificar usuario
+const {
+    data: { user },
+    error: sessionError,
+} = await supabaseAuth.auth.getUser();
+
+if (sessionError || !user) {
+    return Astro.redirect("/login");
+}
+
+// Obtener cupones del usuario
+const { data: coupons, error: fetchError } = await supabaseAuth
+    .from("cupones")
+    .select(
+        `
+    *,
+    regla:reglas_cupones!regla_id(nombre, descripcion)
+  `,
+    )
+    .eq("activo", true)
+    .gte("fecha_expiracion", new Date().toISOString())
+    .eq("usado", false)
+    .order("fecha_expiracion", { ascending: true });
+
+// Filtrar cupones públicos: Solo mostrar si no los ha usado el usuario ya
+const { data: usedCoupons } = await supabaseAuth
+    .from("cupon_usos")
+    .select("cupon_id")
+    .eq("cliente_id", user.id);
+
+const usedCouponIds = usedCoupons?.map((u) => u.cupon_id) || [];
+const availableCoupons =
+    coupons?.filter((c) => !usedCouponIds.includes(c.id)) || [];
+---
+
+<BaseLayout title="Mis Cupones - FashionStore">
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        <div class="mb-12">
+            <div
+                class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-4"
+            >
+                <span class="w-8 h-px bg-brand-gold"></span>
+                Beneficios Exclusivos
+            </div>
+            <h1
+                class="text-4xl md:text-5xl font-black text-slate-800 tracking-tighter mb-3"
+            >
+                Mis <span class="text-brand-gold italic font-serif"
+                    >Cupones</span
+                >
+            </h1>
+            <p class="text-slate-400 font-medium">
+                Gestiona tus descuentos y promociones especiales
+            </p>
+        </div>
+
+        <div
+            class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8 md:p-12 mb-8 relative overflow-hidden"
+        >
+            <div
+                class="absolute top-0 right-0 w-64 h-64 bg-brand-gold/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"
+            >
+            </div>
+
+            <div
+                class="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10"
+            >
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 tracking-tight">
+                        Listado de <span class="text-brand-gold"
+                            >Descuentos</span
+                        >
+                    </h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span
+                        class="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400"
+                    >
+                        {availableCoupons.length} Activos
+                    </span>
+                </div>
+            </div>
+
+            {
+                availableCoupons.length > 0 ? (
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                        {availableCoupons.map((coupon) => (
+                            <div class="group relative bg-white border border-slate-100 rounded-3xl p-6 transition-all duration-500 hover:border-brand-gold/30 hover:shadow-2xl hover:shadow-brand-gold/5 hover:-translate-y-1 overflow-hidden">
+                                <div class="absolute top-0 right-0 w-24 h-24 bg-brand-gold/5 rounded-bl-[4rem] group-hover:bg-brand-gold/10 transition-colors" />
+
+                                <div class="flex justify-between items-start mb-6">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-black uppercase tracking-[0.15em] text-brand-gold mb-1">
+                                            Oferta Especial
+                                        </span>
+                                        <div class="text-4xl font-black text-slate-800 tracking-tighter">
+                                            -{coupon.descuento_porcentaje}
+                                            <span class="text-xl">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col items-end">
+                                        <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1">
+                                            Válido hasta
+                                        </span>
+                                        <span class="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
+                                            {new Date(coupon.fecha_expiracion)
+                                                .toLocaleDateString("es-ES", {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                })
+                                                .toUpperCase()}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2 mb-8">
+                                    <h3 class="font-bold text-slate-800 text-lg tracking-tight group-hover:text-brand-gold transition-colors">
+                                        {coupon.regla?.nombre ||
+                                            "Descuento Personalizado"}
+                                    </h3>
+                                    <p class="text-[11px] text-slate-400 font-medium leading-relaxed">
+                                        {coupon.regla?.descripcion ||
+                                            "Un obsequio exclusivo para premiar tu confianza en FashionStore."}
+                                    </p>
+                                </div>
+
+                                <div class="relative">
+                                    <div class="absolute -left-6 -right-6 top-1/2 -translate-y-1/2 flex justify-between px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div class="w-3 h-3 bg-[#F8FAFC] rounded-full border border-slate-100" />
+                                        <div class="w-3 h-3 bg-[#F8FAFC] rounded-full border border-slate-100" />
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-2xl py-3 px-4 flex justify-between items-center group-hover:border-brand-gold/20 transition-colors">
+                                            <span class="font-mono font-black text-slate-800 tracking-[0.2em] text-sm">
+                                                {coupon.codigo}
+                                            </span>
+                                            <button
+                                                onclick={`navigator.clipboard.writeText('${coupon.codigo}'); alert('¡Código copiado con éxito! Úsalo en el checkout.');`}
+                                                class="bg-slate-800 text-white p-2 rounded-xl hover:bg-brand-gold transition-all shadow-md shadow-slate-200"
+                                                title="Copiar código"
+                                            >
+                                                <svg
+                                                    class="w-3.5 h-3.5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div class="text-center py-20 bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100 relative z-10">
+                        <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                            <svg
+                                class="w-8 h-8 text-slate-200"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                                />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-400 mb-1">
+                            Sin cupones activos
+                        </h3>
+                        <p class="text-xs text-slate-300 max-w-xs mx-auto">
+                            No tienes beneficios pendientes actualmente. Sigue
+                            atento a nuestras promociones exclusivas.
+                        </p>
+                    </div>
+                )
+            }
+        </div>
+
+        <div class="flex justify-center mt-12">
+            <a
+                href="/mi-cuenta"
+                class="text-sm font-bold text-slate-400 hover:text-slate-800 transition-colors flex items-center gap-2"
+            >
+                <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Volver a mi perfil
+            </a>
+        </div>
+    </div>
+</BaseLayout>

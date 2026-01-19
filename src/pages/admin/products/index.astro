@@ -1,0 +1,600 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+
+// Parámetros de la URL
+const categorySlug = Astro.url.searchParams.get("category");
+const sortBy = Astro.url.searchParams.get("sort") || "created_at";
+const order = Astro.url.searchParams.get("order") || "desc";
+
+// Configuración de ordenación para Supabase
+const isAsc = order === "asc";
+
+// Obtener todas las categorías
+const { data: allCategories } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
+
+let currentCategory: any = null;
+let subcategories: any[] = [];
+let products: any[] = [];
+let title = "Todos los Productos";
+
+if (categorySlug) {
+    // Buscar la categoría actual
+    currentCategory = allCategories?.find((cat) => cat.slug === categorySlug);
+
+    if (currentCategory) {
+        title = currentCategory.name;
+
+        // Obtener subcategorías si es una categoría padre
+        subcategories =
+            allCategories?.filter(
+                (cat) => cat.parent_id === currentCategory.id,
+            ) || [];
+
+        // Obtener productos de esta categoría
+        const { data: categoryProducts } = await supabase
+            .from("products")
+            .select("*, categories(name, slug)")
+            .eq("category_id", currentCategory.id)
+            .order(sortBy, { ascending: isAsc });
+
+        products = categoryProducts || [];
+
+        // Si tiene subcategorías, también obtener los productos de cada subcategoría
+        if (subcategories.length > 0) {
+            for (const subcat of subcategories) {
+                const { data: subcatProducts } = await supabase
+                    .from("products")
+                    .select("*, categories(name, slug)")
+                    .eq("category_id", subcat.id)
+                    .order(sortBy, { ascending: isAsc });
+
+                subcat.products = subcatProducts || [];
+            }
+        }
+    }
+} else {
+    // Obtener todos los productos
+    const { data: allProducts } = await supabase
+        .from("products")
+        .select("*, categories(name, slug)")
+        .order(sortBy, { ascending: isAsc });
+
+    products = allProducts || [];
+}
+
+const formatPrice = (cents: number) => (cents / 100).toFixed(2);
+
+// Función para generar URLs de ordenación
+function getSortUrl(column: string) {
+    const params = new URLSearchParams(Astro.url.searchParams);
+    if (sortBy === column) {
+        params.set("order", order === "asc" ? "desc" : "asc");
+    } else {
+        params.set("sort", column);
+        params.set("order", "asc");
+    }
+    return `?${params.toString()}`;
+}
+
+function getSortIcon(column: string) {
+    if (sortBy !== column) return "[^]";
+    return order === "asc" ? "↑" : "↓";
+}
+---
+
+<AdminLayout title={title}>
+    <div
+        class="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-8"
+    >
+        <!-- Header Section -->
+        <div
+            class="flex flex-col md:flex-row md:items-end justify-between gap-6"
+        >
+            <div class="space-y-2">
+                <div
+                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                >
+                    <span class="w-8 h-px bg-brand-gold"></span>
+                    Gestión de Inventario
+                </div>
+                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
+                    Catálogo de <span class="text-brand-gold italic font-serif"
+                        >{title}</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium tracking-tight">
+                    Controla tu inventario y la disponibilidad de tus productos.
+                </p>
+                <p class="text-slate-500 font-medium text-sm mt-2">
+                    Tienes <span class="text-slate-800 font-bold"
+                        >{products.length}</span
+                    > productos registrados en el sistema.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button
+                    id="apply-discount-btn"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                >
+                    <svg
+                        class="w-5 h-5 mr-2 text-red-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
+                        ></path>
+                    </svg>
+                    Aplicar Oferta
+                </button>
+                <div class="flex -space-x-2 overflow-hidden mr-4">
+                    {
+                        products
+                            .slice(0, 4)
+                            .map((p) => (
+                                <img
+                                    class="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                                    src={p.images?.[0]}
+                                    alt=""
+                                />
+                            ))
+                    }
+                    {
+                        products.length > 4 && (
+                            <div class="flex items-center justify-center h-8 w-8 rounded-full bg-slate-100 ring-2 ring-white text-[10px] font-bold text-slate-400">
+                                +{products.length - 4}
+                            </div>
+                        )
+                    }
+                </div>
+                <a
+                    href="/admin/products/new"
+                    class="inline-flex items-center px-6 py-3 border border-transparent rounded-2xl shadow-lg shadow-brand-gold/20 text-sm font-bold text-white bg-slate-900 hover:bg-brand-gold transition-all hover:-translate-y-1"
+                >
+                    <svg
+                        class="w-5 h-5 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Nuevo Producto
+                </a>
+            </div>
+        </div>
+
+        <!-- Breadcrumb Mejorado -->
+        {
+            currentCategory && (
+                <nav class="flex px-6 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm w-fit">
+                    <ol class="flex items-center space-x-3">
+                        <li>
+                            <a
+                                href="/admin/products"
+                                class="text-xs font-bold text-slate-400 hover:text-brand-gold transition-colors"
+                            >
+                                Catálogo
+                            </a>
+                        </li>
+                        <li class="text-slate-300">
+                            <svg
+                                class="h-4 w-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                            >
+                                <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" />
+                            </svg>
+                        </li>
+                        <li class="text-xs font-bold text-slate-800">
+                            {currentCategory.name}
+                        </li>
+                    </ol>
+                </nav>
+            )
+        }
+
+        <!-- Main Content -->
+        {
+            products.length > 0 && (
+                <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50/50">
+                                    <th class="px-8 py-5 w-12">
+                                        <input
+                                            type="checkbox"
+                                            id="select-all"
+                                            class="w-4 h-4 text-brand-gold bg-gray-100 border-gray-300 rounded focus:ring-brand-gold focus:ring-2"
+                                        />
+                                    </th>
+                                    <th class="px-8 py-5">
+                                        <a
+                                            href={getSortUrl("name")}
+                                            class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors"
+                                        >
+                                            Producto{" "}
+                                            <span class="text-[8px] opacity-50">
+                                                {getSortIcon("name")}
+                                            </span>
+                                        </a>
+                                    </th>
+                                    <th class="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Categoría
+                                    </th>
+                                    <th class="px-6 py-5">
+                                        <a
+                                            href={getSortUrl("price")}
+                                            class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors"
+                                        >
+                                            Precio{" "}
+                                            <span class="text-[8px] opacity-50">
+                                                {getSortIcon("price")}
+                                            </span>
+                                        </a>
+                                    </th>
+                                    <th class="px-6 py-5">
+                                        <a
+                                            href={getSortUrl("stock")}
+                                            class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors"
+                                        >
+                                            Stock{" "}
+                                            <span class="text-[8px] opacity-50">
+                                                {getSortIcon("stock")}
+                                            </span>
+                                        </a>
+                                    </th>
+                                    <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Acciones
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {products.map((product) => (
+                                    <tr
+                                        class="hover:bg-slate-50/80 transition-all cursor-pointer product-row group"
+                                        data-product-id={product.id}
+                                    >
+                                        <td
+                                            class="px-8 py-5 w-12"
+                                            onclick="event.stopPropagation()"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                class="product-checkbox w-4 h-4 text-brand-gold bg-gray-100 border-gray-300 rounded focus:ring-brand-gold focus:ring-2"
+                                                value={product.id}
+                                            />
+                                        </td>
+                                        <td class="px-8 py-5">
+                                            <div class="flex items-center gap-4">
+                                                <div class="relative w-16 h-16 shrink-0">
+                                                    <img
+                                                        src={
+                                                            product
+                                                                .images?.[0] ||
+                                                            "https://via.placeholder.com/100"
+                                                        }
+                                                        alt={product.name}
+                                                        class="w-full h-full object-cover rounded-2xl shadow-md border border-slate-100 group-hover:scale-110 transition-transform duration-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm font-bold text-slate-800 group-hover:text-brand-gold transition-colors flex items-center gap-2">
+                                                        {product.name}
+                                                        {(product.discount_percentage >
+                                                            0 ||
+                                                            product.is_offer) && (
+                                                            <span class="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[8px] font-black uppercase border border-red-100">
+                                                                Oferta
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div class="text-xs text-slate-400 line-clamp-1 max-w-[200px] mt-0.5 italic">
+                                                        {product.description}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <span class="px-3 py-1 text-[10px] font-black uppercase rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                                {product.categories?.name ||
+                                                    "General"}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <div class="text-sm font-black text-slate-800">
+                                                {formatPrice(product.price)}€
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <div class="flex flex-col gap-1">
+                                                <span
+                                                    class={`w-fit px-3 py-1 text-[10px] font-black uppercase rounded-full border ${
+                                                        product.stock >= 10
+                                                            ? "bg-green-50 text-green-600 border-green-100"
+                                                            : product.stock >= 3
+                                                              ? "bg-orange-50 text-orange-600 border-orange-100"
+                                                              : "bg-red-50 text-red-600 border-red-100"
+                                                    }`}
+                                                >
+                                                    {product.stock > 0
+                                                        ? `${product.stock} Unidades`
+                                                        : "Sin Stock"}
+                                                </span>
+                                                {product.stock < 3 &&
+                                                    product.stock > 0 && (
+                                                        <span class="text-[9px] font-bold text-red-500 italic ml-1 animate-pulse">
+                                                            ¡Crítico! Reponer ya
+                                                        </span>
+                                                    )}
+                                            </div>
+                                        </td>
+                                        <td class="px-8 py-5 text-right action-cell">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <a
+                                                    href={`/admin/products/edit/${product.id}`}
+                                                    class="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-white hover:bg-slate-800 transition-all border border-slate-100"
+                                                    title="Editar"
+                                                >
+                                                    <svg
+                                                        class="w-4 h-4"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                        />
+                                                    </svg>
+                                                </a>
+                                                <button
+                                                    class="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-white hover:bg-red-500 transition-all border border-slate-100"
+                                                    title="Eliminar"
+                                                >
+                                                    <svg
+                                                        class="w-4 h-4"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m3 5h0M6.5 13H4"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )
+        }
+
+        <!-- Emtpy State -->
+        {
+            products.length === 0 && (
+                <div class="bg-white rounded-[3rem] border-2 border-dashed border-slate-200 p-20 text-center animate-in zoom-in-95 duration-500">
+                    <div class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl" />
+                    <h3 class="text-2xl font-black text-slate-800 tracking-tight mb-2">
+                        Tu almacén está vacío
+                    </h3>
+                    <p class="text-slate-500 max-w-xs mx-auto mb-10">
+                        Parece que aún no has añadido productos a esta
+                        categoría. ¡Es un buen momento para empezar!
+                    </p>
+                    <a
+                        href="/admin/products/new"
+                        class="inline-flex items-center px-10 py-4 bg-slate-800 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 hover:bg-brand-gold hover:-translate-y-1 transition-all"
+                    >
+                        + Crear Primer Producto
+                    </a>
+                </div>
+            )
+        }
+    </div>
+</AdminLayout>
+
+<!-- Modal de Ofertas -->
+<div
+    id="discount-modal"
+    class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+>
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <h3 class="text-2xl font-bold text-gray-900 mb-4">
+            Aplicar Oferta Temporal
+        </h3>
+        <form id="discount-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Descuento (%)
+                </label>
+                <input
+                    type="number"
+                    id="discount-percentage"
+                    min="0"
+                    max="100"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+                    placeholder="Ej: 20"
+                />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha de finalización (opcional)
+                </label>
+                <input
+                    type="datetime-local"
+                    id="discount-ends-at"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-gold focus:border-transparent"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                    Deja vacío para descuento sin fecha límite
+                </p>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button
+                    type="button"
+                    id="cancel-discount"
+                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    class="flex-1 px-4 py-2 bg-brand-black text-white rounded-lg hover:bg-brand-gold transition-colors"
+                >
+                    Aplicar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Selección de productos
+    const selectAllCheckbox = document.getElementById(
+        "select-all",
+    ) as HTMLInputElement;
+    const productCheckboxes = document.querySelectorAll(
+        ".product-checkbox",
+    ) as NodeListOf<HTMLInputElement>;
+    const applyDiscountBtn = document.getElementById(
+        "apply-discount-btn",
+    ) as HTMLButtonElement;
+    const discountModal = document.getElementById("discount-modal");
+    const discountForm = document.getElementById(
+        "discount-form",
+    ) as HTMLFormElement;
+    const cancelDiscountBtn = document.getElementById("cancel-discount");
+
+    // Select all
+    selectAllCheckbox?.addEventListener("change", () => {
+        productCheckboxes.forEach((cb) => {
+            cb.checked = selectAllCheckbox.checked;
+        });
+        updateApplyButton();
+    });
+
+    // Individual checkboxes
+    productCheckboxes.forEach((cb) => {
+        cb.addEventListener("change", () => {
+            updateApplyButton();
+            const allChecked = Array.from(productCheckboxes).every(
+                (c) => c.checked,
+            );
+            const someChecked = Array.from(productCheckboxes).some(
+                (c) => c.checked,
+            );
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allChecked;
+                selectAllCheckbox.indeterminate = someChecked && !allChecked;
+            }
+        });
+    });
+
+    function updateApplyButton() {
+        const selectedCount = Array.from(productCheckboxes).filter(
+            (c) => c.checked,
+        ).length;
+        if (applyDiscountBtn) {
+            applyDiscountBtn.disabled = selectedCount === 0;
+            applyDiscountBtn.textContent =
+                selectedCount > 0
+                    ? `Aplicar Oferta (${selectedCount})`
+                    : "Aplicar Oferta";
+        }
+    }
+
+    // Abrir modal
+    applyDiscountBtn?.addEventListener("click", () => {
+        discountModal?.classList.remove("hidden");
+    });
+
+    // Cerrar modal
+    cancelDiscountBtn?.addEventListener("click", () => {
+        discountModal?.classList.add("hidden");
+        discountForm?.reset();
+    });
+
+    // Enviar formulario
+    discountForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const selectedIds = Array.from(productCheckboxes)
+            .filter((c) => c.checked)
+            .map((c) => parseInt(c.value));
+
+        const discountPercentage = parseInt(
+            (document.getElementById("discount-percentage") as HTMLInputElement)
+                .value,
+        );
+        const endsAtInput = (
+            document.getElementById("discount-ends-at") as HTMLInputElement
+        ).value;
+        const endsAt = endsAtInput ? new Date(endsAtInput).toISOString() : null;
+
+        try {
+            const response = await fetch("/api/apply-discount", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    productIds: selectedIds,
+                    discountPercentage,
+                    endsAt,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                window.location.reload();
+            } else {
+                alert("Error: " + result.error);
+            }
+        } catch (error) {
+            alert("Error al aplicar el descuento");
+            console.error(error);
+        }
+    });
+
+    document.querySelectorAll(".product-row").forEach((row) => {
+        row.addEventListener("click", (e) => {
+            const target = e.target as HTMLElement;
+            if (
+                target.closest(".action-cell") ||
+                target.closest('input[type="checkbox"]')
+            )
+                return;
+
+            const productId = (row as HTMLElement).dataset.productId;
+            if (productId) {
+                window.location.href = `/admin/products/view/${productId}`;
+            }
+        });
+    });
+</script>

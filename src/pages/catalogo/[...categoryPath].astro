@@ -1,0 +1,140 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { supabase } from "../../lib/supabase";
+import ProductCard from "../../components/ProductCard.astro";
+import StoreSidebar from "../../components/ui/StoreSidebar.astro";
+
+const { categoryPath } = Astro.params;
+
+// Extraer el slug final de la ruta (ej: "calzado/botines" -> "botines")
+const segments = categoryPath?.split("/") || [];
+const slug = segments[segments.length - 1];
+
+// Obtener categoría actual
+const { data: currentCategory } = await supabase
+    .from("categories")
+    .select("*, parent:categories!parent_id(id, name, slug)")
+    .eq("slug", slug)
+    .single();
+
+if (!currentCategory) {
+    return Astro.redirect("/catalogo");
+}
+
+// Función recursiva para obtener IDs de todas las subcategorías
+const getAllCategoryIds = async (catId: number): Promise<number[]> => {
+    const ids = [catId];
+    const { data: children } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("parent_id", catId);
+
+    if (children && children.length > 0) {
+        for (const child of children) {
+            const childIds = await getAllCategoryIds(child.id);
+            ids.push(...childIds);
+        }
+    }
+    return ids;
+};
+
+const categoryIds = await getAllCategoryIds(currentCategory.id);
+
+// Obtener productos de esta categoría y subcategorías
+const { data: products } = await supabase
+    .from("products")
+    .select("*, categories(name, slug), product_variants(*)")
+    .in("category_id", categoryIds)
+    .gt("stock", 0)
+    .order("name");
+---
+
+<BaseLayout title={`${currentCategory.name} - FashionStore`}>
+    <div class="min-h-screen bg-gray-50">
+        <!-- Header con Breadcrumb -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                <nav
+                    class="flex items-center text-xs font-black uppercase tracking-widest text-slate-400 mb-4 gap-2"
+                >
+                    <a href="/" class="hover:text-brand-gold transition-colors"
+                        >Inicio</a
+                    >
+                    <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
+                    <a
+                        href="/catalogo"
+                        class="hover:text-brand-gold transition-colors"
+                        >Catálogo</a
+                    >
+                    {
+                        currentCategory.parent && (
+                            <>
+                                <span class="w-1 h-1 bg-slate-200 rounded-full" />
+                                <a
+                                    href={`/catalogo/${currentCategory.parent.slug}`}
+                                    class="hover:text-brand-gold transition-colors"
+                                >
+                                    {currentCategory.parent.name}
+                                </a>
+                            </>
+                        )
+                    }
+                    <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
+                    <span class="text-slate-900">{currentCategory.name}</span>
+                </nav>
+
+                <h1
+                    class="text-4xl font-serif font-bold text-slate-900 tracking-tight"
+                >
+                    {currentCategory.name}
+                </h1>
+                <p class="text-slate-500 mt-2 font-medium">
+                    Explora nuestra selección exclusiva de {
+                        currentCategory.name.toLowerCase()
+                    }.
+                </p>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="flex flex-col lg:flex-row gap-12">
+                <!-- Sidebar -->
+                <aside class="w-full lg:w-72 flex-shrink-0">
+                    <StoreSidebar currentSlug={slug} />
+                </aside>
+
+                <!-- Content Area -->
+                <div class="flex-1">
+                    <div
+                        class="flex items-center justify-between mb-8 pb-4 border-b border-slate-100"
+                    >
+                        <p
+                            class="text-sm text-slate-400 font-semibold tracking-widest uppercase"
+                        >
+                            Mostrando <span class="text-slate-900 font-black"
+                                >{products?.length || 0}</span
+                            > productos
+                        </p>
+                    </div>
+
+                    {
+                        products && products.length > 0 ? (
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+                                {products.map((product) => (
+                                    <ProductCard product={product} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div class="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+                                <p class="text-slate-400 font-medium">
+                                    No hay productos disponibles en esta
+                                    categoría
+                                </p>
+                            </div>
+                        )
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>

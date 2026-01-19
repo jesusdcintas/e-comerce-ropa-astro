@@ -1,0 +1,193 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { supabase } from "../lib/supabase";
+
+// Si ya está logueado, redirigir
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const redirect = Astro.url.searchParams.get("redirect");
+
+if (accessToken) {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser(accessToken);
+    if (user) {
+      const role = user.app_metadata?.role || user.user_metadata?.role;
+      if (role === "admin") {
+        return Astro.redirect("/admin");
+      } else {
+        return Astro.redirect(redirect || "/");
+      }
+    }
+  } catch (error) {
+    // Token inválido, continuar con login
+  }
+}
+
+const isCheckoutRedirect = redirect === "/checkout";
+---
+
+<BaseLayout title="Acceso - FashionStore" showPopup={false}>
+  <div
+    class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
+  >
+    <div class="max-w-md w-full space-y-8">
+      <div>
+        <h2
+          class="mt-6 text-center text-3xl font-extrabold text-gray-900 font-serif"
+        >
+          <span class="text-gray-900">Fashion</span><span
+            class="text-yellow-600">Store</span
+          >
+        </h2>
+        {
+          isCheckoutRedirect ? (
+            <div class="mt-4 p-4 bg-brand-gold/10 border border-brand-gold/20 rounded-xl text-center">
+              <p class="text-sm font-bold text-gray-900 mb-1">
+                Estás a un paso de completar tu pedido
+              </p>
+              <p class="text-xs text-slate-600">
+                Inicia sesión o regístrate para finalizar tu compra.
+              </p>
+            </div>
+          ) : (
+            <p class="mt-2 text-center text-sm text-gray-600">
+              Inicia sesión para acceder a tu cuenta
+            </p>
+          )
+        }
+      </div>
+
+      <form class="mt-8 space-y-6" id="login-form">
+        <input type="hidden" id="redirect-url" value={redirect} />
+        <div class="rounded-md shadow-sm -space-y-px">
+          <div>
+            <label for="email" class="sr-only">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              class="appearance-none rounded-none rounded-t-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-brand-blue focus:border-brand-blue focus:z-10 sm:text-sm"
+              placeholder="Email"
+            />
+          </div>
+          <div>
+            <label for="password" class="sr-only">Contraseña</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              class="appearance-none rounded-none rounded-b-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-brand-blue focus:border-brand-blue focus:z-10 sm:text-sm"
+              placeholder="Contraseña"
+            />
+          </div>
+        </div>
+
+        <div id="error-msg" class="text-red-500 text-sm text-center hidden">
+        </div>
+
+        <div>
+          <button
+            type="submit"
+            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-colors"
+          >
+            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+              <svg
+                class="h-5 w-5 text-brand-gold group-hover:text-white transition-colors"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clip-rule="evenodd"></path>
+              </svg>
+            </span>
+            {isCheckoutRedirect ? "Finalizar y Continuar" : "Iniciar Sesión"}
+          </button>
+        </div>
+
+        <div class="text-center space-y-2">
+          <p class="text-sm text-gray-600">
+            ¿No tienes cuenta?
+            <a
+              href={isCheckoutRedirect
+                ? "/registro?redirect=/checkout"
+                : "/registro"}
+              class="font-medium text-brand-blue hover:text-blue-700 transition-colors"
+            >
+              Regístrate aquí
+            </a>
+          </p>
+          <p class="text-xs">
+            <a
+              href="/recuperar"
+              class="text-slate-400 hover:text-brand-gold transition-colors font-medium"
+            >
+              ¿Has olvidado tu contraseña?
+            </a>
+          </p>
+        </div>
+      </form>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { supabase } from "../lib/supabase";
+
+  const form = document.getElementById("login-form") as HTMLFormElement;
+  const errorMsg = document.getElementById("error-msg")!;
+  const redirectInput = document.getElementById(
+    "redirect-url",
+  ) as HTMLInputElement;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMsg.classList.add("hidden");
+
+    const formData = new FormData(form);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const redirectTo = redirectInput?.value || "/";
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      errorMsg.textContent = "Credenciales incorrectas o acceso denegado.";
+      errorMsg.classList.remove("hidden");
+    } else if (data.user) {
+      // Guardar tokens en cookies
+      const accessToken = data.session?.access_token;
+      const refreshToken = data.session?.refresh_token;
+
+      if (accessToken) {
+        document.cookie = `sb-access-token=${accessToken}; path=/; max-age=604800; SameSite=Lax`;
+        sessionStorage.setItem("just_logged_in", "true");
+      }
+      if (refreshToken) {
+        document.cookie = `sb-refresh-token=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
+      }
+
+      // Verificar rol y redirigir
+      const role =
+        data.user.app_metadata?.role || data.user.user_metadata?.role;
+
+      if (role === "admin") {
+        window.location.href = "/admin";
+      } else {
+        // Redirigir al destino original o al catálogo
+        window.location.href = redirectTo;
+      }
+    }
+  });
+</script>

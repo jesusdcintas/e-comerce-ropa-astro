@@ -1,0 +1,172 @@
+---
+import ProductCard from "../ProductCard.astro";
+
+interface Props {
+    products: any[];
+    title: string;
+    subtitle: string;
+    accentTitle: string;
+    iconColor?: string;
+    id: string;
+    bgColor?: string;
+}
+
+const {
+    products,
+    title,
+    subtitle,
+    accentTitle,
+    iconColor = "text-red-600",
+    id,
+    bgColor = "bg-white",
+} = Astro.props;
+---
+
+<section id={id} class={`py-16 ${bgColor} overflow-hidden`}>
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex items-center justify-between mb-10">
+            <div class="space-y-2">
+                <div
+                    class={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] ${iconColor}`}
+                >
+                    <span
+                        class={`w-8 h-px ${iconColor.replace("text-", "bg-")}`}
+                    ></span>
+                    {title}
+                </div>
+                <h2 class="text-4xl font-black text-slate-800 tracking-tighter">
+                    {subtitle}{" "}
+                    <span class={`${iconColor} italic font-serif text-3xl`}>
+                        {accentTitle}
+                    </span>
+                </h2>
+            </div>
+
+            <div class="flex gap-2">
+                <button
+                    id={`prev-${id}`}
+                    class="w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all group disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-400"
+                >
+                    <svg
+                        class="w-5 h-5 group-hover:-translate-x-1 transition-transform"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <button
+                    id={`next-${id}`}
+                    class="w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all group disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-400"
+                >
+                    <svg
+                        class="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="relative group/carousel">
+            <div
+                id={`track-${id}`}
+                class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
+            >
+                {
+                    products.map((product) => (
+                        <div class="min-w-[280px] md:min-w-[320px] lg:min-w-[350px] flex-shrink-0 snap-start animate-in fade-in duration-700">
+                            <ProductCard product={product} />
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+
+<script define:vars={{ id }}>
+    const track = document.getElementById(`track-${id}`);
+    const prevBtn = document.getElementById(`prev-${id}`);
+    const nextBtn = document.getElementById(`next-${id}`);
+
+    if (track && prevBtn && nextBtn) {
+        let isPaused = false;
+        const gap = 24;
+
+        const updateButtons = () => {
+            const scrollLeft = track.scrollLeft;
+            const maxScroll = track.scrollWidth - track.clientWidth;
+
+            // @ts-ignore
+            prevBtn.disabled = scrollLeft <= 0;
+            // @ts-ignore
+            nextBtn.disabled = scrollLeft >= maxScroll - 5;
+        };
+
+        const scroll = (direction) => {
+            const card = track.querySelector("div");
+            if (!card) return;
+            const step = card.offsetWidth + gap;
+            track.scrollBy({ left: direction * step, behavior: "smooth" });
+        };
+
+        // Auto-play
+        const autoPlay = () => {
+            if (isPaused) return;
+            const maxScroll = track.scrollWidth - track.clientWidth;
+            if (track.scrollLeft >= maxScroll - 5) {
+                track.scrollTo({ left: 0, behavior: "smooth" });
+            } else {
+                scroll(1);
+            }
+        };
+
+        let interval = setInterval(autoPlay, 5000);
+
+        track.addEventListener("mouseenter", () => (isPaused = true));
+        track.addEventListener("mouseleave", () => (isPaused = false));
+        track.addEventListener("touchstart", () => (isPaused = true));
+        track.addEventListener("touchend", () =>
+            setTimeout(() => (isPaused = false), 2000),
+        );
+
+        prevBtn.addEventListener("click", () => {
+            scroll(-1);
+            isPaused = true;
+            setTimeout(() => (isPaused = false), 5000);
+        });
+
+        nextBtn.addEventListener("click", () => {
+            scroll(1);
+            isPaused = true;
+            setTimeout(() => (isPaused = false), 5000);
+        });
+
+        track.addEventListener("scroll", updateButtons);
+        window.addEventListener("resize", updateButtons);
+        updateButtons();
+    }
+</script>

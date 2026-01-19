@@ -1,0 +1,105 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { supabase } from "../../lib/supabase";
+import ProductCard from "../../components/ProductCard.astro";
+import StoreSidebar from "../../components/ui/StoreSidebar.astro";
+
+// Obtener todos los productos con stock
+const { data: products } = await supabase
+    .from("products")
+    .select(
+        `
+        *,
+        category:categories(name, slug),
+        product_variants(*)
+    `,
+    )
+    .gt("stock", 0)
+    .order("created_at", { ascending: false });
+---
+
+<BaseLayout title="Catálogo Completo - FashionStore">
+    <div class="bg-gray-50 min-h-screen">
+        <!-- Header de la página -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <!-- Breadcrumb simple -->
+                <nav
+                    class="flex items-center text-xs font-black uppercase tracking-widest text-slate-400 mb-6 gap-2"
+                >
+                    <a href="/" class="hover:text-brand-gold transition-colors"
+                        >Inicio</a
+                    >
+                    <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                    <span class="text-slate-900">Catálogo</span>
+                </nav>
+
+                <h1
+                    class="text-4xl font-serif font-bold text-slate-900 tracking-tight"
+                >
+                    Todo el <span class="text-brand-gold italic">Catálogo</span>
+                </h1>
+                <p class="mt-2 text-slate-600 font-medium">
+                    Explora nuestra colección completa de moda masculina de alta
+                    gama.
+                </p>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="flex flex-col lg:flex-row gap-12">
+                <!-- Sidebar -->
+                <aside class="w-full lg:w-72 flex-shrink-0">
+                    <StoreSidebar currentSlug="productos" />
+                </aside>
+
+                <!-- Product Grid -->
+                <div class="flex-1">
+                    <div
+                        class="flex items-center justify-between mb-8 pb-4 border-b border-slate-100"
+                    >
+                        <p
+                            class="text-sm text-slate-400 font-semibold tracking-widest uppercase"
+                        >
+                            Mostrando <span class="text-slate-900 font-black"
+                                >{products?.length || 0}</span
+                            > productos
+                        </p>
+                    </div>
+                    {
+                        products && products.length > 0 ? (
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+                                {products.map((product) => (
+                                    <ProductCard product={product} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div class="bg-white rounded-3xl p-20 text-center border border-dashed border-slate-200">
+                                <svg
+                                    class="mx-auto h-12 w-12 text-slate-200"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="1.5"
+                                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-3.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                                    />
+                                </svg>
+                                <h3 class="mt-4 text-slate-900 font-bold">
+                                    No se encontraron productos
+                                </h3>
+                                <p class="mt-1 text-sm text-slate-500">
+                                    Estamos actualizando nuestro inventario.
+                                    Vuelve pronto.
+                                </p>
+                            </div>
+                        )
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>

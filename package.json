@@ -1,0 +1,30 @@
+{
+  "name": "magenta-mass",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.5.1",
+    "@astrojs/react": "^4.4.2",
+    "@getbrevo/brevo": "^3.0.1",
+    "@nanostores/react": "^1.0.0",
+    "@stripe/stripe-js": "^8.6.1",
+    "@supabase/supabase-js": "^2.90.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "astro": "^5.16.8",
+    "jspdf": "^2.5.2",
+    "nanostores": "^1.1.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "resend": "^6.7.0",
+    "stripe": "^20.1.2",
+    "tailwindcss": "^4.1.18"
+  }
+}

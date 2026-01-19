@@ -1,0 +1,164 @@
+---
+import ProductCard from "../ProductCard.astro";
+
+interface Props {
+    products: any[];
+}
+
+const { products } = Astro.props;
+---
+
+{
+    products && products.length > 0 && (
+        <section class="py-16 bg-white overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex items-center justify-between mb-10">
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-600">
+                            <span class="w-8 h-px bg-red-600" />
+                            Ofertas Flash
+                        </div>
+                        <h2 class="text-4xl font-black text-slate-800 tracking-tighter">
+                            Oportunidades{" "}
+                            <span class="text-red-600 italic font-serif text-3xl">
+                                Únicas
+                            </span>
+                        </h2>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button
+                            id="prev-offer"
+                            class="w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all group"
+                        >
+                            <svg
+                                class="w-5 h-5 group-hover:-translate-x-1 transition-transform"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M15 19l-7-7 7-7"
+                                />
+                            </svg>
+                        </button>
+                        <button
+                            id="next-offer"
+                            class="w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all group"
+                        >
+                            <svg
+                                class="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative group/carousel">
+                    <div
+                        id="offer-track"
+                        class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
+                    >
+                        {products.map((product) => (
+                            <div class="min-w-[280px] md:min-w-[320px] lg:min-w-[350px] flex-shrink-0 snap-start animate-in fade-in duration-700">
+                                <ProductCard product={product} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    )
+}
+
+<style>
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+
+<script>
+    const track = document.getElementById("offer-track");
+    const prevBtn = document.getElementById("prev-offer") as HTMLButtonElement;
+    const nextBtn = document.getElementById("next-offer") as HTMLButtonElement;
+
+    if (track && prevBtn && nextBtn) {
+        let isPaused = false;
+        const gap = 24;
+
+        const updateButtons = () => {
+            const scrollLeft = track.scrollLeft;
+            const maxScroll = track.scrollWidth - track.clientWidth;
+
+            prevBtn.disabled = scrollLeft <= 0;
+            nextBtn.disabled = scrollLeft >= maxScroll - 5; // tolerance
+
+            prevBtn.style.opacity = prevBtn.disabled ? "0.3" : "1";
+            nextBtn.style.opacity = nextBtn.disabled ? "0.3" : "1";
+        };
+
+        const scroll = (direction: number) => {
+            const card = track.querySelector("div") as HTMLElement;
+            if (!card) return;
+            const step = card.offsetWidth + gap;
+            track.scrollBy({ left: direction * step, behavior: "smooth" });
+        };
+
+        // Auto-play logic
+        const autoPlay = () => {
+            if (isPaused) return;
+
+            const maxScroll = track.scrollWidth - track.clientWidth;
+            if (track.scrollLeft >= maxScroll - 5) {
+                track.scrollTo({ left: 0, behavior: "smooth" });
+            } else {
+                scroll(1);
+            }
+        };
+
+        let autoPlayInterval = setInterval(autoPlay, 5000);
+
+        track.addEventListener("mouseenter", () => (isPaused = true));
+        track.addEventListener("mouseleave", () => (isPaused = false));
+
+        // Touch support/Mouse drag pause
+        track.addEventListener("touchstart", () => (isPaused = true));
+        track.addEventListener("touchend", () => {
+            setTimeout(() => (isPaused = false), 2000);
+        });
+
+        prevBtn.addEventListener("click", () => {
+            scroll(-1);
+            isPaused = true;
+            setTimeout(() => (isPaused = false), 5000);
+        });
+
+        nextBtn.addEventListener("click", () => {
+            scroll(1);
+            isPaused = true;
+            setTimeout(() => (isPaused = false), 5000);
+        });
+
+        track.addEventListener("scroll", updateButtons);
+        window.addEventListener("resize", updateButtons);
+
+        // Initial state
+        updateButtons();
+    }
+</script>

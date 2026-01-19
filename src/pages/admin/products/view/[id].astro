@@ -1,0 +1,407 @@
+---
+import AdminLayout from "../../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../../lib/supabase";
+
+const { id } = Astro.params;
+
+// Obtener producto
+const { data: product, error: productError } = await supabase
+    .from("products")
+    .select("*, categories(id, name, slug, parent_id)")
+    .eq("id", id)
+    .single();
+
+if (productError || !product) {
+    return Astro.redirect("/admin/products");
+}
+
+// Obtener variantes del producto
+const { data: variants } = await supabase
+    .from("product_variants")
+    .select("*")
+    .eq("product_id", id)
+    .order("size");
+
+const formatPrice = (cents: number) => {
+    return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: "EUR",
+    }).format(cents / 100);
+};
+
+// Agrupar variantes por disponibilidad
+const inStock = variants?.filter((v) => v.stock > 0) || [];
+const outOfStock = variants?.filter((v) => v.stock === 0) || [];
+
+// Obtener categoría completa (incluyendo padre)
+let categoryPath = product.categories.name;
+if (product.categories.parent_id) {
+    const { data: parentCat } = await supabase
+        .from("categories")
+        .select("name, slug, parent_id")
+        .eq("id", product.categories.parent_id)
+        .single();
+
+    if (parentCat) {
+        if (parentCat.parent_id) {
+            const { data: grandParent } = await supabase
+                .from("categories")
+                .select("name")
+                .eq("id", parentCat.parent_id)
+                .single();
+            categoryPath = `${grandParent?.name || ""} > ${parentCat.name} > ${product.categories.name}`;
+        } else {
+            categoryPath = `${parentCat.name} > ${product.categories.name}`;
+        }
+    }
+}
+---
+
+<AdminLayout title={`Detalle: ${product.name}`}>
+    <div
+        class="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700 pb-20"
+    >
+        <!-- Premium Header -->
+        <div
+            class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12"
+        >
+            <div class="space-y-4">
+                <a
+                    href="/admin/products"
+                    class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors group"
+                >
+                    <svg
+                        class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Volver al Catálogo
+                </a>
+                <div class="space-y-2">
+                    <div
+                        class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                    >
+                        <span class="w-8 h-px bg-brand-gold"></span>
+                        Ficha Técnica del Producto
+                    </div>
+                    <h2
+                        class="text-5xl font-black text-slate-800 tracking-tighter"
+                    >
+                        {product.name}
+                    </h2>
+                    <p
+                        class="text-slate-400 font-medium flex items-center gap-2"
+                    >
+                        <span class="w-2 h-2 rounded-full bg-slate-200"></span>
+                        {categoryPath}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <a
+                    href={`/admin/products/edit/${id}`}
+                    class="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black shadow-xl shadow-slate-900/10 hover:bg-brand-gold hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                >
+                    <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        ></path>
+                    </svg>
+                    Editar Pieza
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            <!-- Visual Showcase (Left) -->
+            <div class="lg:col-span-7 space-y-6">
+                <div
+                    class="bg-white p-4 rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden group"
+                >
+                    {
+                        product.images && product.images.length > 0 ? (
+                            <div class="space-y-4">
+                                <div class="relative aspect-[4/5] overflow-hidden rounded-[2.5rem] bg-slate-50">
+                                    <img
+                                        id="main-image"
+                                        src={product.images[0]}
+                                        alt={product.name}
+                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                                    />
+                                    <div class="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-sm">
+                                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-800">
+                                            Visualización Principal
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {product.images.length > 1 && (
+                                    <div class="grid grid-cols-5 gap-3">
+                                        {product.images.map(
+                                            (img: string, idx: number) => (
+                                                <button
+                                                    type="button"
+                                                    data-image={img}
+                                                    class={`thumbnail aspect-square rounded-2xl border-2 overflow-hidden transition-all hover:scale-105 ${idx === 0 ? "border-brand-gold shadow-lg shadow-brand-gold/10" : "border-transparent shadow-sm"}`}
+                                                >
+                                                    <img
+                                                        src={img}
+                                                        alt={`${product.name} ${idx + 1}`}
+                                                        class="w-full h-full object-cover"
+                                                    />
+                                                </button>
+                                            ),
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div class="aspect-[4/5] flex items-center justify-center bg-slate-50 rounded-[2.5rem]">
+                                <div class="text-center space-y-4">
+                                    <div class="text-6xl grayscale opacity-20">
+                                        📸
+                                    </div>
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                                        Sin materiales visuales
+                                    </p>
+                                </div>
+                            </div>
+                        )
+                    }
+                </div>
+            </div>
+
+            <!-- Configuration & Details (Right) -->
+            <div class="lg:col-span-5 space-y-8">
+                <!-- Financials & Inventory -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div
+                        class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group"
+                    >
+                        <div
+                            class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform"
+                        >
+                            €
+                        </div>
+                        <p
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
+                        >
+                            Precio de Venta
+                        </p>
+                        <p
+                            class="text-4xl font-black text-slate-800 tracking-tighter"
+                        >
+                            {formatPrice(product.price)}
+                        </p>
+                    </div>
+                    <div
+                        class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group"
+                    >
+                        <div
+                            class="absolute -right-4 -bottom-4 text-6xl opacity-5 group-hover:scale-110 transition-transform"
+                        >
+                            📦
+                        </div>
+                        <p
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
+                        >
+                            Stock Disponible
+                        </p>
+                        <p
+                            class={`text-4xl font-black tracking-tighter ${product.stock > 0 ? "text-green-500" : "text-red-500"}`}
+                        >
+                            {product.stock}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Status Badge -->
+                <div
+                    class={`p-6 rounded-3xl border flex items-center gap-4 ${product.stock > 0 ? "bg-green-50 border-green-100 text-green-700" : "bg-red-50 border-red-100 text-red-700"}`}
+                >
+                    <div
+                        class={`w-3 h-3 rounded-full ${product.stock > 0 ? "bg-green-500 shadow-green-200 animate-pulse" : "bg-red-500"} shadow-lg border-2 border-white`}
+                    >
+                    </div>
+                    <span class="text-xs font-black uppercase tracking-[0.2em]">
+                        {
+                            product.stock > 0
+                                ? "Estado: Activo para Venta"
+                                : "Estado: Agotado / Revisión"
+                        }
+                    </span>
+                </div>
+
+                <!-- Narrative -->
+                <div
+                    class="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4"
+                >
+                    <h3
+                        class="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"
+                    >
+                        <span class="w-1.5 h-1.5 rounded-full bg-brand-gold"
+                        ></span>
+                        Descripción Narrativa
+                    </h3>
+                    <p
+                        class="text-slate-600 font-medium leading-relaxed whitespace-pre-line italic"
+                    >
+                        {
+                            product.description ||
+                                "Esta pieza no dispone de descripción narrativa en este momento."
+                        }
+                    </p>
+                </div>
+
+                <!-- Inventory Matrix -->
+                <div
+                    class="bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl shadow-slate-900/20 space-y-6"
+                >
+                    <h3
+                        class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"
+                    >
+                        <svg
+                            class="w-4 h-4 text-brand-gold"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            ></path>
+                        </svg>
+                        Matriz de Inventario
+                    </h3>
+
+                    {
+                        variants && variants.length > 0 ? (
+                            <div class="space-y-6">
+                                {inStock.length > 0 && (
+                                    <div class="grid grid-cols-3 gap-3">
+                                        {inStock.map((variant) => (
+                                            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 text-center group hover:border-brand-gold/50 transition-colors">
+                                                <p class="text-xs font-black text-white mb-1">
+                                                    {variant.size}
+                                                </p>
+                                                <p class="text-[10px] font-bold text-brand-gold uppercase tracking-tighter">
+                                                    {variant.stock} uds
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {outOfStock.length > 0 && (
+                                    <div class="flex flex-wrap gap-2 pt-4 border-t border-white/5">
+                                        {outOfStock.map((variant) => (
+                                            <div class="bg-white/5 border border-white/5 rounded-xl px-3 py-1.5 text-center opacity-40">
+                                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest line-through">
+                                                    {variant.size}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest text-center py-6">
+                                Configuración de variantes pendiente
+                            </p>
+                        )
+                    }
+                </div>
+
+                <!-- Technical Metadata -->
+                <div
+                    class="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 space-y-4"
+                >
+                    <h3
+                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                    >
+                        Información de Sistema
+                    </h3>
+                    <div class="grid grid-cols-2 gap-y-3">
+                        <div class="text-[10px] font-bold text-slate-400">
+                            UUID Ref:
+                        </div>
+                        <div
+                            class="text-[10px] font-mono font-black text-slate-800 text-right"
+                        >
+                            {product.id}
+                        </div>
+
+                        <div class="text-[10px] font-bold text-slate-400">
+                            Audit Created:
+                        </div>
+                        <div
+                            class="text-[10px] font-black text-slate-800 text-right"
+                        >
+                            {
+                                new Date(product.created_at).toLocaleDateString(
+                                    "es-ES",
+                                )
+                            }
+                        </div>
+
+                        <div class="text-[10px] font-bold text-slate-400">
+                            Last Update:
+                        </div>
+                        <div
+                            class="text-[10px] font-black text-slate-800 text-right"
+                        >
+                            {
+                                new Date(product.updated_at).toLocaleDateString(
+                                    "es-ES",
+                                )
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</AdminLayout>
+
+<script>
+    // Cambiar imagen principal al hacer clic en miniatura
+    document.querySelectorAll(".thumbnail").forEach((thumb) => {
+        thumb.addEventListener("click", (e) => {
+            const btn = e.currentTarget as HTMLButtonElement;
+            const imageUrl = btn.dataset.image;
+            const mainImage = document.getElementById(
+                "main-image",
+            ) as HTMLImageElement;
+
+            if (imageUrl && mainImage) {
+                mainImage.src = imageUrl;
+
+                // Actualizar borde activo
+                document.querySelectorAll(".thumbnail").forEach((t) => {
+                    t.classList.remove("border-brand-gold");
+                    t.classList.add("border-gray-300");
+                });
+                btn.classList.add("border-brand-gold");
+                btn.classList.remove("border-gray-300");
+            }
+        });
+    });
+</script>

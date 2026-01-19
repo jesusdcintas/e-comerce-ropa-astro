@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import CheckoutFlow from "../components/functional/CheckoutFlow";
+import { supabase } from "../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login?redirect=/checkout");
+}
+
+// Verificar que el usuario es válido
+const {
+    data: { user },
+    error,
+} = await supabase.auth.getUser(accessToken);
+if (error || !user) {
+    return Astro.redirect("/login?redirect=/checkout");
+}
+---
+
+<BaseLayout title="Checkout - FashionStore">
+    <div class="bg-gray-50/50 min-h-screen">
+        <div class="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
+            <div class="max-w-4xl mx-auto text-center mb-12">
+                <h1 class="text-4xl font-serif font-bold text-gray-900 mb-4">
+                    Finalizar Compra
+                </h1>
+                <p class="text-lg text-gray-600">
+                    Completa tus datos para recibir tu pedido premium en casa.
+                </p>
+            </div>
+
+            <CheckoutFlow
+                client:load
+                initialEmail={user.email}
+                initialName={user.user_metadata?.full_name ||
+                    user.user_metadata?.name ||
+                    ""}
+                initialAddress={user.user_metadata?.address || ""}
+                initialCity={user.user_metadata?.city || ""}
+                initialZip={user.user_metadata?.zip || ""}
+            />
+        </div>
+    </div>
+</BaseLayout>

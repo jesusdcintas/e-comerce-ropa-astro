@@ -1,0 +1,358 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+import ImageUploader from "../../../components/functional/ImageUploader";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+if (!accessToken) return Astro.redirect("/login");
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+if (!user || user.app_metadata?.role !== "admin") return Astro.redirect("/");
+
+// Obtener cupones activos para el selector
+const { data: cupones } = await supabase
+    .from("cupones")
+    .select("codigo, descuento_porcentaje")
+    .eq("activo", true)
+    .order("codigo");
+---
+
+<AdminLayout title="Nuevo Pop-up">
+    <div class="max-w-4xl mx-auto space-y-12">
+        <header class="flex justify-between items-center">
+            <a
+                href="/admin/popups"
+                class="text-slate-400 hover:text-slate-800 flex items-center gap-2 font-bold text-sm transition-colors"
+            >
+                <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Volver a Pop-ups
+            </a>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tighter">
+                Configurar Nuevo <span class="text-brand-gold italic font-serif"
+                    >Pop-up</span
+                >
+            </h1>
+        </header>
+
+        <form id="popup-form" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Información Básica -->
+            <div
+                class="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-6"
+            >
+                <h2
+                    class="text-xl font-black text-slate-800 flex items-center gap-2"
+                >
+                    <span
+                        class="w-8 h-8 rounded-lg bg-brand-gold/10 text-brand-gold flex items-center justify-center text-sm"
+                        >1</span
+                    >
+                    Contenido & Diseño
+                </h2>
+
+                <div class="space-y-4 text-sm font-medium">
+                    <div>
+                        <label
+                            class="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"
+                            >Título del Pop-up</label
+                        >
+                        <input
+                            name="titulo"
+                            type="text"
+                            placeholder="¡15% DE DESCUENTO!"
+                            required
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none font-bold"
+                        />
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"
+                            >Contenido / Mensaje</label
+                        >
+                        <textarea
+                            name="contenido"
+                            rows="3"
+                            placeholder="Suscríbete o usa este código para tu primera compra."
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none resize-none"
+                        ></textarea>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"
+                            >Imagen de la Campaña</label
+                        >
+                        <div
+                            class="bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-200"
+                        >
+                            <input
+                                type="hidden"
+                                name="imagen_url"
+                                id="image_url"
+                            />
+                            <ImageUploader client:load />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                >Color Fondo</label
+                            >
+                            <input
+                                name="color_fondo"
+                                type="color"
+                                value="#ffffff"
+                                class="w-full h-12 p-1 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                class="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                >Color Texto</label
+                            >
+                            <input
+                                name="color_texto"
+                                type="color"
+                                value="#1e293b"
+                                class="w-full h-12 p-1 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acción y Programación -->
+            <div class="space-y-8">
+                <div
+                    class="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6 text-white"
+                >
+                    <h2 class="text-xl font-black flex items-center gap-2">
+                        <span
+                            class="w-8 h-8 rounded-lg bg-brand-gold text-white flex items-center justify-center text-sm"
+                            >2</span
+                        >
+                        Acción & Trigger
+                    </h2>
+
+                    <div class="space-y-4 text-sm font-medium">
+                        <div>
+                            <label
+                                class="block text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                >Tipo de Acción</label
+                            >
+                            <select
+                                id="action-type"
+                                name="tipo_accion"
+                                class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand-gold"
+                            >
+                                <option value="enlace">Redirigir a URL</option>
+                                <option value="cupon">Mostrar Cupón</option>
+                                <option value="aviso">Solo Información</option>
+                            </select>
+                        </div>
+
+                        <div id="url-container">
+                            <label
+                                class="block text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                >URL de Destino</label
+                            >
+                            <input
+                                name="valor_accion_url"
+                                type="text"
+                                placeholder="/"
+                                class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand-gold"
+                            />
+                        </div>
+
+                        <div id="coupon-container" class="hidden">
+                            <label
+                                class="block text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                >Seleccionar Cupón</label
+                            >
+                            <select
+                                name="valor_accion_cupon"
+                                class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand-gold"
+                            >
+                                <option value="">-- Seleccionar --</option>
+                                {
+                                    cupones?.map((c) => (
+                                        <option value={c.codigo}>
+                                            {c.codigo} ({c.descuento_porcentaje}
+                                            %)
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    class="block text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                    >Delay (Seg)</label
+                                >
+                                <input
+                                    name="delay"
+                                    type="number"
+                                    value="2"
+                                    min="0"
+                                    class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand-gold"
+                                />
+                            </div>
+                            <div class="flex items-end">
+                                <label
+                                    class="flex items-center gap-2 cursor-pointer p-3 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors w-full"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        name="once"
+                                        checked
+                                        class="w-4 h-4 rounded border-slate-600 bg-slate-900 text-brand-gold focus:ring-brand-gold"
+                                    />
+                                    <span
+                                        class="text-[10px] font-bold uppercase tracking-widest"
+                                        >Mostrar una vez</span
+                                    >
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-6"
+                >
+                    <h2
+                        class="text-xl font-black text-slate-800 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-8 h-8 rounded-lg bg-brand-gold/10 text-brand-gold flex items-center justify-center text-sm"
+                            >3</span
+                        >
+                        Programación
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-4 text-sm font-medium">
+                        <div>
+                            <label
+                                class="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                >Fecha Inicio</label
+                            >
+                            <input
+                                name="fecha_inicio"
+                                type="datetime-local"
+                                value={new Date().toISOString().slice(0, 16)}
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                class="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"
+                                >Fecha Fin (Opc)</label
+                            >
+                            <input
+                                name="fecha_fin"
+                                type="datetime-local"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full bg-brand-gold text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-yellow-600 transition-all shadow-xl shadow-brand-gold/20 flex items-center justify-center gap-3"
+                    >
+                        <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="3"
+                                d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Lanzar Campaña
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script is:inline>
+        const form = document.getElementById("popup-form");
+        const actionType = document.getElementById("action-type");
+        const urlContainer = document.getElementById("url-container");
+        const couponContainer = document.getElementById("coupon-container");
+
+        actionType?.addEventListener("change", (e) => {
+            const val = e.target.value;
+            urlContainer?.classList.toggle("hidden", val !== "enlace");
+            couponContainer?.classList.toggle("hidden", val !== "cupon");
+        });
+
+        form?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            const action = formData.get("tipo_accion");
+            const valor_accion =
+                action === "enlace"
+                    ? formData.get("valor_accion_url")
+                    : action === "cupon"
+                      ? formData.get("valor_accion_cupon")
+                      : "";
+
+            const data = {
+                titulo: formData.get("titulo"),
+                contenido: formData.get("contenido"),
+                imagen_url: formData.get("imagen_url"),
+                tipo_accion: action,
+                valor_accion,
+                fecha_inicio: formData.get("fecha_inicio"),
+                fecha_fin: formData.get("fecha_fin") || null,
+                configuracion: {
+                    color_fondo: formData.get("color_fondo"),
+                    color_texto: formData.get("color_texto"),
+                    delay_segundos: parseInt(formData.get("delay")),
+                    mostrar_una_vez: formData.get("once") === "on",
+                },
+            };
+
+            try {
+                const res = await fetch("/api/admin/popups", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "create", data }),
+                });
+
+                if (res.ok) {
+                    alert("¡Pop-up creado con éxito!");
+                    window.location.href = "/admin/popups";
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.error);
+                }
+            } catch (err) {
+                alert("Error de conexión");
+            }
+        });
+    </script>
+</AdminLayout>

@@ -1,0 +1,654 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { supabase } from "../../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+
+if (!user || user.app_metadata?.role !== "admin") {
+    return Astro.redirect("/");
+}
+
+// --- Lógica de Inteligencia de Negocio ---
+const now = new Date();
+const oneWeekAgo = new Date(
+    now.getTime() - 7 * 24 * 60 * 60 * 1000,
+).toISOString();
+const oneMonthAgo = new Date(
+    now.getFullYear(),
+    now.getMonth() - 1,
+    now.getDate(),
+).toISOString();
+const sixMonthsAgo = new Date(
+    now.getFullYear(),
+    now.getMonth() - 6,
+    now.getDate(),
+).toISOString();
+const oneYearAgo = new Date(
+    now.getFullYear() - 1,
+    now.getMonth(),
+    now.getDate(),
+).toISOString();
+
+// 1. Ingresos Totales y por Periodos
+const { data: allSales } = await supabase
+    .from("orders")
+    .select("total_amount, created_at")
+    .neq("status", "cancelled");
+
+const calculateSales = (sinceIso?: string) => {
+    if (!allSales) return 0;
+    return (
+        allSales
+            .filter((order) => !sinceIso || order.created_at >= sinceIso)
+            .reduce((acc, curr) => acc + curr.total_amount, 0) / 100
+    );
+};
+
+const totalSales = calculateSales();
+const weekSales = calculateSales(oneWeekAgo);
+const monthSales = calculateSales(oneMonthAgo);
+const halfYearSales = calculateSales(sixMonthsAgo);
+const yearSales = calculateSales(oneYearAgo);
+
+// 2. Conteo de Pedidos
+const { count: ordersCount } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true });
+
+// 3. Stock y Variantes
+const { data: variantsData } = await supabase
+    .from("product_variants")
+    .select("stock");
+
+const stockStats = {
+    totalUnits: variantsData?.reduce((acc, v) => acc + v.stock, 0) || 0,
+    lowStock:
+        variantsData?.filter((v) => v.stock < 3 && v.stock > 0).length || 0,
+    outOfStock: variantsData?.filter((v) => v.stock === 0).length || 0,
+};
+
+// 4. Catálogo de Productos
+const { count: productsCount } = await supabase
+    .from("products")
+    .select("*", { count: "exact", head: true });
+
+// 5. Pedidos Recientes
+const { data: recentOrders } = await supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+const statusBadge: Record<string, string> = {
+    pending: "bg-orange-50 text-orange-600",
+    paid: "bg-green-50 text-green-600",
+    shipped: "bg-blue-50 text-blue-600",
+    delivered: "bg-purple-50 text-purple-600",
+    cancelled: "bg-red-50 text-red-600",
+};
+
+const statusText: Record<string, string> = {
+    pending: "Pendiente",
+    paid: "Pagado",
+    shipped: "Enviado",
+    delivered: "Entregado",
+    cancelled: "Cancelado",
+};
+---
+
+<AdminLayout title="Dashboard de Control">
+    <div
+        class="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-8"
+    >
+        <!-- Saludo y Estado Rápido -->
+        <div
+            class="flex flex-col md:flex-row md:items-end justify-between gap-6"
+        >
+            <div class="space-y-2">
+                <div
+                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                >
+                    <span class="w-8 h-px bg-brand-gold"></span>
+                    <span class="text-gray-900">Fashion</span><span
+                        class="text-yellow-600">Store</span
+                    > / Panel de Control
+                </div>
+                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
+                    Dashboard de <span class="text-brand-gold italic font-serif"
+                        >Control</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium tracking-tight">
+                    Visualiza el rendimiento de tu tienda en tiempo real.
+                </p>
+            </div>
+            <div
+                class="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm"
+            >
+                <button
+                    id="export-pdf"
+                    class="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-brand-gold transition-all flex items-center gap-2"
+                >
+                    <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        ></path>
+                    </svg>
+                    Exportar Informe PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Pasar datos al cliente para el PDF -->
+        <div
+            id="stats-data"
+            data-stats={JSON.stringify({
+                weekSales,
+                monthSales,
+                halfYearSales,
+                yearSales,
+                stockStats,
+                ordersCount,
+                productsCount,
+            })}
+            class="hidden"
+        >
+        </div>
+
+        <!-- Tarjetas de Resumen de Ingresos -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-200/20 transition-all duration-300"
+            >
+                <h3
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                >
+                    Esta Semana
+                </h3>
+                <p class="text-3xl font-black text-slate-800 tracking-tighter">
+                    {weekSales.toFixed(2)}€
+                </p>
+                <div class="mt-4 flex items-center gap-2">
+                    <span
+                        class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded-lg"
+                        >7 DÍAS</span
+                    >
+                </div>
+            </div>
+
+            <div
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-purple-200/20 transition-all duration-300"
+            >
+                <h3
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                >
+                    Último Mes
+                </h3>
+                <p class="text-3xl font-black text-slate-800 tracking-tighter">
+                    {monthSales.toFixed(2)}€
+                </p>
+                <div class="mt-4 flex items-center gap-2">
+                    <span
+                        class="px-2 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-black rounded-lg"
+                        >30 DÍAS</span
+                    >
+                </div>
+            </div>
+
+            <div
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-indigo-200/20 transition-all duration-300"
+            >
+                <h3
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                >
+                    Últimos 6 Meses
+                </h3>
+                <p class="text-3xl font-black text-slate-800 tracking-tighter">
+                    {halfYearSales.toFixed(2)}€
+                </p>
+                <div class="mt-4 flex items-center gap-2">
+                    <span
+                        class="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-black rounded-lg"
+                        >SEMESTRE</span
+                    >
+                </div>
+            </div>
+
+            <div
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-900/5 transition-all duration-300 border-b-4 border-b-slate-900"
+            >
+                <h3
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                >
+                    Ingresos Anuales
+                </h3>
+                <p class="text-3xl font-black text-slate-800 tracking-tighter">
+                    {yearSales.toFixed(2)}€
+                </p>
+                <div class="mt-4 flex items-center gap-2">
+                    <span
+                        class="px-2 py-0.5 bg-slate-900 text-white text-[9px] font-black rounded-lg"
+                        >TOTAL AÑO</span
+                    >
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas de Inventario y Operaciones -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Stock Detallado -->
+            <div
+                class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 lg:col-span-1"
+            >
+                <h3 class="text-lg font-black text-slate-800 mb-6">
+                    Estado del Inventario
+                </h3>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center"
+                            >
+                                <svg
+                                    class="w-6 h-6 text-slate-400"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                                    ></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p
+                                    class="text-[10px] font-black text-slate-400 uppercase"
+                                >
+                                    Unidades Totales
+                                </p>
+                                <p class="text-xl font-black text-slate-800">
+                                    {stockStats.totalUnits}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center"
+                            >
+                                <svg
+                                    class="w-6 h-6 text-orange-600"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                    ></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p
+                                    class="text-[10px] font-black text-slate-400 uppercase"
+                                >
+                                    Stock Bajo (&lt;3)
+                                </p>
+                                <p class="text-xl font-black text-orange-600">
+                                    {stockStats.lowStock}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center"
+                            >
+                                <svg
+                                    class="w-6 h-6 text-red-600"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                                    ></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p
+                                    class="text-[10px] font-black text-slate-400 uppercase"
+                                >
+                                    Agotados
+                                </p>
+                                <p class="text-xl font-black text-red-600">
+                                    {stockStats.outOfStock}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pedidos y Catálogo -->
+            <div
+                class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 md:col-span-2 flex flex-col justify-center relative overflow-hidden group"
+            >
+                <div class="grid grid-cols-2 gap-8 relative z-10">
+                    <div>
+                        <p
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1"
+                        >
+                            Volumen de Pedidos
+                        </p>
+                        <p
+                            class="text-5xl font-black text-slate-800 tracking-tighter"
+                        >
+                            {ordersCount}
+                        </p>
+                        <p
+                            class="text-[10px] text-slate-400 mt-2 font-bold italic"
+                        >
+                            PROCESADOS EN TOTAL
+                        </p>
+                    </div>
+                    <div>
+                        <p
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1"
+                        >
+                            Referencias
+                        </p>
+                        <p
+                            class="text-5xl font-black text-brand-gold tracking-tighter"
+                        >
+                            {productsCount}
+                        </p>
+                        <p
+                            class="text-[10px] text-slate-400 mt-2 font-bold italic"
+                        >
+                            PRODUCTOS ACTIVOS
+                        </p>
+                    </div>
+                </div>
+                <!-- Decoración -->
+                <div
+                    class="absolute -right-16 -top-16 w-64 h-64 bg-slate-50 rounded-full group-hover:bg-slate-100 transition-colors duration-500"
+                >
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Sección Izquierda: Actividad Reciente -->
+            <div class="lg:col-span-2 space-y-6">
+                <div
+                    class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-10"
+                >
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3
+                                class="text-2xl font-black text-slate-800 tracking-tighter"
+                            >
+                                Pedidos Recientes
+                            </h3>
+                            <p class="text-sm text-slate-400 font-medium">
+                                Últimos 5 movimientos procesados
+                            </p>
+                        </div>
+                        <a
+                            href="/admin/orders"
+                            class="px-6 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all"
+                            >Explorar Todo →</a
+                        >
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table
+                            class="w-full text-left border-separate border-spacing-y-4"
+                        >
+                            <thead>
+                                <tr
+                                    class="text-slate-400 text-[10px] uppercase tracking-widest font-black"
+                                >
+                                    <th class="pb-2 pl-4">ID</th>
+                                    <th class="pb-2">Cliente</th>
+                                    <th class="pb-2">Monto</th>
+                                    <th class="pb-2 text-center">Estado</th>
+                                    <th class="pb-2 pr-4 text-right"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {
+                                    recentOrders?.map((order) => (
+                                        <tr class="group hover:bg-slate-50/50 transition-colors rounded-3xl overflow-hidden shadow-sm border border-slate-50">
+                                            <td class="py-5 pl-4">
+                                                <span class="text-xs font-black text-slate-400 uppercase tracking-tighter">
+                                                    #
+                                                    {order.id
+                                                        .toString()
+                                                        .padStart(5, "0")}
+                                                </span>
+                                            </td>
+                                            <td class="py-5">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
+                                                        {order.shipping_name.charAt(
+                                                            0,
+                                                        )}
+                                                    </div>
+                                                    <div class="flex flex-col">
+                                                        <span class="text-xs font-black text-slate-800 tracking-tight">
+                                                            {
+                                                                order.shipping_name
+                                                            }
+                                                        </span>
+                                                        <span class="text-[10px] text-slate-400 font-medium">
+                                                            {
+                                                                order.shipping_email
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="py-5 text-sm font-black text-slate-800 tracking-tighter">
+                                                {(
+                                                    order.total_amount / 100
+                                                ).toFixed(2)}
+                                                €
+                                            </td>
+                                            <td class="py-5 text-center">
+                                                <span
+                                                    class={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${statusBadge[order.status]}`}
+                                                >
+                                                    {statusText[order.status]}
+                                                </span>
+                                            </td>
+                                            <td class="py-5 pr-4 text-right">
+                                                <a
+                                                    href={`/admin/orders/${order.id}`}
+                                                    class="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                                                >
+                                                    <svg
+                                                        class="w-4 h-4"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M9 5l7 7-7 7"
+                                                        />
+                                                    </svg>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    ))
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección Derecha: Acciones y Tips -->
+            <div class="space-y-6">
+                <div
+                    class="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl shadow-slate-900/20 relative overflow-hidden"
+                >
+                    <div class="relative z-10">
+                        <h3 class="text-xl font-bold mb-2">Accesos Directos</h3>
+                        <p class="text-slate-400 text-sm mb-6 font-medium">
+                            Gestiona tu tienda rápidamente.
+                        </p>
+
+                        <div class="space-y-3">
+                            <a
+                                href="/admin/products/new"
+                                class="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:scale-[1.02] transition-all group"
+                            >
+                                <span class="font-bold text-sm"
+                                    >Añadir Producto</span
+                                >
+                                <svg
+                                    class="w-5 h-5 text-brand-gold"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </a>
+                            <a
+                                href="/admin/popups"
+                                class="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 hover:scale-[1.02] transition-all group"
+                            >
+                                <span class="font-bold text-sm"
+                                    >Configurar Pop-ups</span
+                                >
+                                <svg
+                                    class="w-5 h-5 text-slate-500 group-hover:text-brand-gold transition-colors"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                    <!-- Decoración fondo -->
+                    <div
+                        class="absolute -right-10 -bottom-10 w-40 h-40 bg-brand-gold/10 blur-3xl rounded-full"
+                    >
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm"
+                >
+                    <h3 class="font-bold text-slate-800 mb-4">Tips Pro</h3>
+                    <div class="flex gap-4">
+                        <div
+                            class="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center shrink-0 font-black text-brand-gold"
+                        >
+                            TIP
+                        </div>
+                        <p
+                            class="text-xs text-slate-500 italic leading-relaxed"
+                        >
+                            "Los productos con más de 3 imágenes de alta calidad
+                            suelen tener un <span
+                                class="text-brand-gold font-bold">20% más</span
+                            > de conversión de ventas."
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</AdminLayout>
+
+<script>
+    const exportBtn = document.getElementById("export-pdf");
+    const statsData = document.getElementById("stats-data");
+
+    exportBtn?.addEventListener("click", async () => {
+        const stats = JSON.parse(statsData?.dataset.stats || "{}");
+        const originalHtml = exportBtn.innerHTML;
+
+        try {
+            exportBtn.setAttribute("disabled", "true");
+            exportBtn.innerHTML = `
+                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generando...
+            `;
+
+            const response = await fetch("/api/export-dashboard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(stats),
+            });
+
+            if (!response.ok) throw new Error("Error al generar PDF");
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Resumen_Dashboard_${new Date().toLocaleDateString()}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            exportBtn.innerHTML = originalHtml;
+            exportBtn.removeAttribute("disabled");
+        } catch (err) {
+            console.error(err);
+            exportBtn.innerHTML = '<span class="text-red-400">Error</span>';
+            setTimeout(() => {
+                exportBtn.innerHTML = originalHtml;
+                exportBtn.removeAttribute("disabled");
+            }, 3000);
+        }
+    });
+</script>

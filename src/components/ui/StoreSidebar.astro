@@ -1,0 +1,249 @@
+---
+import { supabase } from "../../lib/supabase";
+
+interface Subcategory {
+    id: number;
+    name: string;
+    slug: string;
+}
+
+interface CategoryWithSubs {
+    id: number;
+    name: string;
+    slug: string;
+    subcategories: Subcategory[];
+}
+
+const { currentSlug } = Astro.props;
+
+// Obtener todas las categorías para construir el árbol
+const { data: allCategories } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
+
+const mainCategories = allCategories?.filter((c) => !c.parent_id) || [];
+
+const categoriesTree: CategoryWithSubs[] = await Promise.all(
+    mainCategories.map(async (cat) => {
+        let subs: Subcategory[] = [];
+
+        if (cat.id === 1) {
+            // ROPA: Aplanar nivel 2
+            const level2 = allCategories?.filter((c) => c.parent_id === cat.id);
+            if (level2) {
+                subs =
+                    allCategories
+                        ?.filter((c) =>
+                            level2.some((l2) => l2.id === c.parent_id),
+                        )
+                        .map((s) => ({
+                            id: s.id,
+                            name: s.name,
+                            slug: s.slug,
+                        })) || [];
+            }
+        } else if (cat.id === 2) {
+            // COMPLEMENTOS: Renombrar y aplanar
+            const level2 =
+                allCategories?.filter((c) => c.parent_id === cat.id) || [];
+            subs = level2
+                .map((child) => {
+                    let name = child.name;
+                    if (child.slug === "cabeza") name = "Gorras y gorros";
+                    if (child.slug === "bolsos-y-transporte")
+                        name = "Bolsos y mochilas";
+                    if (child.slug === "joyeria-y-relojeria")
+                        name = "Joyería y relojes";
+                    return { id: child.id, name, slug: child.slug };
+                })
+                .filter((c) => c.slug !== "cinturones-y-gafas");
+
+            const cGafas = level2.find((c) => c.slug === "cinturones-y-gafas");
+            if (cGafas) {
+                const extra =
+                    allCategories?.filter((c) => c.parent_id === cGafas.id) ||
+                    [];
+                subs.push(
+                    ...extra.map((e) => ({
+                        id: e.id,
+                        name: e.slug === "gafas-de-sol" ? "Gafas" : e.name,
+                        slug: e.slug,
+                    })),
+                );
+            }
+        } else {
+            subs =
+                allCategories
+                    ?.filter((c) => c.parent_id === cat.id)
+                    .map((s) => ({ id: s.id, name: s.name, slug: s.slug })) ||
+                [];
+        }
+
+        return {
+            id: cat.id,
+            name: cat.name,
+            slug: cat.slug,
+            subcategories: subs.sort((a, b) => a.name.localeCompare(b.name)),
+        };
+    }),
+);
+---
+
+<div class="space-y-8">
+    <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+        <h3
+            class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2"
+        >
+            <span class="w-4 h-px bg-slate-200"></span>
+            Filtros
+        </h3>
+
+        <div class="space-y-4">
+            <!-- Ver Todo -->
+            <a
+                href="/catalogo"
+                class={`block text-sm font-bold transition-all ${!currentSlug || currentSlug === "productos" ? "text-brand-gold translate-x-1" : "text-slate-600 hover:text-brand-gold hover:translate-x-1"}`}
+            >
+                Todo el catálogo
+            </a>
+
+            <div class="h-px bg-slate-50 my-2"></div>
+
+            {
+                categoriesTree.map((cat) => {
+                    const isActive =
+                        currentSlug === cat.slug ||
+                        cat.subcategories.some((s) => s.slug === currentSlug);
+
+                    return (
+                        <div class="category-group" data-slug={cat.slug}>
+                            <button
+                                type="button"
+                                class={`w-full flex items-center justify-between text-sm font-bold py-2 transition-all group ${isActive ? "text-slate-900" : "text-slate-600 hover:text-slate-900"}`}
+                                data-toggle={cat.id}
+                            >
+                                <span class="flex items-center gap-2">
+                                    <a
+                                        href={`/catalogo/${cat.slug}`}
+                                        class="hover:text-brand-gold transition-colors"
+                                    >
+                                        {cat.name}
+                                    </a>
+                                </span>
+                                <svg
+                                    class={`w-4 h-4 transition-transform duration-300 ${isActive ? "rotate-180 text-brand-gold" : "text-slate-300"}`}
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M19 9l-7 7-7-7"
+                                    />
+                                </svg>
+                            </button>
+
+                            <div
+                                id={`subs-${cat.id}`}
+                                class={`mt-2 ml-4 space-y-2 overflow-hidden transition-all duration-300 ${isActive ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}
+                            >
+                                <div class="border-l-2 border-slate-50 pl-4 py-1 space-y-1">
+                                    {cat.subcategories.map((sub) => (
+                                        <a
+                                            href={`/catalogo/${cat.slug}/${sub.slug}`}
+                                            class={`block text-xs font-semibold py-1.5 transition-all ${currentSlug === sub.slug ? "text-brand-gold translate-x-1" : "text-slate-400 hover:text-slate-900 hover:translate-x-1"}`}
+                                        >
+                                            {sub.name}
+                                        </a>
+                                    ))}
+                                    <a
+                                        href={`/catalogo/${cat.slug}`}
+                                        class="block text-[10px] uppercase tracking-widest font-black text-slate-300 pt-2 hover:text-brand-gold"
+                                    >
+                                        Ver todo {cat.name} →
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })
+            }
+        </div>
+    </div>
+
+    <!-- Banner Ayuda Premium -->
+    <div class="relative overflow-hidden group">
+        <div
+            class="absolute inset-0 bg-slate-900 rounded-3xl transition-transform duration-500 group-hover:scale-[1.02]"
+        >
+        </div>
+        <div class="relative p-8 text-white">
+            <h4 class="text-xl font-serif font-bold mb-3">¿Necesitas ayuda?</h4>
+            <p class="text-sm text-slate-400 mb-6 leading-relaxed">
+                Nuestro equipo de personal shoppers está disponible para
+                asesorarte de forma exclusiva.
+            </p>
+            <a
+                href="/ayuda"
+                class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-brand-gold hover:text-white transition-colors"
+            >
+                Contactar ahora
+                <svg
+                    class="w-4 h-4 transition-transform group-hover:translate-x-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const triggers = document.querySelectorAll("[data-toggle]");
+
+        triggers.forEach((trigger) => {
+            trigger.addEventListener("click", (e) => {
+                // If clicked on the link itself, don't toggle
+                if ((e.target as HTMLElement).tagName === "A") return;
+
+                const id = trigger.getAttribute("data-toggle");
+                const menu = document.getElementById(`subs-${id}`);
+                const arrow = trigger.querySelector("svg");
+
+                if (menu && arrow) {
+                    const isOpen = menu.classList.contains("max-h-[500px]");
+
+                    // Close others (opcional, user preference - usually better to keep it clean)
+                    document.querySelectorAll('[id^="subs-"]').forEach((m) => {
+                        m.classList.remove("max-h-[500px]", "opacity-100");
+                        m.classList.add("max-h-0", "opacity-0");
+                    });
+                    document
+                        .querySelectorAll("[data-toggle] svg")
+                        .forEach((a) => {
+                            a.classList.remove("rotate-180", "text-brand-gold");
+                            a.classList.add("text-slate-300");
+                        });
+
+                    if (!isOpen) {
+                        menu.classList.remove("max-h-0", "opacity-0");
+                        menu.classList.add("max-h-[500px]", "opacity-100");
+                        arrow.classList.add("rotate-180", "text-brand-gold");
+                        arrow.classList.remove("text-slate-300");
+                    }
+                }
+            });
+        });
+    });
+</script>

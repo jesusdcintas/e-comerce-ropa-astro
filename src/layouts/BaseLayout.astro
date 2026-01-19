@@ -1,0 +1,82 @@
+---
+import "../styles/global.css";
+import CartFlyout from "../components/functional/CartFlyout";
+import Header from "../components/ui/Header.astro";
+import ToastContainer from "../components/ui/ToastContainer";
+import PopupManager from "../components/functional/PopupManager";
+
+interface Props {
+    title: string;
+    description?: string;
+    showPopup?: boolean;
+}
+
+const {
+    title,
+    description = "FashionMarket - Moda masculina premium minimalista.",
+    showPopup = true,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="description" content={description} />
+        <meta name="viewport" content="width=device-width" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="generator" content={Astro.generator} />
+
+        <!-- Google Fonts: Inter & Playfair Display -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+            rel="stylesheet"
+        />
+
+        <title>{title}</title>
+
+        <!-- View Transitions para navegación SPA-like -->
+        <style>
+            /* Hack para prevenir FOUC en transiciones */
+            html {
+                scroll-behavior: smooth;
+            }
+        </style>
+    </head>
+    <body
+        class="min-h-screen flex flex-col bg-white text-brand-black selection:bg-brand-gold selection:text-white"
+    >
+        <!-- Header con navegación completa -->
+        <Header />
+
+        <main class="flex-grow">
+            <slot />
+        </main>
+
+        <footer class="bg-white border-t border-gray-200 mt-auto">
+            <div
+                class="max-w-7xl mx-auto py-12 px-4 sm:px-6 md:flex md:items-center md:justify-between lg:px-8"
+            >
+                <div class="mt-8 md:mt-0 md:order-1">
+                    <p class="text-center text-base text-gray-400">
+                        &copy; {new Date().getFullYear()}
+                        <span class="text-gray-900 font-semibold">Fashion</span
+                        ><span class="text-yellow-600 font-semibold">Store</span
+                        >. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Estado Global UI: Carrito Lateral -->
+        <CartFlyout client:load />
+
+        <!-- Notificaciones Globales -->
+        <ToastContainer client:load />
+
+        <!-- Sistema de Pop-ups (Marketing) -->
+        {showPopup && <PopupManager client:load />}
+    </body>
+</html>

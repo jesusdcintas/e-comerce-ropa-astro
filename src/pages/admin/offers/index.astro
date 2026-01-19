@@ -1,0 +1,299 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+
+// Obtener productos con descuento activo (aparecen en el carrusel de inicio)
+const now = new Date().toISOString();
+const { data: offerProducts } = await supabase
+    .from("products")
+    .select(
+        `
+    *,
+    category:categories(name, slug)
+  `,
+    )
+    .gt("discount_percentage", 0)
+    .or(`discount_ends_at.is.null,discount_ends_at.gt.${now}`)
+    .order("discount_percentage", { ascending: false });
+
+function formatPrice(cents: number) {
+    return `${(cents / 100).toFixed(2)}€`;
+}
+
+function calculateDiscountedPrice(price: number, discount: number) {
+    return Math.round(price * (1 - discount / 100));
+}
+---
+
+<AdminLayout title="Gestión de Ofertas">
+    <div
+        class="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700"
+    >
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
+        >
+            <div class="space-y-2">
+                <div
+                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-600"
+                >
+                    <span class="w-8 h-px bg-red-600"></span>
+                    Marketing & Ventas
+                </div>
+                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
+                    Gestión de <span class="text-red-600 italic font-serif"
+                        >Ofertas</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium">
+                    Todos los productos con descuento activo aparecen
+                    automáticamente en el carrusel de inicio.
+                </p>
+            </div>
+
+            <a
+                href="/admin/products"
+                class="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-2xl shadow-slate-900/20 hover:bg-brand-gold hover:-translate-y-1 transition-all active:scale-95 flex items-center gap-2"
+            >
+                <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"></path>
+                </svg>
+                Añadir Producto a Oferta
+            </a>
+        </div>
+
+        {
+            offerProducts && offerProducts.length > 0 ? (
+                <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-slate-50/50 border-b border-slate-100">
+                                    <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Producto
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Categoría
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                                        Estado
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                                        Descuento
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Precio Actual
+                                    </th>
+                                    <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Acciones
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {offerProducts.map((product) => (
+                                    <tr class="group hover:bg-slate-50/50 transition-colors">
+                                        <td class="px-8 py-6">
+                                            <div class="flex items-center gap-4">
+                                                {product.images?.[0] ? (
+                                                    <div class="w-12 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-100">
+                                                        <img
+                                                            src={
+                                                                product
+                                                                    .images[0]
+                                                            }
+                                                            alt=""
+                                                            class="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div class="w-12 h-16 rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center">
+                                                        <svg
+                                                            class="w-5 h-5 text-slate-300"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                stroke-linecap="round"
+                                                                stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p class="font-bold text-slate-800 line-clamp-1">
+                                                        {product.name}
+                                                    </p>
+                                                    <p class="text-xs text-slate-400 font-medium">
+                                                        SKU: {product.id}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-6">
+                                            <span class="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                                                {product.category?.name}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-6 text-center">
+                                            <div class="flex flex-col items-center gap-2">
+                                                <span class="px-3 py-1 bg-red-50 text-red-600 rounded-full text-[10px] font-bold uppercase tracking-widest border border-red-100">
+                                                    En Carrusel Home
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-6 text-center">
+                                            <span class="text-lg font-black text-red-600">
+                                                -{product.discount_percentage}%
+                                            </span>
+                                            {product.discount_ends_at && (
+                                                <p class="text-[9px] text-slate-400 font-black uppercase mt-1">
+                                                    Expira:{" "}
+                                                    {new Date(
+                                                        product.discount_ends_at,
+                                                    ).toLocaleDateString()}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td class="px-6 py-6 text-right">
+                                            <p class="text-xs text-slate-400 line-through font-medium">
+                                                {formatPrice(product.price)}
+                                            </p>
+                                            <p class="text-lg font-black text-slate-900">
+                                                {formatPrice(
+                                                    calculateDiscountedPrice(
+                                                        product.price,
+                                                        product.discount_percentage,
+                                                    ),
+                                                )}
+                                            </p>
+                                        </td>
+                                        <td class="px-8 py-6 text-right">
+                                            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <a
+                                                    href={`/admin/products/edit/${product.id}`}
+                                                    class="p-2 text-slate-400 hover:text-brand-gold hover:bg-slate-50 rounded-lg transition-all"
+                                                    title="Editar oferta"
+                                                >
+                                                    <svg
+                                                        class="w-5 h-5"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                        />
+                                                    </svg>
+                                                </a>
+                                                <button
+                                                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all remove-offer-btn"
+                                                    data-id={product.id}
+                                                    title="Quitar de oferta"
+                                                >
+                                                    <svg
+                                                        class="w-5 h-5"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                <div class="bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 p-20 text-center">
+                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg
+                            class="w-10 h-10 text-slate-300"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                            />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">
+                        No hay ofertas activas
+                    </h3>
+                    <p class="text-slate-400 max-w-sm mx-auto mb-10">
+                        Actualmente no tienes ningún producto en oferta ni
+                        destacado en el carrusel de inicio.
+                    </p>
+                    <a
+                        href="/admin/products"
+                        class="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-brand-gold transition-all"
+                    >
+                        Explorar Catálogo
+                    </a>
+                </div>
+            )
+        }
+    </div>
+</AdminLayout>
+
+<script>
+    import { supabase } from "../../../lib/supabase";
+
+    const removeBtns = document.querySelectorAll(".remove-offer-btn");
+
+    removeBtns.forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+
+            if (
+                confirm(
+                    "¿Estás seguro de que quieres quitar este producto de oferta? Se reseteará el descuento y el flag de destacado.",
+                )
+            ) {
+                try {
+                    const { error } = await supabase
+                        .from("products")
+                        .update({
+                            is_offer: false,
+                            discount_percentage: 0,
+                            discount_ends_at: null,
+                        })
+                        .eq("id", id);
+
+                    if (error) throw error;
+
+                    window.location.reload();
+                } catch (error: any) {
+                    alert("Error al quitar la oferta: " + error.message);
+                }
+            }
+        });
+    });
+</script>

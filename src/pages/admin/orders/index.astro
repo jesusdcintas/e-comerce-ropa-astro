@@ -1,0 +1,391 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+
+// Verificar si es admin
+if (!user || user.app_metadata?.role !== "admin") {
+    return Astro.redirect("/");
+}
+
+const sortBy = Astro.url.searchParams.get("sort") || "created_at";
+const orderParams = Astro.url.searchParams.get("order") || "desc";
+const isAsc = orderParams === "asc";
+
+// Obtener pedidos con sus items
+const { data: orders, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*, product:products(images))")
+    .order(sortBy, { ascending: isAsc });
+
+// Función para generar URLs de ordenación
+function getSortUrl(column: string) {
+    const params = new URLSearchParams(Astro.url.searchParams);
+    if (sortBy === column) {
+        params.set("order", orderParams === "asc" ? "desc" : "asc");
+    } else {
+        params.set("sort", column);
+        params.set("order", "asc");
+    }
+    return `?${params.toString()}`;
+}
+
+function getSortIcon(column: string) {
+    if (sortBy !== column) return "[^]";
+    return orderParams === "asc" ? "↑" : "↓";
+}
+
+function formatDate(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+const statusBadge = {
+    pending: "bg-orange-100 text-orange-600 border-orange-200",
+    paid: "bg-green-100 text-green-600 border-green-200",
+    shipped: "bg-blue-100 text-blue-600 border-blue-200",
+    delivered: "bg-purple-100 text-purple-600 border-purple-200",
+    cancelled: "bg-red-100 text-red-600 border-red-200",
+};
+
+const statusText = {
+    pending: "Pendiente",
+    paid: "Pagado",
+    shipped: "Enviado",
+    delivered: "Entregado",
+    cancelled: "Cancelado",
+};
+---
+
+<AdminLayout title="Gestión de Pedidos">
+    <div
+        class="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700 pb-20"
+    >
+        <!-- Header Section -->
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
+        >
+            <div class="space-y-2">
+                <div
+                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                >
+                    <span class="w-8 h-px bg-brand-gold"></span>
+                    Logística y Ventas
+                </div>
+                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
+                    Gestión de <span class="text-brand-gold italic font-serif"
+                        >Pedidos</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium">
+                    Controla el flujo de ventas y el estado de los envíos.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div
+                    class="bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm"
+                >
+                    <div
+                        class="text-[10px] font-black uppercase text-slate-400 mb-1"
+                    >
+                        Total Pedidos
+                    </div>
+                    <div class="text-2xl font-black text-slate-800">
+                        {orders?.length || 0}
+                    </div>
+                </div>
+                <div
+                    class="bg-slate-900 px-6 py-4 rounded-2xl shadow-xl shadow-slate-900/10"
+                >
+                    <div
+                        class="text-[10px] font-black uppercase text-slate-500 mb-1"
+                    >
+                        Ingresos Totales
+                    </div>
+                    <div class="text-2xl font-black text-brand-gold">
+                        {
+                            (
+                                orders?.reduce(
+                                    (acc, curr) =>
+                                        acc +
+                                        (curr.status !== "cancelled"
+                                            ? curr.total_amount
+                                            : 0),
+                                    0,
+                                ) / 100
+                            ).toFixed(2)
+                        }€
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {
+            error && (
+                <div class="bg-red-50 text-red-700 p-6 rounded-3xl mb-10 border border-red-100 flex items-center gap-4">
+                    <span class="text-2xl">!</span>
+                    <p class="font-bold">{error.message}</p>
+                </div>
+            )
+        }
+
+        <div
+            class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden"
+        >
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-50">
+                            <th class="px-8 py-6">
+                                <a
+                                    href={getSortUrl("created_at")}
+                                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors"
+                                >
+                                    ID / Fecha <span
+                                        class="text-[8px] opacity-50"
+                                        >{getSortIcon("created_at")}</span
+                                    >
+                                </a>
+                            </th>
+                            <th class="px-8 py-6">
+                                <a
+                                    href={getSortUrl("shipping_name")}
+                                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors"
+                                >
+                                    Cliente <span class="text-[8px] opacity-50"
+                                        >{getSortIcon("shipping_name")}</span
+                                    >
+                                </a>
+                            </th>
+                            <th class="px-8 py-6">
+                                <a
+                                    href={getSortUrl("status")}
+                                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors"
+                                >
+                                    Estado <span class="text-[8px] opacity-50"
+                                        >{getSortIcon("status")}</span
+                                    >
+                                </a>
+                            </th>
+                            <th
+                                class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                            >
+                                Productos
+                            </th>
+                            <th class="px-8 py-6">
+                                <a
+                                    href={getSortUrl("total_amount")}
+                                    class="flex items-center gap-2 justify-end text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors"
+                                >
+                                    Total <span class="text-[8px] opacity-50"
+                                        >{getSortIcon("total_amount")}</span
+                                    >
+                                </a>
+                            </th>
+                            <th
+                                class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                            ></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {
+                            orders?.map((order) => (
+                                <tr class="group hover:bg-slate-50/50 transition-colors">
+                                    <td class="px-8 py-6">
+                                        <div class="font-black text-slate-800">
+                                            #
+                                            {order.id
+                                                .toString()
+                                                .padStart(6, "0")}
+                                        </div>
+                                        <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                            {formatDate(order.created_at)}
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-6">
+                                        <div class="font-bold text-slate-700">
+                                            {order.shipping_name}
+                                        </div>
+                                        <div class="text-[10px] text-slate-400 font-medium">
+                                            {order.shipping_email}
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-6">
+                                        <select
+                                            data-order-id={order.id}
+                                            class={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border-2 cursor-pointer focus:ring-4 focus:ring-brand-gold/10 outline-none transition-all status-selector ${statusBadge[order.status as keyof typeof statusBadge]}`}
+                                        >
+                                            {Object.entries(statusText).map(
+                                                ([key, text]) => (
+                                                    <option
+                                                        value={key}
+                                                        selected={
+                                                            order.status === key
+                                                        }
+                                                    >
+                                                        {text.toUpperCase()}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </td>
+                                    <td class="px-8 py-6">
+                                        <div class="flex -space-x-3 overflow-hidden">
+                                            {order.order_items.map(
+                                                (item: any) => (
+                                                    <div
+                                                        class="relative w-10 h-10 rounded-xl border-2 border-white bg-slate-100 overflow-hidden shadow-sm hover:z-10 transition-all hover:scale-110"
+                                                        title={`${item.product_name} (${item.product_size})`}
+                                                    >
+                                                        {item.product
+                                                            ?.images?.[0] ? (
+                                                            <img
+                                                                src={
+                                                                    item.product
+                                                                        .images[0]
+                                                                }
+                                                                alt={
+                                                                    item.product_name
+                                                                }
+                                                                class="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div class="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">
+                                                                {item.product_name.charAt(
+                                                                    0,
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                        <div class="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            {order.order_items.length}{" "}
+                                            {order.order_items.length === 1
+                                                ? "artículo"
+                                                : "artículos"}
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-6 text-right">
+                                        <div class="text-xl font-black text-slate-800 tracking-tighter">
+                                            {(order.total_amount / 100).toFixed(
+                                                2,
+                                            )}
+                                            €
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-6 text-right">
+                                        <a
+                                            href={`/admin/orders/${order.id}`}
+                                            class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                        >
+                                            <svg
+                                                class="w-5 h-5"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                                />
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                />
+                                            </svg>
+                                        </a>
+                                    </td>
+                                </tr>
+                            ))
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            {
+                !orders ||
+                    (orders.length === 0 && (
+                        <div class="py-20 text-center space-y-4">
+                            <div class="text-6xl font-bold text-gray-400">
+                                -
+                            </div>
+                            <div class="text-xl font-bold text-slate-800">
+                                No hay pedidos registrados
+                            </div>
+                            <p class="text-slate-400">
+                                Cuando los clientes realicen compras, aparecerán
+                                aquí.
+                            </p>
+                        </div>
+                    ))
+            }
+        </div>
+    </div>
+
+    <script is:inline>
+        const selectors = document.querySelectorAll(".status-selector");
+
+        selectors.forEach((select) => {
+            select.addEventListener("change", async (e) => {
+                const newStatus = e.target.value;
+                const orderId = select.dataset.orderId;
+                const orderLabel = orderId.toString().padStart(6, "0");
+
+                if (
+                    !confirm(
+                        `¿Estás seguro de cambiar el estado del pedido #${orderLabel} a "${newStatus.toUpperCase()}"?`,
+                    )
+                ) {
+                    window.location.reload();
+                    return;
+                }
+
+                select.disabled = true;
+                select.style.opacity = "0.5";
+
+                try {
+                    const res = await fetch("/api/admin/orders/update-status", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            id: orderId,
+                            status: newStatus,
+                        }),
+                    });
+
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        const err = await res.json();
+                        alert("Error: " + err.error);
+                        window.location.reload();
+                    }
+                } catch (err) {
+                    alert("Error de conexión");
+                    window.location.reload();
+                }
+            });
+        });
+    </script>
+</AdminLayout>

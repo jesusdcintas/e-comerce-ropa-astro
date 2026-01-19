@@ -1,0 +1,186 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const faqs = [
+    {
+        category: "Pedidos",
+        questions: [
+            {
+                q: "¿Cómo puedo realizar un seguimiento de mi pedido?",
+                a: "Una vez que tu pedido sea enviado, recibirás un correo electrónico con un número de seguimiento. También puedes ver el estado de tus pedidos en la sección 'Mis Pedidos' dentro de tu cuenta.",
+            },
+            {
+                q: "¿Puedo cancelar o modificar un pedido?",
+                a: "Debido a que procesamos los pedidos rápidamente, solo dispones de un margen de 1 hora tras la compra para solicitar modificaciones o cancelaciones. Ponte en contacto con nuestro soporte inmediatamente si necesitas realizar un cambio.",
+            },
+        ],
+    },
+    {
+        category: "Envíos",
+        questions: [
+            {
+                q: "¿Cuánto tarda en llegar mi pedido?",
+                a: "Los envíos estándar suelen tardar entre 2 y 4 días laborables dentro de la península. Los pedidos realizados antes de las 13:00 suelen gestionarse el mismo día.",
+            },
+            {
+                q: "¿Cuáles son los gastos de envío?",
+                a: "Ofrecemos envío estándar gratuito en todos los pedidos superiores a 50€. Para pedidos inferiores, el gasto de envío es de 4.95€.",
+            },
+        ],
+    },
+    {
+        category: "Devoluciones",
+        questions: [
+            {
+                q: "¿Cómo realizo una devolución?",
+                a: "Tienes 30 días naturales desde la recepción del pedido para solicitar una devolución. Los artículos deben estar en su estado original y con todas las etiquetas. Puedes iniciar el proceso desde tu panel de usuario.",
+            },
+            {
+                q: "¿Es gratuita la devolución?",
+                a: "Sí, la primera devolución de cada pedido es totalmente gratuita para el cliente. Nosotros nos encargamos de generar la etiqueta de recogida.",
+            },
+        ],
+    },
+    {
+        category: "Cuenta y Soporte",
+        questions: [
+            {
+                q: "¿Cómo puedo contactar con atención al cliente?",
+                a: "Puedes enviarnos un mensaje directo desde la sección 'Mis Mensajes' en tu perfil. Nuestro equipo suele responder en menos de 24 horas laborables.",
+            },
+            {
+                q: "¿Cómo recupero mi contraseña?",
+                a: "En la página de inicio de sesión, haz clic en '¿Olvidaste tu contraseña?' y sigue las instrucciones para recibir un enlace de restablecimiento en tu correo electrónico.",
+            },
+        ],
+    },
+];
+---
+
+<BaseLayout title="Ayuda y FAQ - FashionStore">
+    <div class="max-w-4xl mx-auto px-4 py-16">
+        <!-- Header de Ayuda -->
+        <div class="text-center mb-16 space-y-4">
+            <div
+                class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-blue bg-blue-50 px-4 py-1.5 rounded-full"
+            >
+                Soporte <span class="text-gray-900">Fashion</span><span class="text-yellow-600">Store</span>
+            </div>
+            <h1
+                class="text-5xl font-serif font-bold text-slate-900 tracking-tight"
+            >
+                Preguntas <span class="text-brand-blue italic text-6xl"
+                    >Frecuentes</span
+                >
+            </h1>
+            <p class="text-slate-500 font-medium text-lg max-w-xl mx-auto">
+                Todo lo que necesitas saber sobre tus compras, envíos y nuestra
+                experiencia de moda premium.
+            </p>
+        </div>
+
+        <!-- Buscador rápido (Visual) -->
+        <div class="relative max-w-2xl mx-auto mb-20">
+            <input
+                type="text"
+                placeholder="¿En qué podemos ayudarte hoy?"
+                class="w-full pl-14 pr-6 py-5 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue transition-all"
+            />
+            <svg
+                class="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+        </div>
+
+        <!-- FAQ Accordion -->
+        <div class="space-y-12">
+            {
+                faqs.map((cat) => (
+                    <section class="space-y-6">
+                        <h2 class="text-xl font-black text-slate-800 uppercase tracking-widest border-l-4 border-brand-blue pl-4">
+                            {cat.category}
+                        </h2>
+                        <div class="grid gap-4">
+                            {cat.questions.map((faq, index) => (
+                                <details class="group bg-white border border-slate-100 rounded-3xl overflow-hidden transition-all duration-300 hover:border-slate-200 hover:shadow-lg hover:shadow-slate-100">
+                                    <summary class="flex items-center justify-between p-6 cursor-pointer list-none">
+                                        <span class="font-bold text-slate-700 group-open:text-brand-blue transition-colors pr-4">
+                                            {faq.q}
+                                        </span>
+                                        <span class="flex-shrink-0 transition-transform duration-300 group-open:rotate-180">
+                                            <svg
+                                                class="w-5 h-5 text-brand-blue"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 9l-7 7-7-7"
+                                                />
+                                            </svg>
+                                        </span>
+                                    </summary>
+                                    <div class="px-6 pb-6 text-slate-500 leading-relaxed font-medium text-sm border-t border-slate-50 pt-4">
+                                        {faq.a}
+                                    </div>
+                                </details>
+                            ))}
+                        </div>
+                    </section>
+                ))
+            }
+        </div>
+
+        <!-- Contact CTA -->
+        <div
+            class="mt-24 p-12 bg-slate-900 rounded-[3rem] relative overflow-hidden text-center text-white"
+        >
+            <div
+                class="absolute top-0 right-0 w-64 h-64 bg-brand-blue/20 blur-[100px] rounded-full -mr-32 -mt-32"
+            >
+            </div>
+            <div class="relative z-10 space-y-6">
+                <h3 class="text-3xl font-serif font-bold italic">
+                    ¿No encuentras lo que buscas?
+                </h3>
+                <p class="text-slate-400 max-w-md mx-auto">
+                    Nuestro equipo de estilistas y soporte personal está
+                    disponible para ayudarte con cualquier duda específica.
+                </p>
+                <div
+                    class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
+                >
+                    <a
+                        href="/mensajes"
+                        class="bg-brand-blue text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white hover:text-brand-blue transition-all"
+                    >
+                        Enviar Mensaje Directo
+                    </a>
+                    <a
+                        href="mailto:soporte@fashionstore.com"
+                        class="text-white border border-white/20 px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all"
+                    >
+                        Email de Soporte
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>
+
+<style>
+    summary::-webkit-details-marker {
+        display: none;
+    }
+</style>

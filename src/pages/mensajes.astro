@@ -1,0 +1,197 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { supabase } from "../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+let user = null;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+const { data } = await supabase.auth.getUser(accessToken);
+if (data?.user) {
+    user = data.user;
+} else {
+    return Astro.redirect("/login");
+}
+
+const userEmail = user.email || "";
+
+// Obtener consultas del usuario con sus mensajes
+const { data: userInquiries } = await supabase
+    .from("inquiries_with_product")
+    .select("*, messages:inquiry_messages(*)")
+    .eq("customer_email", userEmail)
+    .order("created_at", { ascending: false });
+
+// Ordenar mensajes por fecha ascendente
+userInquiries?.forEach((inquiry) => {
+    if (inquiry.messages) {
+        inquiry.messages.sort(
+            (a: any, b: any) =>
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        );
+    }
+});
+
+// Marcar como leídas si hay alguna no leída
+const hasUnread = userInquiries?.some((i) => i.customer_has_unread);
+if (hasUnread) {
+    await supabase
+        .from("product_inquiries")
+        .update({ customer_has_unread: false })
+        .eq("customer_email", userEmail)
+        .eq("customer_has_unread", true);
+}
+---
+
+<BaseLayout title="Atención al Cliente - Mensajes">
+    <div class="max-w-5xl mx-auto px-4 py-12">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-blue">
+                    <span class="w-8 h-px bg-brand-blue"></span>
+                    Centro de Soporte
+                </div>
+                <h1 class="text-5xl font-serif font-bold text-slate-900 tracking-tight">
+                    Mis <span class="text-brand-blue italic">Mensajes</span>
+                </h1>
+                <p class="text-slate-500 font-medium tracking-tight">
+                    Gestiona tus consultas y dudas sobre productos con nuestro equipo.
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-8">
+            {(!userInquiries || userInquiries.length === 0) ? (
+                <div class="bg-white rounded-[2.5rem] p-20 text-center border-2 border-dashed border-slate-100 space-y-6">
+                    <div class="text-6xl">💬</div>
+                    <h3 class="text-2xl font-bold text-slate-800">No tienes mensajes todavía</h3>
+                    <p class="text-slate-400 max-w-sm mx-auto">
+                        Cuando realices una consulta sobre un producto, aparecerá aquí el hilo de la conversación.
+                    </p>
+                    <a href="/" class="inline-block bg-brand-black text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 transition-all">
+                        Explorar Catálogo
+                    </a>
+                </div>
+            ) : (
+                userInquiries.map((inquiry) => (
+                    <div class="group bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden">
+                        <div class="p-6 md:p-8">
+                            <div class="flex flex-col lg:flex-row gap-8">
+                                <!-- Producto Miniatura -->
+                                <div class="w-full lg:w-32 h-32 flex-shrink-0">
+                                    <img 
+                                        src={inquiry.product_image} 
+                                        alt={inquiry.product_name} 
+                                        class="w-full h-full object-cover rounded-2xl shadow-md"
+                                    />
+                                </div>
+
+                                <div class="flex-1 space-y-6">
+                                    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                        <div>
+                                            <h3 class="text-xl font-black text-slate-800 tracking-tight mb-1">
+                                                {inquiry.product_name}
+                                            </h3>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                Consulta #{inquiry.id.toString().padStart(4, '0')}
+                                            </p>
+                                        </div>
+                                        <div class={`px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${
+                                            inquiry.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                            inquiry.status === 'answered' ? 'bg-green-50 text-green-600 border-green-100' :
+                                            'bg-slate-50 text-slate-600 border-slate-100'
+                                        }`}>
+                                            <div class={`w-2 h-2 rounded-full bg-current ${inquiry.status === 'pending' ? 'animate-pulse' : ''}`}></div>
+                                            {inquiry.status === 'pending' ? 'Esperando Respuesta' : inquiry.status === 'answered' ? 'Respondida' : 'Cerrada'}
+                                        </div>
+                                    </div>
+
+                                    <!-- Hilo de Mensajes Estilo Chat -->
+                                    <div class="bg-slate-50/50 rounded-[2rem] p-6 border border-slate-100 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                        {inquiry.messages?.map((msg: any) => (
+                                            <div class={`flex flex-col ${msg.sender_role === 'admin' ? 'items-start' : 'items-end'}`}>
+                                                <div class={`max-w-[85%] px-5 py-3 rounded-[1.5rem] text-sm font-medium shadow-sm ${
+                                                    msg.sender_role === 'admin' 
+                                                    ? 'bg-slate-900 text-white rounded-tl-none' 
+                                                    : 'bg-white text-slate-700 border border-slate-100 rounded-tr-none'
+                                                }`}>
+                                                    {msg.message}
+                                                    <div class="text-[8px] mt-2 opacity-60 font-black uppercase tracking-widest">
+                                                        {msg.sender_role === 'admin' ? 'FashionStore Team' : 'Tú'} • {new Date(msg.created_at).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div class="pt-4 flex justify-end">
+                                        <button 
+                                            class="bg-brand-black text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-brand-blue transition-all flex items-center gap-2 shadow-lg shadow-slate-200"
+                                            onclick={`window.replyToInquiry(${inquiry.id})`}
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                            </svg>
+                                            Enviar Mensaje
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    </div>
+</BaseLayout>
+
+<script>
+    import { supabase } from "../lib/supabase";
+
+    // @ts-ignore
+    window.replyToInquiry = async (id: number) => {
+        const response = prompt("¿Qué quieres decirle al equipo de soporte?");
+        if (!response) return;
+
+        try {
+            const { error: msgError } = await supabase
+                .from("inquiry_messages")
+                .insert({
+                    inquiry_id: id,
+                    sender_role: 'customer',
+                    message: response
+                });
+
+            if (msgError) throw msgError;
+
+            // Volver a poner en pendiente para que el admin lo vea
+            await supabase
+                .from("product_inquiries")
+                .update({ status: 'pending' })
+                .eq("id", id);
+
+            location.reload();
+        } catch (error: any) {
+            alert("Error al enviar el mensaje: " + error.message);
+        }
+    };
+</script>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #cbd5e1;
+    }
+</style>

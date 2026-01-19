@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+    /* Tipografías */
+    --font-serif: "Playfair Display", serif;
+    --font-sans: "Inter", sans-serif;
+
+    /* Paleta de Colores: Minimalismo Sofisticado */
+    --color-brand-black: #1a1a1a;
+    --color-brand-gray: #f4f4f5;
+    --color-brand-gold: #c6a87c;
+    --color-brand-blue: #2c3e50;
+
+    /* Animaciones Suaves */
+    --animate-fade-in: fade-in 0.5s ease-in-out;
+    --animate-slide-up: slide-up 0.5s ease-out;
+
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slide-up {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+}
+
+/* Estilos Base */
+@layer base {
+    body {
+        @apply font-sans text-brand-black antialiased bg-white;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-serif font-bold tracking-tight;
+    }
+}
+
+/* Utilidades Desactivar Scrollbar pero permitir scroll */
+
+@utility no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}

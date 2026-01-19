@@ -1,0 +1,1033 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+// Creamos un cliente con privilegios de administrador para el dashboard
+const supabaseAdmin = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+if (!accessToken) return Astro.redirect("/login");
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+if (!user || user.app_metadata?.role !== "admin") return Astro.redirect("/");
+
+// 1. Obtener Cupones Recientes (DEBUG activado)
+const { data: cupones, error: errCupones } = await supabaseAdmin
+    .from("cupones")
+    .select("*") // Simplificamos al máximo para probar
+    .order("id", { ascending: false })
+    .limit(20);
+
+console.log("--- DEBUG CUPONES ---");
+console.log("Total encontrados:", cupones?.length);
+console.log("Error si existe:", errCupones);
+if (cupones && cupones.length > 0) {
+    console.log("Primer cupón:", cupones[0].codigo);
+}
+console.log("---------------------");
+
+// 2. Obtener Reglas
+let { data: reglas } = await supabaseAdmin
+    .from("reglas_cupones")
+    .select("*")
+    .order("id", { ascending: false });
+
+// Verificar si faltan reglas de bienvenida y crearlas si es necesario
+const nombresBienvenida = ["BIENVENIDA_REGISTRO", "BIENVENIDA_NEWSLETTER"];
+const reglasFaltantes = nombresBienvenida.filter(
+    (nombre) => !reglas?.some((r) => r.nombre === nombre),
+);
+
+if (reglasFaltantes.length > 0) {
+    for (const nombre of reglasFaltantes) {
+        const { error: insertError } = await supabaseAdmin
+            .from("reglas_cupones")
+            .insert({
+                nombre: nombre,
+                descuento_porcentaje:
+                    nombre === "BIENVENIDA_REGISTRO" ? 10 : 15,
+                tipo_regla: "compra_minima",
+                activa: true,
+                dias_validez: nombre === "BIENVENIDA_REGISTRO" ? 15 : 30,
+                max_cupones_por_cliente: 1,
+                monto_minimo: 1, // Obligatorio > 0 para reglas activas según constraints
+            });
+
+        if (insertError) {
+            console.error(
+                `[Admin Dashboard] Error creando regla ${nombre}:`,
+                insertError,
+            );
+        }
+    }
+    // Recargar reglas después de la inserción
+    const { data: updatedReglas } = await supabaseAdmin
+        .from("reglas_cupones")
+        .select("*")
+        .order("id", { ascending: false });
+    reglas = updatedReglas;
+}
+
+// 3. Estadísticas Rápidas
+const { data: stats } = await supabaseAdmin
+    .from("cupon_usos")
+    .select("amount_saved, discount_applied");
+
+const totalAhorrado =
+    stats?.reduce((acc, curr) => acc + (curr.amount_saved || 0), 0) || 0;
+const totalUsos = stats?.length || 0;
+
+const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
+---
+
+<AdminLayout title="Gestión de Cupones - Dashboard">
+    <div class="space-y-8">
+        <!-- Header -->
+        <div class="flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-black text-slate-800 tracking-tighter">
+                    Sistema de <span class="text-brand-gold italic font-serif"
+                        >Cupones</span
+                    >
+                </h1>
+                <p class="text-slate-500 font-medium">
+                    Gestiona descuentos manuales y reglas de fidelización
+                    automática.
+                </p>
+            </div>
+            <div class="flex gap-3">
+                <a
+                    href="/admin/cupones/nuevo"
+                    class="bg-brand-black text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2"
+                >
+                    <svg
+                        class="w-5 h-5 text-brand-gold"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Crear Cupón / Regla
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div
+                class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"
+            >
+                <p
+                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1"
+                >
+                    Total Ahorrado Clientes
+                </p>
+                <h3 class="text-3xl font-black text-slate-800">
+                    {formatPrice(totalAhorrado)}
+                </h3>
+            </div>
+            <div
+                class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"
+            >
+                <p
+                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1"
+                >
+                    Cupones Canjeados
+                </p>
+                <h3 class="text-3xl font-black text-brand-gold">{totalUsos}</h3>
+            </div>
+            <div
+                class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm"
+            >
+                <p
+                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1"
+                >
+                    Reglas Activas
+                </p>
+                <h3 class="text-3xl font-black text-slate-800">
+                    {reglas?.filter((r) => r.activa).length || 0}
+                </h3>
+            </div>
+        </div>
+
+        <!-- Cupones de Bienvenida (Novedad) -->
+        <div
+            class="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl overflow-hidden relative"
+        >
+            <div
+                class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none"
+            >
+                <svg
+                    class="w-32 h-32 text-brand-gold"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    ><path
+                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                    ></path></svg
+                >
+            </div>
+
+            <div class="mb-8">
+                <h2
+                    class="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2"
+                >
+                    <span class="w-2 h-2 bg-brand-gold rounded-full"></span>
+                    Gestión de Cupones de Bienvenida
+                </h2>
+                <p class="text-xs text-slate-400 font-medium">
+                    Controla los descuentos automáticos para nuevos usuarios y
+                    suscriptores.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Registro -->
+                {
+                    (() => {
+                        const reglaRegistro = reglas?.find(
+                            (r) => r.nombre === "BIENVENIDA_REGISTRO",
+                        );
+                        return (
+                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 relative group transition-all hover:shadow-md">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 class="font-bold text-slate-800 text-sm italic">
+                                            Bienvenida al Registro
+                                        </h3>
+                                        <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest">
+                                            Código: WELCOME10-XXXXX
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="toggle-rule-welcome w-12 h-6 flex items-center rounded-full p-1 transition-all duration-300 shadow-inner"
+                                        data-id={reglaRegistro?.id}
+                                        data-active={reglaRegistro?.activa.toString()}
+                                        class:list={[
+                                            reglaRegistro?.activa
+                                                ? "bg-green-500"
+                                                : "bg-slate-300",
+                                        ]}
+                                    >
+                                        <div
+                                            class={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${reglaRegistro?.activa ? "translate-x-6" : ""}`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-1">
+                                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mb-1 block">
+                                            Porcentaje de Descuento
+                                        </label>
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                class="update-discount-input w-20 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-gold/20"
+                                                value={
+                                                    reglaRegistro?.descuento_porcentaje ||
+                                                    10
+                                                }
+                                                data-id={reglaRegistro?.id}
+                                            />
+                                            <span class="text-sm font-bold text-slate-400">
+                                                %
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[10px] font-medium text-slate-500 italic max-w-[120px]">
+                                            Se envía por email tras crear una
+                                            cuenta.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()
+                }
+
+                <!-- Newsletter -->
+                {
+                    (() => {
+                        const reglaNews = reglas?.find(
+                            (r) => r.nombre === "BIENVENIDA_NEWSLETTER",
+                        );
+                        return (
+                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 relative group transition-all hover:shadow-md">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 class="font-bold text-slate-800 text-sm italic">
+                                            Bienvenida Newsletter
+                                        </h3>
+                                        <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest">
+                                            Código: WELCOME-XXXXX
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="toggle-rule-welcome w-12 h-6 flex items-center rounded-full p-1 transition-all duration-300 shadow-inner"
+                                        data-id={reglaNews?.id}
+                                        data-active={reglaNews?.activa.toString()}
+                                        class:list={[
+                                            reglaNews?.activa
+                                                ? "bg-green-500"
+                                                : "bg-slate-300",
+                                        ]}
+                                    >
+                                        <div
+                                            class={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${reglaNews?.activa ? "translate-x-6" : ""}`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-1">
+                                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mb-1 block">
+                                            Porcentaje de Descuento
+                                        </label>
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                class="update-discount-input w-20 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-gold/20"
+                                                value={
+                                                    reglaNews?.descuento_porcentaje ||
+                                                    15
+                                                }
+                                                data-id={reglaNews?.id}
+                                            />
+                                            <span class="text-sm font-bold text-slate-400">
+                                                %
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[10px] font-medium text-slate-500 italic max-w-[120px]">
+                                            Se envía por email tras suscribirse.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()
+                }
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Tabla de Cupones Recientes -->
+            <div
+                class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-sm"
+            >
+                <div
+                    class="p-6 border-b border-slate-50 flex justify-between items-center"
+                >
+                    <h2 class="font-bold text-slate-800">Cupones Recientes</h2>
+                    {
+                        cupones && cupones.length === 0 && (
+                            <span class="text-[10px] bg-amber-50 text-amber-600 px-2 py-1 rounded">
+                                DEBUG: 0 cupones en DB
+                            </span>
+                        )
+                    }
+                    {
+                        errCupones && (
+                            <span class="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded">
+                                ERROR: {errCupones.message}
+                            </span>
+                        )
+                    }
+                    <div class="flex items-center gap-4">
+                        <button
+                            id="delete-selected-btn"
+                            class="hidden bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all border border-red-200 shadow-sm"
+                        >
+                            Borrar seleccionados (<span id="selected-count"
+                                >0</span
+                            >)
+                        </button>
+                        <a
+                            href="#"
+                            class="text-brand-gold font-bold text-xs uppercase hover:underline"
+                            >Ver todos</a
+                        >
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50/50">
+                            <tr>
+                                <th class="px-6 py-3 w-10">
+                                    <input
+                                        type="checkbox"
+                                        id="select-all-coupons"
+                                        class="rounded border-slate-300 text-brand-gold focus:ring-brand-gold"
+                                    />
+                                </th>
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    >Código</th
+                                >
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    >Descuento</th
+                                >
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    >Regla</th
+                                >
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    >Estado</th
+                                >
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            {
+                                (!cupones || cupones.length === 0) && (
+                                    <tr>
+                                        <td
+                                            colspan="3"
+                                            class="px-6 py-10 text-center text-slate-400"
+                                        >
+                                            No se encontraron cupones en la base
+                                            de datos.
+                                        </td>
+                                    </tr>
+                                )
+                            }
+                            {
+                                cupones?.map((cupon) => (
+                                    <tr class="hover:bg-slate-50/50 transition-colors group">
+                                        <td class="px-6 py-4">
+                                            <input
+                                                type="checkbox"
+                                                class="coupon-checkbox rounded border-slate-300 text-brand-gold focus:ring-brand-gold"
+                                                data-id={cupon.id}
+                                            />
+                                        </td>
+                                        <td class="px-6 py-4 font-mono font-bold text-slate-700">
+                                            {cupon.codigo}
+                                        </td>
+                                        <td class="px-6 py-4 font-bold text-green-600">
+                                            -{cupon.descuento_porcentaje}%
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <select
+                                                class="assign-rule-select text-[10px] bg-slate-50 border border-slate-100 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-brand-gold w-full"
+                                                data-coupon-id={cupon.id}
+                                            >
+                                                <option value="">
+                                                    Sin Regla
+                                                </option>
+                                                {reglas?.map((r) => (
+                                                    <option
+                                                        value={r.id}
+                                                        selected={
+                                                            cupon.regla_id ===
+                                                            r.id
+                                                        }
+                                                    >
+                                                        {r.nombre}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            {cupon.usado ? (
+                                                <span class="text-slate-400 line-through">
+                                                    Usado
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    class={`font-bold ${new Date(cupon.fecha_expiracion) < new Date() ? "text-red-400" : "text-green-500"}`}
+                                                >
+                                                    {new Date(
+                                                        cupon.fecha_expiracion,
+                                                    ) < new Date()
+                                                        ? "Expirado"
+                                                        : "Activo"}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            {!cupon.usado && (
+                                                <button
+                                                    type="button"
+                                                    data-id={cupon.id}
+                                                    class="delete-coupon p-1 text-slate-300 hover:text-red-500 transition-colors"
+                                                    title="Eliminar cupón"
+                                                >
+                                                    <svg
+                                                        class="w-4 h-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabla de Reglas de Automatización -->
+            <div
+                class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-sm"
+            >
+                <div
+                    class="p-6 border-b border-slate-50 flex justify-between items-center"
+                >
+                    <h2 class="font-bold text-slate-800">
+                        Reglas de Fidelización
+                    </h2>
+                    <div class="flex items-center gap-4">
+                        <button
+                            id="delete-selected-rules-btn"
+                            class="hidden bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all border border-red-200 shadow-sm"
+                        >
+                            Borrar Seleccionadas (<span
+                                id="selected-rules-count">0</span
+                            >)
+                        </button>
+                        <button
+                            id="run-automations"
+                            class="text-brand-gold font-bold text-xs uppercase hover:underline"
+                            >Ejecutar Ahora</button
+                        >
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50/50">
+                            <tr>
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    >Regla</th
+                                >
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    >Tipo</th
+                                >
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    >Vigencia</th
+                                >
+                                <th
+                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px] text-right"
+                                    >Status</th
+                                >
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            {
+                                reglas?.map((regla) => (
+                                    <tr class="hover:bg-slate-50/50 transition-colors">
+                                        <td class="px-6 py-4">
+                                            <input
+                                                type="checkbox"
+                                                class="rule-checkbox rounded border-slate-300 text-brand-gold focus:ring-brand-gold"
+                                                data-id={regla.id}
+                                            />
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="font-bold text-slate-700">
+                                                {regla.nombre}
+                                            </span>
+                                            <p class="text-[10px] text-slate-400">
+                                                {regla.descuento_porcentaje}%
+                                                Descuento
+                                            </p>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex flex-col gap-1">
+                                                <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase w-fit">
+                                                    {regla.tipo_regla.replace(
+                                                        "_",
+                                                        " ",
+                                                    )}
+                                                </span>
+                                                <p class="text-[11px] font-bold text-slate-700">
+                                                    {(() => {
+                                                        const monto =
+                                                            (regla.monto_minimo ||
+                                                                0) / 100;
+                                                        const num =
+                                                            regla.numero_minimo ||
+                                                            0;
+                                                        if (
+                                                            regla.tipo_regla ===
+                                                            "compra_minima"
+                                                        )
+                                                            return `Gasto mín: ${monto.toFixed(2)}€`;
+                                                        if (
+                                                            regla.tipo_regla ===
+                                                            "gasto_periodo"
+                                                        )
+                                                            return `Gasto mín: ${monto.toFixed(2)}€`;
+                                                        if (
+                                                            regla.tipo_regla ===
+                                                            "numero_compras"
+                                                        )
+                                                            return `Mínimo: ${num} pedidos`;
+                                                        return "Sin condición";
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-500">
+                                            {regla.dias_validez} días
+                                        </td>
+                                        <td class="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                            <button
+                                                type="button"
+                                                data-id={regla.id}
+                                                data-active={regla.activa.toString()}
+                                                class="toggle-rule px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border"
+                                            >
+                                                <span
+                                                    class={
+                                                        regla.activa
+                                                            ? "text-green-600 border-green-200 bg-green-50"
+                                                            : "text-slate-400 border-slate-200 bg-slate-50"
+                                                    }
+                                                >
+                                                    {regla.activa
+                                                        ? "Activa"
+                                                        : "Pausa"}
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                data-id={regla.id}
+                                                class="delete-rule p-1 text-slate-300 hover:text-red-500 transition-colors"
+                                                title="Eliminar regla"
+                                            >
+                                                <svg
+                                                    class="w-4 h-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Ejecutar Automatización (Manual Trigger)
+        const runBtn = document.getElementById("run-automations");
+        runBtn?.addEventListener("click", async () => {
+            if (
+                !confirm(
+                    "Esto analizará a todos los clientes y enviará emails a los elegibles según las reglas activas. ¿Continuar?",
+                )
+            )
+                return;
+
+            const originalText = runBtn.innerText;
+            runBtn.innerText = "Procesando...";
+            runBtn.setAttribute("disabled", "true");
+
+            try {
+                const res = await fetch("/api/coupons/auto", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({}),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("Automatización completada con éxito.");
+                    location.reload();
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (e) {
+                alert("Error conectando con el servidor");
+            } finally {
+                runBtn.innerText = originalText;
+                runBtn.removeAttribute("disabled");
+            }
+        });
+
+        // 2. Selección Múltiple de Cupones
+        const selectAll = document.getElementById(
+            "select-all-coupons",
+        ) as HTMLInputElement;
+        const couponCheckboxes = document.querySelectorAll(
+            ".coupon-checkbox",
+        ) as NodeListOf<HTMLInputElement>;
+        const deleteSelectedBtn = document.getElementById(
+            "delete-selected-btn",
+        );
+        const selectedCountEl = document.getElementById("selected-count");
+
+        const updateBulkDeleteUI = () => {
+            const selected = Array.from(couponCheckboxes).filter(
+                (cb) => cb.checked,
+            );
+            const count = selected.length;
+            if (count > 0) {
+                deleteSelectedBtn?.classList.remove("hidden");
+                if (selectedCountEl)
+                    selectedCountEl.innerText = count.toString();
+            } else {
+                deleteSelectedBtn?.classList.add("hidden");
+            }
+        };
+
+        selectAll?.addEventListener("change", () => {
+            couponCheckboxes.forEach((cb) => (cb.checked = selectAll.checked));
+            updateBulkDeleteUI();
+        });
+
+        couponCheckboxes.forEach((cb) => {
+            cb.addEventListener("change", updateBulkDeleteUI);
+        });
+
+        deleteSelectedBtn?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const selectedIds = Array.from(couponCheckboxes)
+                .filter((cb) => cb.checked)
+                .map((cb) => cb.getAttribute("data-id"));
+
+            if (selectedIds.length === 0) return;
+
+            if (
+                !window.confirm(
+                    `¿Estás seguro de que quieres eliminar ${selectedIds.length} cupones seleccionados?`,
+                )
+            )
+                return;
+
+            try {
+                const res = await fetch("/api/coupons/manage", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "delete-multiple",
+                        data: { ids: selectedIds },
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) window.location.reload();
+                else window.alert("Error: " + result.error);
+            } catch (err) {
+                window.alert("Error de conexión");
+            }
+        });
+
+        // 3. Eliminar Cupón
+        document.querySelectorAll(".delete-coupon").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute("data-id");
+                if (
+                    !id ||
+                    !window.confirm(
+                        "¿Estás seguro de que quieres eliminar este cupón?",
+                    )
+                )
+                    return;
+
+                try {
+                    const res = await fetch("/api/coupons/manage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "delete-coupon",
+                            data: { id },
+                        }),
+                    });
+                    const result = await res.json();
+                    if (result.success) window.location.reload();
+                    else window.alert("Error: " + result.error);
+                } catch (e) {
+                    window.alert("Error de conexión");
+                }
+            });
+        });
+
+        // 3. Toggle Estado de Regla
+        document.querySelectorAll(".toggle-rule").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute("data-id");
+                const currentActive =
+                    btn.getAttribute("data-active") === "true";
+                if (!id) return;
+
+                try {
+                    const res = await fetch("/api/coupons/manage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "toggle-rule",
+                            data: { id, activa: !currentActive },
+                        }),
+                    });
+                    const result = await res.json();
+                    if (result.success) window.location.reload();
+                    else window.alert("Error: " + result.error);
+                } catch (e) {
+                    window.alert("Error de conexión");
+                }
+            });
+        });
+
+        // 4. Selección Múltiple de Reglas
+        const selectAllRules = document.getElementById(
+            "select-all-rules",
+        ) as HTMLInputElement;
+        const ruleCheckboxes = document.querySelectorAll(
+            ".rule-checkbox",
+        ) as NodeListOf<HTMLInputElement>;
+        const deleteSelectedRulesBtn = document.getElementById(
+            "delete-selected-rules-btn",
+        );
+        const selectedRulesCountEl = document.getElementById(
+            "selected-rules-count",
+        );
+
+        const updateBulkRulesUI = () => {
+            const selected = Array.from(ruleCheckboxes).filter(
+                (cb) => cb.checked,
+            );
+            const count = selected.length;
+            if (count > 0) {
+                deleteSelectedRulesBtn?.classList.remove("hidden");
+                if (selectedRulesCountEl)
+                    selectedRulesCountEl.innerText = count.toString();
+            } else {
+                deleteSelectedRulesBtn?.classList.add("hidden");
+            }
+        };
+
+        selectAllRules?.addEventListener("change", () => {
+            ruleCheckboxes.forEach(
+                (cb) => (cb.checked = selectAllRules.checked),
+            );
+            updateBulkRulesUI();
+        });
+
+        ruleCheckboxes.forEach((cb) => {
+            cb.addEventListener("change", updateBulkRulesUI);
+        });
+
+        deleteSelectedRulesBtn?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const selectedIds = Array.from(ruleCheckboxes)
+                .filter((cb) => cb.checked)
+                .map((cb) => cb.getAttribute("data-id"));
+
+            if (selectedIds.length === 0) return;
+
+            if (
+                !window.confirm(
+                    `¿Estás seguro de que quieres eliminar ${selectedIds.length} reglas seleccionadas? Los cupones asociados se desvincularán.`,
+                )
+            )
+                return;
+
+            try {
+                const res = await fetch("/api/coupons/manage", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "delete-multiple-rules",
+                        data: { ids: selectedIds },
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) window.location.reload();
+                else window.alert("Error: " + result.error);
+            } catch (err) {
+                window.alert("Error de conexión");
+            }
+        });
+
+        // 5. Eliminar Regla
+        document.querySelectorAll(".delete-rule").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute("data-id");
+                if (
+                    !id ||
+                    !window.confirm(
+                        "¿Estás seguro de que quieres eliminar esta regla? Los cupones ya creados seguirán funcionando pero se desvincularán.",
+                    )
+                )
+                    return;
+
+                try {
+                    const res = await fetch("/api/coupons/manage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "delete-rule",
+                            data: { id },
+                        }),
+                    });
+                    const result = await res.json();
+                    if (result.success) window.location.reload();
+                    else window.alert("Error: " + result.error);
+                } catch (e) {
+                    window.alert("Error de conexión");
+                }
+            });
+        });
+
+        // 5. Purga Total (Debug)
+        const purgeBtn = document.getElementById("purge-coupons");
+        purgeBtn?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (
+                !window.confirm(
+                    "ATENCIÓN: Esto borrará ABSOLUTAMENTE TODOS los cupones y su historial (usos y notificaciones). ¿Estás seguro?",
+                )
+            )
+                return;
+
+            try {
+                const res = await fetch("/api/coupons/manage", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "purge-all", data: {} }),
+                });
+                const result = await res.json();
+                if (result.success) window.location.reload();
+                else window.alert("Error: " + result.error);
+            } catch (e) {
+                window.alert("Error de conexión");
+            }
+        });
+
+        // 6. Asignar Regla a Cupón Existente
+        document.querySelectorAll(".assign-rule-select").forEach((select) => {
+            select.addEventListener("change", async (e) => {
+                const el = e.target as HTMLSelectElement;
+                const couponId = el.getAttribute("data-coupon-id");
+                const reglaId = el.value;
+
+                if (!couponId) return;
+
+                try {
+                    const res = await fetch("/api/coupons/manage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "update-coupon-rule",
+                            data: { couponId, reglaId },
+                        }),
+                    });
+                    const result = await res.json();
+                    if (!result.success) {
+                        window.alert("Error al asignar regla: " + result.error);
+                        window.location.reload();
+                    }
+                } catch (err) {
+                    window.alert("Error de conexión");
+                }
+            });
+        });
+        // 7. Actualización rápida de porcentajes
+        document.querySelectorAll(".update-discount-input").forEach((input) => {
+            input.addEventListener("change", async (e) => {
+                const el = e.target as HTMLInputElement;
+                const id = el.getAttribute("data-id");
+                const descuento = parseInt(el.value);
+
+                if (!id || isNaN(descuento)) return;
+
+                try {
+                    const res = await fetch("/api/coupons/manage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "update-rule-discount",
+                            data: { id, descuento_porcentaje: descuento },
+                        }),
+                    });
+                    const result = await res.json();
+                    if (!result.success) alert("Error: " + result.error);
+                } catch (e) {
+                    alert("Error de conexión");
+                }
+            });
+        });
+
+        // 8. Toggle de Bienvenida (UI Especial)
+        document.querySelectorAll(".toggle-rule-welcome").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                const id = btn.getAttribute("data-id");
+
+                if (!id) {
+                    alert(
+                        "Esta regla aún no existe en la base de datos. Se creará automáticamente cuando el primer usuario la active o use.",
+                    );
+                    return;
+                }
+
+                const currentActive =
+                    btn.getAttribute("data-active") === "true";
+
+                try {
+                    const res = await fetch("/api/coupons/manage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "toggle-rule",
+                            data: { id, activa: !currentActive },
+                        }),
+                    });
+                    const result = await res.json();
+                    if (result.success) location.reload();
+                    else alert("Error: " + result.error);
+                } catch (e) {
+                    alert("Error de conexión");
+                }
+            });
+        });
+    </script>
+</AdminLayout>

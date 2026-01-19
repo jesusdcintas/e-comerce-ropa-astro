@@ -1,0 +1,771 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import MultiImageUploader from "../../../components/functional/MultiImageUploader";
+import CategorySelect from "../../../components/islands/CategorySelect";
+import { supabase } from "../../../lib/supabase";
+
+// Lógica del Servidor (Cargar categorías)
+const { data: allCategoriesRaw } = await supabase
+    .from("categories")
+    .select("id, name, slug, parent_id");
+const allCategories = allCategoriesRaw || [];
+
+// Algoritmo para determinar el sistema de tallas REAL (Standard por Arquitecto)
+const getSizeSystem = (catId: number) => {
+    let current = allCategories.find((c) => c.id === catId);
+    while (current) {
+        if (current.slug === "calzado") return "calzado";
+        if (current.slug === "cinturones") return "cinturones";
+        if (
+            ["pantalones", "vaqueros", "shorts", "chinos"].includes(
+                current.slug,
+            )
+        )
+            return "pantalones-eu";
+        if (!current.parent_id) {
+            if (current.slug === "ropa") return "ropa-superior";
+            return "accesorios";
+        }
+        current = allCategories.find((c) => c.id === current.parent_id);
+    }
+    return "accesorios";
+};
+
+// Mapeamos categorías hoja y les adjuntamos el Size System
+const categories = allCategories
+    .filter((cat) => !allCategories.some((child) => child.parent_id === cat.id))
+    .map((cat) => ({ ...cat, sizeSystem: getSizeSystem(cat.id) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+const shirtSizes = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL"];
+const pantsSizes = ["36", "38", "40", "42", "44", "46", "48", "50", "52", "54"];
+const shoeSizes = [
+    "38",
+    "38.5",
+    "39",
+    "39.5",
+    "40",
+    "40.5",
+    "41",
+    "41.5",
+    "42",
+    "42.5",
+    "43",
+    "43.5",
+    "44",
+    "44.5",
+    "45",
+    "46",
+    "47",
+    "48",
+];
+const beltSizes = ["85", "90", "95", "100", "105", "110", "115", "120"];
+---
+
+<AdminLayout title="Nuevo Producto">
+    <div
+        class="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700"
+    >
+        <!-- Header con estética Premium -->
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
+        >
+            <div class="space-y-2">
+                <div
+                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                >
+                    <span class="w-8 h-px bg-brand-gold"></span>
+                    Studio de Creación
+                </div>
+                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
+                    Nuevo <span class="text-brand-gold italic font-serif"
+                        >Producto</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium">
+                    Añade una nueva pieza a tu colección exclusiva.
+                </p>
+            </div>
+            <div class="flex items-center gap-4">
+                <button
+                    type="button"
+                    onclick="window.history.back()"
+                    class="px-6 py-3 text-sm font-bold text-slate-400 hover:text-slate-800 transition-colors"
+                >
+                    Descartar
+                </button>
+                <div class="h-8 w-px bg-slate-200"></div>
+                <button
+                    form="product-form"
+                    type="submit"
+                    id="submit-btn"
+                    class="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-2xl shadow-slate-900/20 hover:bg-brand-gold hover:-translate-y-1 transition-all active:scale-95"
+                >
+                    Publicar Producto
+                </button>
+            </div>
+        </div>
+
+        <form id="product-form" class="space-y-10 pb-20">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <!-- Columna Izquierda: Detalles Básicos -->
+                <div class="lg:col-span-2 space-y-8">
+                    <section
+                        class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8 relative overflow-hidden"
+                    >
+                        <div class="flex items-center gap-4 mb-2">
+                            <div
+                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400"
+                            >
+                                <svg
+                                    class="w-5 h-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    ></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">
+                                Información General
+                            </h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-2 col-span-2">
+                                <label
+                                    for="name"
+                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
+                                    >Nombre Comercial</label
+                                >
+                                <input
+                                    type="text"
+                                    name="name"
+                                    id="name"
+                                    required
+                                    class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all"
+                                    placeholder="Ej: Chaqueta de Cuero Premium 'Midnight'"
+                                />
+                            </div>
+
+                            <div class="space-y-2">
+                                <label
+                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
+                                    >Categoría</label
+                                >
+                                <div class="relative">
+                                    <CategorySelect
+                                        client:load
+                                        categories={categories}
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label
+                                    for="price"
+                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
+                                    >Precio de Venta (€)</label
+                                >
+                                <div class="relative">
+                                    <span
+                                        class="absolute left-6 top-1/2 -translate-y-1/2 font-bold text-slate-400"
+                                        >€</span
+                                    >
+                                    <input
+                                        type="number"
+                                        name="price"
+                                        id="price"
+                                        required
+                                        min="0"
+                                        step="0.01"
+                                        class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 pl-10 pr-6 text-slate-700 font-bold transition-all"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 col-span-2">
+                                <label
+                                    for="description"
+                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
+                                    >Descripción Narrativa</label
+                                >
+                                <textarea
+                                    id="description"
+                                    name="description"
+                                    rows="4"
+                                    class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-3xl py-4 px-6 text-slate-700 font-medium transition-all resize-none"
+                                    placeholder="Describe los materiales, el ajuste y la historia de este producto..."
+                                ></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section
+                        class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8"
+                    >
+                        <div class="flex items-center gap-4 mb-2">
+                            <div
+                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400"
+                            >
+                                <svg
+                                    class="w-5 h-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    ></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">
+                                Ajustes de Promoción
+                            </h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="space-y-6">
+                                <div>
+                                    <label
+                                        class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all group border-2 border-transparent focus-within:border-brand-gold/20"
+                                    >
+                                        <div class="relative flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                name="is_new_arrival"
+                                                class="peer h-6 w-11 appearance-none rounded-full bg-slate-200 transition-colors checked:bg-brand-gold cursor-pointer"
+                                            />
+                                            <span
+                                                class="absolute left-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-sm"
+                                            ></span>
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="text-sm font-bold text-slate-800"
+                                            >
+                                                Sección: Novedades
+                                            </p>
+                                            <p
+                                                class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"
+                                            >
+                                                Aparecerá en el inicio
+                                            </p>
+                                        </div>
+                                    </label>
+                                    <div class="mt-3 px-2">
+                                        <label
+                                            for="new_arrival_ends_at"
+                                            class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1"
+                                            >Fecha Límite Novedad (opcional)</label
+                                        >
+                                        <input
+                                            type="datetime-local"
+                                            name="new_arrival_ends_at"
+                                            id="new_arrival_ends_at"
+                                            class="w-full mt-1 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-xl py-2 px-4 text-xs text-slate-700 transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                <label
+                                    class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all group border-2 border-transparent focus-within:border-brand-gold/20"
+                                >
+                                    <div class="relative flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            name="is_offer"
+                                            class="peer h-6 w-11 appearance-none rounded-full bg-slate-200 transition-colors checked:bg-brand-gold cursor-pointer"
+                                        />
+                                        <span
+                                            class="absolute left-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-sm"
+                                        ></span>
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="text-sm font-bold text-slate-800"
+                                        >
+                                            Carrusel: Ofertas
+                                        </p>
+                                        <p
+                                            class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"
+                                        >
+                                            Destacado en Inicio
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="space-y-2">
+                                    <label
+                                        for="discount_percentage"
+                                        class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
+                                        >Porcentaje Descuento (%)</label
+                                    >
+                                    <input
+                                        type="number"
+                                        name="discount_percentage"
+                                        id="discount_percentage"
+                                        min="0"
+                                        max="100"
+                                        class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all"
+                                        placeholder="Ej: 20"
+                                    />
+                                </div>
+                                <div class="space-y-2">
+                                    <label
+                                        for="discount_ends_at"
+                                        class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
+                                        >Fecha Fin Descuento</label
+                                    >
+                                    <input
+                                        type="datetime-local"
+                                        name="discount_ends_at"
+                                        id="discount_ends_at"
+                                        class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section
+                        class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8"
+                    >
+                        <div class="flex items-center gap-4 mb-2">
+                            <div
+                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400"
+                            >
+                                <svg
+                                    class="w-5 h-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                    ></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">
+                                Galería Visual
+                            </h3>
+                        </div>
+
+                        <div
+                            class="bg-slate-50 p-8 rounded-3xl border-2 border-dashed border-slate-200"
+                        >
+                            <MultiImageUploader client:load maxImages={5} />
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Columna Derecha: Inventario y Tallas -->
+                <div class="space-y-8">
+                    <section
+                        class="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl shadow-slate-900/20 text-white relative overflow-hidden sticky top-8"
+                    >
+                        <div class="relative z-10">
+                            <div class="flex items-center gap-4 mb-8">
+                                <div
+                                    class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center"
+                                >
+                                    <svg
+                                        class="w-5 h-5 text-brand-gold"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-bold">
+                                    Gestión de Stock
+                                </h3>
+                            </div>
+
+                            <div id="variants-container" class="space-y-6">
+                                <!-- Placeholders y Sistemas de tallas -->
+                                <div
+                                    id="variants-placeholder"
+                                    class="py-10 text-center space-y-4"
+                                >
+                                    <div
+                                        class="text-xs font-bold text-slate-100 mb-4 tracking-widest"
+                                    >
+                                        PRODUCTO
+                                    </div>
+                                    <p
+                                        class="text-slate-400 text-xs font-medium px-10 leading-relaxed uppercase tracking-widest"
+                                    >
+                                        Esperando selección de categoría para
+                                        cargar el sistema de tallas.
+                                    </p>
+                                </div>
+
+                                <!-- Los sistemas de tallas se mostrarán aquí (controlado por script) -->
+                                <div
+                                    id="variants-ropa-superior"
+                                    class="hidden animate-in fade-in duration-500"
+                                >
+                                    <div class="grid grid-cols-2 gap-4">
+                                        {
+                                            shirtSizes.map((size) => (
+                                                <div class="bg-white/5 p-4 rounded-2xl border border-white/10 group focus-within:border-brand-gold/50 transition-all">
+                                                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 group-focus-within:text-brand-gold">
+                                                        {size}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name={`stock_superior_${size}`}
+                                                        min="0"
+                                                        placeholder="0"
+                                                        class="w-full bg-transparent border-none p-0 text-xl font-black focus:ring-0 placeholder-white/20"
+                                                    />
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+
+                                <div
+                                    id="variants-pantalones-eu"
+                                    class="hidden animate-in fade-in duration-500"
+                                >
+                                    <div class="grid grid-cols-2 gap-4">
+                                        {
+                                            pantsSizes.map((size) => (
+                                                <div class="bg-white/5 p-4 rounded-2xl border border-white/10 group focus-within:border-brand-gold/50 transition-all">
+                                                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 group-focus-within:text-brand-gold">
+                                                        Talla {size}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name={`stock_pantalones_${size}`}
+                                                        min="0"
+                                                        placeholder="0"
+                                                        class="w-full bg-transparent border-none p-0 text-xl font-black focus:ring-0 placeholder-white/20"
+                                                    />
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+
+                                <div
+                                    id="variants-calzado"
+                                    class="hidden animate-in fade-in duration-500"
+                                >
+                                    <div
+                                        class="grid grid-cols-2 gap-x-4 gap-y-3"
+                                    >
+                                        {
+                                            shoeSizes.map((size) => (
+                                                <div class="bg-white/5 p-3 rounded-xl border border-white/10 group focus-within:border-brand-gold/50 transition-all flex items-center justify-between">
+                                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest shrink-0">
+                                                        {size}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name={`stock_calzado_${size}`}
+                                                        min="0"
+                                                        placeholder="0"
+                                                        class="w-16 bg-transparent border-none p-0 text-right text-sm font-black focus:ring-0 placeholder-white/20"
+                                                    />
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+
+                                <div
+                                    id="variants-cinturones"
+                                    class="hidden animate-in fade-in duration-500"
+                                >
+                                    <div class="grid grid-cols-2 gap-4">
+                                        {
+                                            beltSizes.map((size) => (
+                                                <div class="bg-white/5 p-4 rounded-2xl border border-white/10 group focus-within:border-brand-gold/50 transition-all">
+                                                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 group-focus-within:text-brand-gold">
+                                                        {size} cm
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name={`stock_cinturones_${size}`}
+                                                        min="0"
+                                                        placeholder="0"
+                                                        class="w-full bg-transparent border-none p-0 text-xl font-black focus:ring-0 placeholder-white/20"
+                                                    />
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+
+                                <div
+                                    id="variants-accesorios"
+                                    class="hidden animate-in fade-in duration-500"
+                                >
+                                    <div
+                                        class="bg-brand-gold/20 p-6 rounded-3xl border border-brand-gold/30"
+                                    >
+                                        <label
+                                            class="block text-[10px] font-black text-brand-gold uppercase tracking-widest mb-2"
+                                            >Stock Disponible</label
+                                        >
+                                        <input
+                                            type="number"
+                                            name="stock_onesize"
+                                            id="stock_onesize"
+                                            min="0"
+                                            placeholder="0"
+                                            class="w-full bg-transparent border-none p-0 text-4xl font-black text-white focus:ring-0 placeholder-brand-gold/20"
+                                        />
+                                        <p
+                                            class="mt-4 text-[10px] font-bold text-brand-gold/60 uppercase"
+                                        >
+                                            Producto de Talla Única
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Decoración -->
+                        <div
+                            class="absolute -right-20 -top-20 w-64 h-64 bg-brand-gold/10 blur-[100px] rounded-full"
+                        >
+                        </div>
+                    </section>
+
+                    <div
+                        class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">!</span>
+                            <span
+                                class="text-xs font-bold text-slate-800 uppercase tracking-widest"
+                                >Verificación Final</span
+                            >
+                        </div>
+                        <p
+                            class="text-[10px] text-slate-400 leading-relaxed italic"
+                        >
+                            Asegúrate de que las imágenes tengan el fondo
+                            adecuado y que el stock corresponda al inventario
+                            físico real.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</AdminLayout>
+
+<script is:inline>
+    window.__currentSizeSystem = null;
+    window.addEventListener("categoryChanged", (event) => {
+        const sys = event.detail.sizeSystem;
+        window.__currentSizeSystem = sys;
+        [
+            "variants-ropa-superior",
+            "variants-pantalones-eu",
+            "variants-calzado",
+            "variants-cinturones",
+            "variants-accesorios",
+            "variants-placeholder",
+        ].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add("hidden");
+        });
+        if (!sys) {
+            document
+                .getElementById("variants-placeholder")
+                .classList.remove("hidden");
+        } else {
+            const target = document.getElementById(`variants-${sys}`);
+            if (target) target.classList.remove("hidden");
+        }
+    });
+</script>
+
+<script>
+    import { supabase } from "../../../lib/supabase";
+
+    const form = document.getElementById("product-form") as HTMLFormElement;
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("submit-btn") as HTMLButtonElement;
+        btn.disabled = true;
+        btn.textContent = "Guardando...";
+
+        try {
+            const formData = new FormData(form);
+            const sys = (window as any).__currentSizeSystem || "accesorios";
+            const variants: { size: string; stock: number }[] = [];
+            let totalStock = 0;
+
+            if (sys === "ropa-superior") {
+                ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL"].forEach(
+                    (size) => {
+                        const val = formData.get(`stock_superior_${size}`);
+                        const stock = parseInt((val as string) || "0");
+                        if (stock > 0) {
+                            variants.push({ size, stock });
+                            totalStock += stock;
+                        }
+                    },
+                );
+            } else if (sys === "pantalones-eu") {
+                [
+                    "36",
+                    "38",
+                    "40",
+                    "42",
+                    "44",
+                    "46",
+                    "48",
+                    "50",
+                    "52",
+                    "54",
+                ].forEach((size) => {
+                    const val = formData.get(`stock_pantalones_${size}`);
+                    const stock = parseInt((val as string) || "0");
+                    if (stock > 0) {
+                        variants.push({ size, stock });
+                        totalStock += stock;
+                    }
+                });
+            } else if (sys === "calzado") {
+                [
+                    "38",
+                    "38.5",
+                    "39",
+                    "39.5",
+                    "40",
+                    "40.5",
+                    "41",
+                    "41.5",
+                    "42",
+                    "42.5",
+                    "43",
+                    "43.5",
+                    "44",
+                    "44.5",
+                    "45",
+                    "46",
+                    "47",
+                    "48",
+                ].forEach((size) => {
+                    const val = formData.get(`stock_calzado_${size}`);
+                    const stock = parseInt((val as string) || "0");
+                    if (stock > 0) {
+                        variants.push({ size, stock });
+                        totalStock += stock;
+                    }
+                });
+            } else if (sys === "cinturones") {
+                ["85", "90", "95", "100", "105", "110", "115", "120"].forEach(
+                    (size) => {
+                        const val = formData.get(`stock_cinturones_${size}`);
+                        const stock = parseInt((val as string) || "0");
+                        if (stock > 0) {
+                            variants.push({ size, stock });
+                            totalStock += stock;
+                        }
+                    },
+                );
+            } else {
+                const stock = parseInt(
+                    (formData.get("stock_onesize") as string) || "0",
+                );
+                if (stock > 0) {
+                    variants.push({ size: "ONE SIZE", stock });
+                    totalStock = stock;
+                }
+            }
+
+            if (totalStock === 0)
+                throw new Error(
+                    "Debes indicar stock para al menos una variante.",
+                );
+
+            const catId = parseInt(formData.get("category_id") as string);
+            const price = Math.round(
+                parseFloat(formData.get("price") as string) * 100,
+            );
+            const images = JSON.parse(
+                (formData.get("images_json") as string) || "[]",
+            );
+
+            const name = formData.get("name") as string;
+            const slug =
+                name
+                    .toLowerCase()
+                    .replace(/ /g, "-")
+                    .replace(/[^\w-]+/g, "") +
+                "-" +
+                Date.now().toString().slice(-4);
+
+            const { data: prodData, error: prodError } = await supabase
+                .from("products")
+                .insert({
+                    name,
+                    slug,
+                    description: formData.get("description"),
+                    price,
+                    stock: totalStock,
+                    category_id: catId,
+                    images: images,
+                    is_new_arrival: formData.get("is_new_arrival") === "on",
+                    new_arrival_ends_at:
+                        formData.get("new_arrival_ends_at") || null,
+                    is_offer: formData.get("is_offer") === "on",
+                    discount_percentage:
+                        parseInt(
+                            formData.get("discount_percentage") as string,
+                        ) || 0,
+                    discount_ends_at: formData.get("discount_ends_at") || null,
+                })
+                .select()
+                .single();
+
+            if (prodError) throw prodError;
+
+            const { error: varError } = await supabase
+                .from("product_variants")
+                .insert(
+                    variants.map((v) => ({
+                        product_id: prodData.id,
+                        size: v.size,
+                        stock: v.stock,
+                    })),
+                );
+            if (varError) throw varError;
+
+            alert("Producto publicado con éxito");
+            window.location.href = "/admin";
+        } catch (error: any) {
+            alert("Error: " + error.message);
+            btn.disabled = false;
+            btn.textContent = "Publicar";
+        }
+    });
+</script>

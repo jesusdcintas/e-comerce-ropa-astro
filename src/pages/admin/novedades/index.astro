@@ -1,0 +1,600 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+
+// Parámetros de la URL para filtros
+const search = Astro.url.searchParams.get("search") || "";
+const categoryId = Astro.url.searchParams.get("category");
+const sortBy = Astro.url.searchParams.get("sort") || "created_at";
+const order = Astro.url.searchParams.get("order") || "desc";
+const filterNewOnly = Astro.url.searchParams.get("newOnly") === "true";
+
+// Obtener categorías para el filtro
+const { data: categories } = await supabase
+    .from("categories")
+    .select("id, name")
+    .order("name");
+
+// Construir la query de productos
+let query = supabase.from("products").select(`
+    *,
+    category:categories(name, slug)
+  `);
+
+// Aplicar filtros
+if (search) {
+    query = query.ilike("name", `%${search}%`);
+}
+if (categoryId) {
+    query = query.eq("category_id", categoryId);
+}
+if (filterNewOnly) {
+    query = query.eq("is_new_arrival", true);
+}
+
+// Aplicar ordenación
+query = query.order(sortBy, { ascending: order === "asc" });
+
+const { data: products } = await query;
+
+// Obtener conteo total de novedades para información
+const { count: totalNovedades } = await supabase
+    .from("products")
+    .select("*", { count: "exact", head: true })
+    .eq("is_new_arrival", true);
+
+function formatPrice(cents: number) {
+    return `${(cents / 100).toFixed(2)}€`;
+}
+---
+
+<AdminLayout title="Gestión de Novedades">
+    <div
+        class="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700"
+    >
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
+        >
+            <div class="space-y-2">
+                <div
+                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                >
+                    <span class="w-8 h-px bg-brand-gold"></span>
+                    Escaparate Principal
+                    <span
+                        class="ml-2 px-2 py-0.5 bg-brand-gold text-white rounded-md"
+                        >{totalNovedades} Activas</span
+                    >
+                </div>
+                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
+                    Gestión de <span class="text-brand-gold italic font-serif"
+                        >Novedades</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium tracking-tight">
+                    Elige qué productos destacar. <span
+                        class="text-slate-500 font-bold"
+                        >(Los últimos 8 marcados aparecerán en el inicio)</span
+                    >
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button
+                    id="bulk-add-new"
+                    class="px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:bg-brand-gold transition-all disabled:opacity-50"
+                    disabled
+                >
+                    Destacar Selección
+                </button>
+                <button
+                    id="bulk-remove-new"
+                    class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all disabled:opacity-50"
+                    disabled
+                >
+                    Quitar Selección
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros y Buscador -->
+        <div
+            class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8 flex flex-wrap items-center gap-6"
+        >
+            <form class="flex-1 flex gap-4 min-w-[300px]">
+                <div class="relative flex-1">
+                    <svg
+                        class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        ></path>
+                    </svg>
+                    <input
+                        type="text"
+                        name="search"
+                        value={search}
+                        placeholder="Buscar por nombre..."
+                        class="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-brand-gold/20 transition-all"
+                    />
+                </div>
+                <select
+                    name="category"
+                    class="bg-slate-50 border-none rounded-2xl text-sm px-4 py-3 focus:ring-2 focus:ring-brand-gold/20 transition-all"
+                >
+                    <option value="">Todas las categorías</option>
+                    {
+                        categories?.map((cat) => (
+                            <option
+                                value={cat.id}
+                                selected={categoryId === cat.id.toString()}
+                            >
+                                {cat.name}
+                            </option>
+                        ))
+                    }
+                </select>
+                <button
+                    type="submit"
+                    class="p-3 bg-slate-900 text-white rounded-2xl hover:bg-brand-gold transition-colors"
+                >
+                    <svg
+                        class="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </form>
+
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 cursor-pointer group">
+                    <input
+                        type="checkbox"
+                        id="filter-new-only"
+                        checked={filterNewOnly}
+                        class="w-5 h-5 rounded-lg border-slate-200 text-brand-gold focus:ring-brand-gold/20 mr-2"
+                    />
+                    <span
+                        class="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-widest text-[10px]"
+                        >Solo Destacados</span
+                    >
+                </label>
+
+                <div class="h-8 w-px bg-slate-100"></div>
+
+                <select
+                    id="sort-select"
+                    class="bg-transparent border-none text-sm font-bold text-slate-400 focus:ring-0 cursor-pointer hover:text-brand-gold"
+                >
+                    <option
+                        value="created_at-desc"
+                        selected={sortBy === "created_at" && order === "desc"}
+                        >Más Recientes</option
+                    >
+                    <option
+                        value="created_at-asc"
+                        selected={sortBy === "created_at" && order === "asc"}
+                        >Más Antiguos</option
+                    >
+                    <option
+                        value="price-asc"
+                        selected={sortBy === "price" && order === "asc"}
+                        >Precio Menor</option
+                    >
+                    <option
+                        value="price-desc"
+                        selected={sortBy === "price" && order === "desc"}
+                        >Precio Mayor</option
+                    >
+                    <option
+                        value="stock-asc"
+                        selected={sortBy === "stock" && order === "asc"}
+                        >Menor Stock</option
+                    >
+                </select>
+            </div>
+        </div>
+
+        {
+            products && products.length > 0 ? (
+                <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-slate-50/50 border-b border-slate-100">
+                                    <th class="px-8 py-6 w-12 text-center">
+                                        <input
+                                            type="checkbox"
+                                            id="select-all"
+                                            class="w-4 h-4 rounded border-slate-300 text-brand-gold focus:ring-brand-gold/20"
+                                        />
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Producto
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Categoría
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                                        Estado
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Precio
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Fin Novedad
+                                    </th>
+                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Añadido
+                                    </th>
+                                    <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Acción
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {products.map((product) => (
+                                    <tr class="group hover:bg-slate-50/50 transition-colors">
+                                        <td class="px-8 py-6 text-center">
+                                            <input
+                                                type="checkbox"
+                                                class="product-checkbox w-4 h-4 rounded border-slate-300 text-brand-gold focus:ring-brand-gold/20"
+                                                value={product.id}
+                                            />
+                                        </td>
+                                        <td class="px-6 py-6">
+                                            <div class="flex items-center gap-4">
+                                                {product.images?.[0] ? (
+                                                    <div class="w-10 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-100">
+                                                        <img
+                                                            src={
+                                                                product
+                                                                    .images[0]
+                                                            }
+                                                            alt=""
+                                                            class="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div class="w-10 h-12 rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center">
+                                                        <svg
+                                                            class="w-4 h-4 text-slate-300"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                stroke-linecap="round"
+                                                                stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p class="font-bold text-slate-800 line-clamp-1">
+                                                        {product.name}
+                                                    </p>
+                                                    <p class="text-xs text-slate-400 font-medium">
+                                                        SKU: {product.id}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-6">
+                                            <span class="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                                                {product.category?.name}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-6 text-center">
+                                            {product.is_new_arrival ? (
+                                                <span class="px-3 py-1 bg-brand-gold/10 text-brand-gold rounded-full text-[10px] font-black uppercase tracking-widest border border-brand-gold/20">
+                                                    Novedad Activa
+                                                </span>
+                                            ) : (
+                                                <span class="px-3 py-1 bg-slate-100 text-slate-400 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                                                    Catálogo Regular
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td class="px-6 py-6 text-right font-bold text-slate-800">
+                                            {formatPrice(product.price)}
+                                        </td>
+                                        <td class="px-6 py-6 text-right text-xs font-medium">
+                                            {product.new_arrival_ends_at ? (
+                                                <span
+                                                    class={
+                                                        new Date(
+                                                            product.new_arrival_ends_at,
+                                                        ) < new Date()
+                                                            ? "text-red-500"
+                                                            : "text-brand-gold"
+                                                    }
+                                                >
+                                                    {new Date(
+                                                        product.new_arrival_ends_at,
+                                                    ).toLocaleDateString()}
+                                                </span>
+                                            ) : (
+                                                <span class="text-slate-300">
+                                                    -
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td class="px-6 py-6 text-right text-xs text-slate-400 font-medium">
+                                            {new Date(
+                                                product.created_at,
+                                            ).toLocaleDateString()}
+                                        </td>
+                                        <td class="px-8 py-6 text-right">
+                                            <button
+                                                class="toggle-novedad-btn p-2 rounded-xl transition-all"
+                                                data-id={product.id}
+                                                data-active={product.is_new_arrival.toString()}
+                                                title={
+                                                    product.is_new_arrival
+                                                        ? "Quitar de novedades"
+                                                        : "Añadir a novedades"
+                                                }
+                                            >
+                                                {product.is_new_arrival ? (
+                                                    <svg
+                                                        class="w-6 h-6 text-brand-gold"
+                                                        fill="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg
+                                                        class="w-6 h-6 text-slate-200 hover:text-slate-400"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.381-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                                                        />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                <div class="bg-white rounded-[3rem] border-2 border-dashed border-slate-200 p-20 text-center">
+                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg
+                            class="w-10 h-10 text-slate-300"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z"
+                            />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">
+                        No se encontraron productos
+                    </h3>
+                    <p class="text-slate-400 max-w-sm mx-auto">
+                        Prueba a ajustar los filtros o el término de búsqueda
+                        para encontrar lo que buscas.
+                    </p>
+                </div>
+            )
+        }
+    </div>
+    <!-- Modal para Fecha de Caducidad -->
+    <div id="date-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-6"
+        >
+            <div class="bg-white rounded-[2.5rem] shadow-2xl p-10 space-y-8">
+                <div class="space-y-2">
+                    <h3
+                        class="text-2xl font-black text-slate-800 tracking-tighter"
+                    >
+                        Programar <span
+                            class="text-brand-gold italic font-serif"
+                            >Novedad</span>
+                    </h3>
+                    <p class="text-slate-400 text-sm font-medium">
+                        Selecciona hasta cuándo quieres que estos productos se
+                        consideren novedades.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label
+                            class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1"
+                            >Fecha de Finalización</label
+                        >
+                        <input
+                            type="datetime-local"
+                            id="modal-date-input"
+                            class="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 text-slate-700 font-bold focus:ring-2 focus:ring-brand-gold/20 transition-all"
+                        />
+                    </div>
+
+                    <div class="flex gap-4 pt-4">
+                        <button
+                            id="cancel-modal"
+                            class="flex-1 py-4 px-6 bg-slate-50 text-slate-500 rounded-2xl font-bold hover:bg-slate-100 transition-all"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            id="confirm-modal"
+                            class="flex-1 py-4 px-6 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-brand-gold/20 hover:bg-brand-gold transition-all"
+                        >
+                            Confirmar
+                        </button>
+                    </div>
+                    <button
+                        id="confirm-no-date"
+                        class="w-full text-slate-400 text-[10px] font-bold uppercase tracking-widest hover:text-slate-600 transition-colors"
+                    >
+                        O destacar sin fecha límite
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</AdminLayout>
+
+<script>
+    const toggleBtns = document.querySelectorAll(".toggle-novedad-btn");
+    const selectAll = document.getElementById("select-all") as HTMLInputElement;
+    const productCheckboxes = document.querySelectorAll(
+        ".product-checkbox",
+    ) as NodeListOf<HTMLInputElement>;
+    const bulkAddBtn = document.getElementById(
+        "bulk-add-new",
+    ) as HTMLButtonElement;
+    const bulkRemoveBtn = document.getElementById(
+        "bulk-remove-new",
+    ) as HTMLButtonElement;
+    const sortSelect = document.getElementById(
+        "sort-select",
+    ) as HTMLSelectElement;
+    const filterNewOnly = document.getElementById(
+        "filter-new-only",
+    ) as HTMLInputElement;
+
+    // Manejar toggle individual
+    toggleBtns.forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            const isActive = btn.getAttribute("data-active") === "true";
+
+            try {
+                const response = await fetch("/api/toggle-novedad", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        productIds: [id],
+                        isNewArrival: !isActive,
+                    }),
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error("Error toggling novedad:", err);
+            }
+        });
+    });
+
+    // Selección masiva
+    selectAll?.addEventListener("change", () => {
+        productCheckboxes.forEach((cb) => (cb.checked = selectAll.checked));
+        updateBulkButtons();
+    });
+
+    productCheckboxes.forEach((cb) => {
+        cb.addEventListener("change", updateBulkButtons);
+    });
+
+    function updateBulkButtons() {
+        const selected = Array.from(productCheckboxes).filter(
+            (cb) => cb.checked,
+        );
+        bulkAddBtn.disabled = selected.length === 0;
+        bulkRemoveBtn.disabled = selected.length === 0;
+    }
+
+    const dateModal = document.getElementById("date-modal");
+    const modalDateInput = document.getElementById(
+        "modal-date-input",
+    ) as HTMLInputElement;
+    const confirmModal = document.getElementById("confirm-modal");
+    const confirmNoDate = document.getElementById("confirm-no-date");
+    const cancelModal = document.getElementById("cancel-modal");
+
+    bulkAddBtn?.addEventListener("click", () => {
+        dateModal?.classList.remove("hidden");
+    });
+
+    cancelModal?.addEventListener("click", () => {
+        dateModal?.classList.add("hidden");
+    });
+
+    confirmModal?.addEventListener("click", () => {
+        handleBulk(true, modalDateInput.value);
+    });
+
+    confirmNoDate?.addEventListener("click", () => {
+        handleBulk(true, null);
+    });
+
+    bulkRemoveBtn?.addEventListener("click", () => handleBulk(false));
+
+    const handleBulk = async (isNew: boolean, endsAt: string | null = null) => {
+        const ids = Array.from(productCheckboxes)
+            .filter((cb) => cb.checked)
+            .map((cb) => cb.value);
+        if (ids.length === 0) return;
+
+        try {
+            const response = await fetch("/api/toggle-novedad", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    productIds: ids,
+                    isNewArrival: isNew,
+                    endsAt: endsAt,
+                }),
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error("Error in bulk update:", err);
+        }
+    };
+
+    // Ordenación y filtros reactivos
+    sortSelect?.addEventListener("change", () => {
+        const [sort, order] = sortSelect.value.split("-");
+        const url = new URL(window.location.href);
+        url.searchParams.set("sort", sort);
+        url.searchParams.set("order", order);
+        window.location.href = url.toString();
+    });
+
+    filterNewOnly?.addEventListener("change", () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("newOnly", filterNewOnly.checked.toString());
+        window.location.href = url.toString();
+    });
+</script>

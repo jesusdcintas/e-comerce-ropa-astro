@@ -1,0 +1,365 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+
+const { id } = Astro.params;
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+
+if (!user || user.app_metadata?.role !== "admin") {
+    return Astro.redirect("/");
+}
+
+// Obtener pedido con sus items y productos relacionados
+const { data: order, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*, product:products(images))")
+    .eq("id", id)
+    .single();
+
+if (error || !order) {
+    return Astro.redirect("/admin/orders");
+}
+
+function formatDate(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+const statusBadge: Record<string, string> = {
+    pending: "bg-orange-100 text-orange-600 border-orange-200",
+    paid: "bg-green-100 text-green-600 border-green-200",
+    shipped: "bg-blue-100 text-blue-600 border-blue-200",
+    delivered: "bg-purple-100 text-purple-600 border-purple-200",
+    cancelled: "bg-red-100 text-red-600 border-red-200",
+};
+
+const statusText: Record<string, string> = {
+    pending: "Pendiente",
+    paid: "Pagado",
+    shipped: "Enviado",
+    delivered: "Entregado",
+    cancelled: "Cancelado",
+};
+---
+
+<AdminLayout
+    title={`Detalle de Pedido #${order.id.toString().padStart(6, "0")}`}
+>
+    <div
+        class="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700 pb-20"
+    >
+        <!-- Premium Header -->
+        <div
+            class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12"
+        >
+            <div class="space-y-4">
+                <a
+                    href="/admin/orders"
+                    class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-gold transition-colors group"
+                >
+                    <svg
+                        class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Volver a Pedidos
+                </a>
+                <div class="space-y-1">
+                    <div
+                        class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                    >
+                        <span class="w-8 h-px bg-brand-gold"></span>
+                        Expediente de Transacción
+                    </div>
+                    <h2
+                        class="text-5xl font-black text-slate-800 tracking-tighter"
+                    >
+                        Pedido <span class="text-brand-gold italic font-serif"
+                            >#{order.id.toString().padStart(6, "0")}</span
+                        >
+                    </h2>
+                    <p class="text-slate-400 font-medium">
+                        {formatDate(order.created_at)}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2 items-end">
+                <span
+                    class="text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] mb-1"
+                    >Estado de Gestión</span
+                >
+                <select
+                    id="order-status-select"
+                    data-order-id={order.id}
+                    class={`px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border-2 cursor-pointer focus:ring-4 focus:ring-brand-gold/10 outline-none transition-all ${statusBadge[order.status]}`}
+                >
+                    {
+                        Object.entries(statusText).map(([key, text]) => (
+                            <option value={key} selected={order.status === key}>
+                                {text.toUpperCase()}
+                            </option>
+                        ))
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Order Items -->
+            <div class="lg:col-span-2 space-y-6">
+                <div
+                    class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden"
+                >
+                    <div
+                        class="px-10 py-8 border-b border-slate-50 flex items-center justify-between"
+                    >
+                        <h3
+                            class="text-lg font-black text-slate-800 tracking-tight"
+                        >
+                            Artículos del Pedido
+                        </h3>
+                        <span
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg"
+                        >
+                            {order.order_items.length}
+                            {
+                                order.order_items.length === 1
+                                    ? "Posición"
+                                    : "Posiciones"
+                            }
+                        </span>
+                    </div>
+
+                    <div class="divide-y divide-slate-50">
+                        {
+                            order.order_items.map((item: any) => (
+                                <div class="px-10 py-6 flex items-center gap-6 group hover:bg-slate-50/50 transition-colors">
+                                    <div class="w-20 h-24 bg-slate-100 rounded-2xl flex items-center justify-center overflow-hidden shadow-inner border border-slate-100 shrink-0">
+                                        {item.product?.images?.[0] ? (
+                                            <img
+                                                src={item.product.images[0]}
+                                                alt={item.product_name}
+                                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <span class="text-xl font-black text-slate-300 uppercase">
+                                                {item.product_name.charAt(0)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="font-black text-slate-800 tracking-tight">
+                                            {item.product_name}
+                                        </h4>
+                                        <div class="flex items-center gap-4 mt-1">
+                                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                                Talla: {item.product_size}
+                                            </span>
+                                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                Cant: {item.quantity}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-black text-slate-800 tracking-tighter">
+                                            {(item.price / 100).toFixed(2)}€
+                                        </p>
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
+                                            Subtotal:{" "}
+                                            {(
+                                                (item.price * item.quantity) /
+                                                100
+                                            ).toFixed(2)}
+                                            €
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        }
+                    </div>
+
+                    <div class="bg-slate-900 p-10 mt-4 rounded-b-[2.5rem]">
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <p
+                                    class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1"
+                                >
+                                    Cálculo de Transacción
+                                </p>
+                                <p
+                                    class="text-slate-400 text-sm font-medium italic"
+                                >
+                                    Incluye impuestos y gestión logística
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p
+                                    class="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1"
+                                >
+                                    Total Liquidado
+                                </p>
+                                <p
+                                    class="text-5xl font-black text-brand-gold tracking-tighter"
+                                >
+                                    {(order.total_amount / 100).toFixed(2)}€
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Customer Info -->
+            <div class="space-y-6">
+                <!-- Customer Card -->
+                <div
+                    class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6 relative overflow-hidden"
+                >
+                    <div
+                        class="absolute -right-6 -bottom-6 text-8xl opacity-5 pointer-events-none"
+                    >
+                    </div>
+                    <h3
+                        class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"
+                    >
+                        <span class="w-1.5 h-1.5 rounded-full bg-brand-gold"
+                        ></span>
+                        Información del Cliente
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <p
+                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                            >
+                                Nombre del Titular
+                            </p>
+                            <p
+                                class="text-lg font-black text-slate-800 tracking-tight"
+                            >
+                                {order.shipping_name}
+                            </p>
+                        </div>
+                        <div>
+                            <p
+                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                            >
+                                Contacto Directo
+                            </p>
+                            <p
+                                class="font-bold text-slate-600 underline decoration-brand-gold/30"
+                            >
+                                {order.shipping_email}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Address -->
+                <div
+                    class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6"
+                >
+                    <h3
+                        class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"
+                    >
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-900"
+                        ></span>
+                        Destino de Entrega
+                    </h3>
+                    <div
+                        class="space-y-2 text-sm text-slate-600 leading-relaxed font-medium"
+                    >
+                        <p
+                            class="font-black text-slate-800 uppercase text-xs tracking-widest mb-4"
+                        >
+                            Dirección Postal
+                        </p>
+                        <p>{order.shipping_address}</p>
+                        <p>{order.shipping_zip} {order.shipping_city}</p>
+                        <p
+                            class="text-[10px] font-black text-slate-400 mt-4 border-t border-slate-50 pt-4 uppercase tracking-widest"
+                        >
+                            Referencia Geográfica España
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Internal Actions -->
+                <div
+                    class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 space-y-3"
+                >
+                    <button
+                        class="w-full py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                    >
+                        Generar Factura PDF
+                    </button>
+                    <button
+                        class="w-full py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                    >
+                        Asignar Transportista
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script is:inline>
+        const statusSelect = document.getElementById("order-status-select");
+
+        statusSelect?.addEventListener("change", async (e) => {
+            const newStatus = e.target.value;
+            const orderId = statusSelect.dataset.orderId;
+
+            if (
+                !confirm(
+                    `¿Estás seguro de cambiar el estado a "${newStatus.toUpperCase()}"?`,
+                )
+            ) {
+                window.location.reload();
+                return;
+            }
+
+            statusSelect.disabled = true;
+            statusSelect.style.opacity = "0.5";
+
+            try {
+                const res = await fetch("/api/admin/orders/update-status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: orderId, status: newStatus }),
+                });
+
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.error);
+                    window.location.reload();
+                }
+            } catch (err) {
+                alert("Error de conexión");
+                window.location.reload();
+            }
+        });
+    </script>
+</AdminLayout>

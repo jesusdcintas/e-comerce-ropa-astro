@@ -1,0 +1,398 @@
+---
+import { supabase } from "../../lib/supabase";
+
+interface Props {
+  categories: any[];
+}
+
+const { categories } = Astro.props;
+
+// Para cada categoría principal, obtener su árbol completo, aplanando Ropa
+const categoriesTree = await Promise.all(
+  categories?.map(async (category) => {
+    let finalChildren = [];
+
+    if (category.id === 1) {
+      // ROPA: Aplanar nivel 2 (superior/inferior) para mostrar nivel 3
+      const { data: children } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("parent_id", category.id);
+
+      const grandchildren = await Promise.all(
+        (children || []).map(async (child) => {
+          const { data: gc } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("parent_id", child.id)
+            .order("name");
+          return gc || [];
+        }),
+      );
+      finalChildren = grandchildren
+        .flat()
+        .map((c) => ({ ...c, subcategories: [] }));
+    } else {
+      const { data: children } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("parent_id", category.id)
+        .order("name");
+
+      finalChildren = await Promise.all(
+        (children || []).map(async (child) => {
+          let grandchildren = [];
+
+          if (category.id === 2) {
+            // COMPLEMENTOS: Ajustes específicos
+            if (child.slug === "cinturones-y-gafas") {
+              // No queremos este nivel intermedio
+              return null;
+            }
+            // Renombrar dinámicamente
+            if (child.slug === "cabeza") child.name = "Gorras y gorros";
+            if (child.slug === "bolsos-y-transporte")
+              child.name = "Bolsos y mochilas";
+            if (child.slug === "joyeria-y-relojeria")
+              child.name = "Joyería y relojes";
+          }
+
+          const { data: gc } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("parent_id", child.id)
+            .order("name");
+
+          return {
+            ...child,
+            subcategories: gc || [],
+          };
+        }),
+      );
+
+      // Filtrar los nulos y añadir Cinturones/Gafas si es Complementos
+      finalChildren = finalChildren.filter(Boolean);
+
+      if (category.id === 2) {
+        const { data: cGafas } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("slug", "cinturones-y-gafas")
+          .single();
+        if (cGafas) {
+          const { data: extra } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("parent_id", cGafas.id)
+            .order("name");
+          if (extra) {
+            finalChildren.push(
+              ...extra.map((e) => ({ ...e, subcategories: [] })),
+            );
+          }
+        }
+      }
+    }
+
+    return {
+      ...category,
+      children: finalChildren,
+    };
+  }) || [],
+);
+---
+
+<nav
+  id="category-nav"
+  class="bg-linear-to-r from-gray-800 to-gray-900 text-white sticky top-0 z-[9999]"
+>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+    <div class="overflow-x-auto scrollbar-hide">
+      <div class="flex items-center min-h-12 w-max">
+        <!-- NOVEDADES -->
+        <div class="relative inline-block">
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium hover:text-brand-gold transition-colors whitespace-nowrap flex items-center gap-1"
+            data-trigger="novedades"
+            aria-expanded="false"
+          >
+            NOVEDADES
+            <svg
+              class="w-3 h-3 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+
+          <div
+            class="hidden absolute left-0 top-full mt-2 w-64 rounded-lg bg-white shadow-xl ring-1 ring-black/5 z-[10000]"
+            data-menu="novedades"
+          >
+            <div class="py-2">
+              <a
+                href="/"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Ver todas las novedades
+              </a>
+              <a
+                href="/catalogo?destacados=true"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Productos destacados
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- CATEGORÍAS DINÁMICAS -->
+        {
+          categoriesTree?.map((category) => (
+            <div class="relative inline-block">
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium hover:text-brand-gold transition-colors whitespace-nowrap uppercase flex items-center gap-1"
+                data-trigger={`cat-${category.id}`}
+                aria-expanded="false"
+              >
+                {category.name}
+                {category.children.length > 0 && (
+                  <svg
+                    class="w-3 h-3 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                )}
+              </button>
+
+              {category.children.length > 0 && (
+                <div
+                  class="hidden absolute left-0 top-full mt-2 w-56 rounded-lg bg-white shadow-xl ring-1 ring-black/5 z-[10000]"
+                  data-menu={`cat-${category.id}`}
+                >
+                  <div class="py-2">
+                    {category.children.map((child: any) => (
+                      <div class="relative">
+                        {child.subcategories.length > 0 ? (
+                          <>
+                            <button
+                              type="button"
+                              class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                              data-trigger={`child-${child.id}`}
+                              aria-expanded="false"
+                            >
+                              <span class="font-medium">{child.name}</span>
+                              <span>›</span>
+                            </button>
+
+                            <div
+                              class="hidden absolute left-full top-0 ml-2 w-64 rounded-lg bg-white shadow-xl ring-1 ring-black/5 z-[10001]"
+                              data-menu={`child-${child.id}`}
+                            >
+                              <div class="py-2">
+                                <a
+                                  href={`/${child.slug}`}
+                                  class="block px-4 py-2 text-xs text-brand-blue hover:bg-gray-50 font-semibold border-b"
+                                >
+                                  Ver todo en {child.name}
+                                </a>
+                                {child.subcategories.map((sub: any) => (
+                                  <a
+                                    href={`/${sub.slug}`}
+                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    {sub.name}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <a
+                            href={`/${child.slug}`}
+                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium"
+                          >
+                            {child.name}
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                    <div class="border-t mt-2 pt-2">
+                      <a
+                        href={`/${category.slug}`}
+                        class="block px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-gray-50"
+                      >
+                        Ver todo en {category.name}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        }
+
+        <!-- REBAJAS -->
+        <div class="relative inline-block">
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-green-400 hover:text-green-300 transition-colors whitespace-nowrap flex items-center gap-1"
+            data-trigger="rebajas"
+            aria-expanded="false"
+          >
+            REBAJAS
+            <svg
+              class="w-3 h-3 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+
+          <div
+            class="hidden absolute left-0 top-full mt-2 w-64 rounded-lg bg-white shadow-xl ring-1 ring-black/5 z-[10000]"
+            data-menu="rebajas"
+          >
+            <div class="py-2">
+              <a
+                href="/rebajas"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-bold"
+              >
+                Todas las rebajas
+              </a>
+              <a
+                href="/rebajas?descuento=50"
+                class="block px-4 py-2 text-sm text-green-600 hover:bg-gray-100"
+              >
+                Hasta -50% de descuento
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const root = document.getElementById("category-nav");
+    if (!root) {
+      console.error("[CategoryNav] root not found");
+      return;
+    }
+
+    const closeAll = () => {
+      root
+        .querySelectorAll("[data-menu]")
+        .forEach((m) => m.classList.add("hidden"));
+      root.querySelectorAll("[data-trigger]").forEach((t) => {
+        t.setAttribute("aria-expanded", "false");
+        const arrow = t.querySelector("svg");
+        if (arrow) arrow.classList.remove("rotate-180");
+      });
+    };
+
+    const openMenu = (key: string) => {
+      const menu = root.querySelector(`[data-menu="${key}"]`) as HTMLElement;
+      const trigger = root.querySelector(
+        `[data-trigger="${key}"]`,
+      ) as HTMLElement;
+      if (!menu || !trigger) return;
+
+      menu.classList.remove("hidden");
+      trigger.setAttribute("aria-expanded", "true");
+      const arrow = trigger.querySelector("svg");
+      if (arrow) arrow.classList.add("rotate-180");
+    };
+
+    root.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      const btn = target.closest("[data-trigger]") as HTMLElement;
+      if (!btn) return;
+
+      e.stopPropagation();
+
+      const key = btn.getAttribute("data-trigger");
+      if (!key) return;
+
+      const menu = root.querySelector(`[data-menu="${key}"]`) as HTMLElement;
+      const isOpen = menu && !menu.classList.contains("hidden");
+
+      // Nivel 1: novedades, cat-X, rebajas
+      if (key === "novedades" || key === "rebajas" || key.startsWith("cat-")) {
+        closeAll();
+        if (!isOpen) openMenu(key);
+        return;
+      }
+
+      // Nivel 2: child-X
+      if (key.startsWith("child-")) {
+        // Mantener nivel 1 abierto
+        const parentKey = btn.closest("[data-menu]")?.getAttribute("data-menu");
+
+        // Cerrar otros submenus
+        root.querySelectorAll("[data-menu]").forEach((m) => {
+          const mKey = m.getAttribute("data-menu");
+          if (mKey !== parentKey && mKey && mKey.startsWith("child-")) {
+            m.classList.add("hidden");
+          }
+        });
+
+        root.querySelectorAll("[data-trigger]").forEach((t) => {
+          const tKey = t.getAttribute("data-trigger");
+          if (tKey !== parentKey && tKey && tKey.startsWith("child-")) {
+            t.setAttribute("aria-expanded", "false");
+          }
+        });
+
+        if (!isOpen) {
+          openMenu(key);
+        } else {
+          if (menu) menu.classList.add("hidden");
+          btn.setAttribute("aria-expanded", "false");
+          const arrow = btn.querySelector("svg");
+          if (arrow) arrow.classList.remove("rotate-180");
+        }
+        return;
+      }
+    });
+
+    document.addEventListener("click", () => closeAll());
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAll();
+    });
+  });
+</script>
+
+<style>
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>

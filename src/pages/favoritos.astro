@@ -1,0 +1,131 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { supabase as supabasePublic } from "../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+import ProductCard from "../components/ProductCard.astro";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+  return Astro.redirect("/login");
+}
+
+// Creamos un cliente de Supabase específico para esta petición con el token del usuario
+// Esto es CRÍTICO para que las políticas de RLS funcionen en el servidor
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+  {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  },
+);
+
+let user = null;
+try {
+  const { data } = await supabase.auth.getUser();
+  if (data?.user) {
+    user = data.user;
+  } else {
+    return Astro.redirect("/login");
+  }
+} catch (error) {
+  return Astro.redirect("/login");
+}
+
+// Obtener los favoritos usando el cliente autenticado
+const { data: favoriteIdsData, error: favError } = await supabase
+  .from("favorites")
+  .select("product_id");
+
+if (favError) {
+  console.error("Error fetching favorites:", favError);
+}
+
+const favoriteIds = favoriteIdsData?.map((f) => f.product_id) || [];
+
+let favorites: any[] = [];
+
+if (favoriteIds.length > 0) {
+  // Los productos son públicos, así que usamos el cliente normal o el autenticado
+  const { data: favoritedProducts, error: prodError } = await supabase
+    .from("products")
+    .select(
+      `
+      *,
+      category:categories(name, slug),
+      product_variants(*)
+    `,
+    )
+    .in("id", favoriteIds);
+
+  if (prodError) {
+    console.error("Error fetching products:", prodError);
+  }
+
+  favorites = favoritedProducts || [];
+}
+---
+
+<BaseLayout title="Favoritos - FashionStore">
+  <div class="max-w-7xl mx-auto px-4 py-12">
+    <div class="mb-10 text-center md:text-left">
+      <div
+        class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-4"
+      >
+        <span class="w-8 h-px bg-brand-gold"></span>
+        Tu selección personal
+      </div>
+      <h1 class="text-4xl md:text-5xl font-black text-slate-800 tracking-tighter mb-3">
+        Mis <span class="text-brand-gold italic font-serif">Favoritos</span>
+      </h1>
+      <p class="text-slate-400 font-medium text-lg">
+        Tus piezas seleccionadas para tu próxima compra
+      </p>
+    </div>
+
+    {
+      favorites.length === 0 ? (
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-16 text-center max-w-2xl mx-auto mt-8">
+          <div class="w-24 h-24 mx-auto bg-gray-50 rounded-full flex items-center justify-center mb-6">
+            <svg
+              class="w-12 h-12 text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-serif font-bold text-gray-800 mb-3">
+            Tu lista está vacía
+          </h2>
+          <p class="text-gray-500 mb-8 max-w-sm mx-auto">
+            Explora nuestro catálogo y añade los productos que más te gusten
+            pulsando en el corazón.
+          </p>
+          <a
+            href="/"
+            class="inline-block bg-brand-black text-white px-10 py-4 rounded-sm hover:bg-brand-blue transition-all font-bold uppercase tracking-widest text-sm shadow-lg"
+          >
+            Ir al Catálogo
+          </a>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {favorites.map((product) => (
+            <ProductCard product={product} />
+          ))}
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

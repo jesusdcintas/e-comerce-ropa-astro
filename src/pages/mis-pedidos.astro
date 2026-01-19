@@ -1,0 +1,942 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { supabase } from "../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+  return Astro.redirect("/login");
+}
+
+const {
+  data: { user },
+} = await supabase.auth.getUser(accessToken);
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+// Sincronizar sesión para que RLS funcione en la consulta
+await supabase.auth.setSession({
+  access_token: accessToken,
+  refresh_token: Astro.cookies.get("sb-refresh-token")?.value || "",
+});
+
+// Obtener pedidos del usuario con sus líneas
+const { data: orders, error: ordersError } = await supabase
+  .from("orders")
+  .select(
+    `
+    *,
+    order_items (
+      *,
+      product:products(images)
+    )
+  `,
+  )
+  .eq("user_id", user.id)
+  .order("created_at", { ascending: false });
+
+// Obtener datos de facturación del perfil para el autofill
+const { data: profile } = await supabase
+  .from("profiles")
+  .select(
+    "billing_razon_social, billing_nif, billing_direccion, billing_ciudad, billing_codigo_postal",
+  )
+  .eq("id", user.id)
+  .maybeSingle();
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+const statusColors: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  paid: "bg-green-100 text-green-800",
+  shipped: "bg-blue-100 text-blue-800",
+  delivered: "bg-gray-100 text-gray-800",
+  cancelled: "bg-red-100 text-red-800",
+};
+
+const statusLabels: Record<string, string> = {
+  pending: "Pendiente",
+  paid: "Pagado",
+  shipped: "Enviado",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+---
+
+<BaseLayout title="Mis Pedidos - FashionStore">
+  <div class="max-w-5xl mx-auto px-4 py-16">
+    <div class="mb-10">
+      <div
+        class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-4"
+      >
+        <span class="w-8 h-px bg-brand-gold"></span>
+        Historial de compras
+      </div>
+      <h1
+        class="text-4xl md:text-5xl font-black text-slate-800 tracking-tighter mb-3"
+      >
+        Mis <span class="text-brand-gold italic font-serif">Pedidos</span>
+      </h1>
+      <p class="text-slate-400 font-medium text-lg">
+        Historial de compras y estado de tus envíos.
+      </p>
+    </div>
+
+    {
+      ordersError && (
+        <div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-8">
+          Error al cargar los pedidos. Por favor, inténtalo de nuevo más tarde.
+        </div>
+      )
+    }
+
+    {
+      orders && orders.length === 0 ? (
+        <div class="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+          <svg
+            class="w-16 h-16 text-gray-400 mx-auto mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+            />
+          </svg>
+          <p class="text-gray-500 text-xl mb-6">
+            Aún no has realizado ningún pedido.
+          </p>
+          <a
+            href="/"
+            class="bg-brand-black text-white px-8 py-3 rounded-lg hover:bg-gray-800 transition-all font-medium"
+          >
+            Descubrir Catálogo
+          </a>
+        </div>
+      ) : (
+        <div class="space-y-8">
+          {orders?.map((order) => (
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
+              {/* Header del Pedido */}
+              <div class="bg-gray-50/50 px-6 py-4 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex gap-8">
+                  <div>
+                    <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">
+                      Pedido Realizado
+                    </p>
+                    <p class="text-sm font-medium text-gray-900">
+                      {formatDate(order.created_at)}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">
+                      Total
+                    </p>
+                    <p class="text-sm font-bold text-gray-900">
+                      {(order.total_amount / 100).toFixed(2)}€
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">
+                      Enviar a
+                    </p>
+                    <p class="text-sm font-medium text-gray-900 truncate max-w-[150px]">
+                      {order.shipping_name}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4">
+                  <div class="hidden sm:flex flex-col items-end">
+                    <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">
+                      Estado actual
+                    </p>
+                    <span
+                      class={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${statusColors[order.status]}`}
+                    >
+                      {statusLabels[order.status]}
+                    </span>
+                  </div>
+                  <p class="text-xs text-gray-400 font-mono">
+                    #{order.id.toString().padStart(6, "0")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Visual Tracker (Seguimiento) */}
+              {order.status !== "cancelled" ? (
+                <div class="px-6 py-8 bg-white border-b border-gray-100">
+                  <div class="relative flex justify-between max-w-2xl mx-auto">
+                    {/* Línea de progreso de fondo */}
+                    <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2" />
+
+                    {/* Línea de progreso activa */}
+                    <div
+                      class="absolute top-1/2 left-0 h-0.5 bg-brand-gold -translate-y-1/2 transition-all duration-1000"
+                      style={{
+                        width:
+                          order.status === "paid" || order.status === "pending"
+                            ? "0%"
+                            : order.status === "shipped"
+                              ? "50%"
+                              : "100%",
+                      }}
+                    />
+
+                    {/* Estados */}
+                    {[
+                      { key: "paid", label: "Pagado", icon: "💳" },
+                      { key: "shipped", label: "Enviado", icon: "📦" },
+                      { key: "delivered", label: "Entregado", icon: "🏠" },
+                    ].map((step, idx) => {
+                      const isCompleted =
+                        order.status === "delivered" ||
+                        (order.status === "shipped" &&
+                          step.key !== "delivered") ||
+                        ((order.status === "paid" ||
+                          order.status === "pending") &&
+                          step.key === "paid");
+                      const isActive =
+                        order.status === step.key ||
+                        (order.status === "pending" && step.key === "paid");
+
+                      return (
+                        <div class="relative z-10 flex flex-col items-center">
+                          <div
+                            class={`w-10 h-10 rounded-full flex items-center justify-center text-sm border-2 transition-all duration-500 bg-white ${isCompleted ? "border-brand-gold text-brand-gold shadow-sm" : "border-gray-200 text-gray-300"}`}
+                          >
+                            {isCompleted ? "✓" : idx + 1}
+                          </div>
+                          <p
+                            class={`absolute -bottom-6 whitespace-nowrap text-[10px] font-black uppercase tracking-tighter ${isActive ? "text-brand-gold" : "text-gray-400"}`}
+                          >
+                            {step.label}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div class="px-6 py-4 bg-red-50/50 border-b border-red-100 flex items-center justify-center gap-2">
+                  <svg
+                    class="w-4 h-4 text-red-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p class="text-xs font-bold text-red-600 uppercase tracking-widest">
+                    Pedido Cancelado
+                  </p>
+                </div>
+              )}
+
+              {/* Contenido del Pedido */}
+              <div class="p-6">
+                <div class="divide-y divide-gray-100">
+                  {order.order_items?.map((item: any) => (
+                    <div class="py-4 first:pt-0 last:pb-0 flex items-center gap-4">
+                      <div class="w-16 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
+                        {item.product?.images?.[0] ? (
+                          <img
+                            src={item.product.images[0]}
+                            alt={item.product_name}
+                            class="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div class="w-full h-full flex items-center justify-center text-gray-300 text-xs font-bold uppercase">
+                            {item.product_name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div class="flex-1">
+                        <h4 class="text-base font-bold text-gray-900 mb-1">
+                          {item.product_name}
+                        </h4>
+                        <p class="text-sm text-gray-500">
+                          Color/Talla:{" "}
+                          <span class="text-gray-700 font-medium">
+                            {item.product_size}
+                          </span>{" "}
+                          | Cantidad:{" "}
+                          <span class="text-gray-700 font-medium">
+                            {item.quantity}
+                          </span>
+                        </p>
+                      </div>
+                      <div class="text-right">
+                        <p class="text-sm font-bold text-gray-900">
+                          {(item.price / 100).toFixed(2)}€
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Fila de Descuento si aplica */}
+                  {order.discount_amount > 0 && (
+                    <div class="py-4 flex justify-between items-center bg-green-50/30 -mx-6 px-6">
+                      <div class="flex items-center gap-2">
+                        <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                          Descuento
+                        </span>
+                        <p class="text-xs font-bold text-green-700">
+                          Cupón: {order.coupon_code}
+                        </p>
+                      </div>
+                      <p class="text-sm font-bold text-green-700">
+                        -{(order.discount_amount / 100).toFixed(2)}€
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer / Acciones */}
+              <div class="px-6 py-4 bg-gray-50/30 border-t border-gray-100 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex gap-4">
+                  {(order.status === "pending" || order.status === "paid") && (
+                    <button
+                      class="btn-cancel-order text-xs font-bold text-red-400 hover:text-red-600 transition-colors uppercase tracking-widest flex items-center gap-1"
+                      data-order-id={order.id}
+                    >
+                      <svg
+                        class="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      Cancelar Pedido
+                    </button>
+                  )}
+
+                  {order.status === "delivered" && (
+                    <button
+                      class="btn-request-return text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-widest flex items-center gap-1"
+                      data-order-id={order.id}
+                      data-order-label={order.id.toString().padStart(6, "0")}
+                    >
+                      <svg
+                        class="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"
+                        />
+                      </svg>
+                      Solicitar Devolución
+                    </button>
+                  )}
+                </div>
+
+                <div class="flex items-center gap-6">
+                  {/* Siempre disponible: Recibo de compra */}
+                  <div class="flex flex-col items-end">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      Documentación Básica
+                    </span>
+                    <button
+                      class="btn-send-ticket text-[10px] font-black text-slate-800 hover:text-brand-gold transition-colors flex items-center gap-2 uppercase tracking-[0.15em] bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm"
+                      data-order-id={order.id}
+                    >
+                      <svg
+                        class="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2.5"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      Recibo / Ticket
+                    </button>
+                  </div>
+
+                  {/* Bajo demanda: Factura Oficial */}
+                  <div class="flex flex-col items-end">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      Gestión Fiscal
+                    </span>
+                    {order.invoice_number ? (
+                      <button
+                        class="btn-send-official-invoice text-[10px] font-black text-brand-gold hover:text-slate-900 transition-colors flex items-center gap-2 uppercase tracking-[0.15em] bg-brand-gold/5 px-4 py-2 rounded-xl border border-brand-gold/20"
+                        data-order-id={order.id}
+                      >
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2.5"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                          />
+                        </svg>
+                        Reenviar Factura
+                      </button>
+                    ) : (
+                      <button
+                        class="btn-request-invoice text-[10px] font-black text-white bg-slate-900 hover:bg-brand-gold transition-all flex items-center gap-2 uppercase tracking-[0.15em] px-4 py-2 rounded-xl shadow-lg shadow-slate-900/10"
+                        data-order-id={order.id}
+                        data-order-label={order.id.toString().padStart(6, "0")}
+                      >
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2.5"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        Solicitar Factura
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+  </div>
+
+  {/* Modal para solicitud de factura */}
+  <div
+    id="invoice-modal"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+  >
+    <div
+      class="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300"
+    >
+      <div class="bg-slate-900 p-8 text-white relative">
+        <button
+          id="close-modal"
+          class="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"></path></svg
+          >
+        </button>
+        <div
+          class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-2"
+        >
+          <span class="w-6 h-px bg-brand-gold"></span>
+          Información Tributaria
+        </div>
+        <h3 class="text-2xl font-black tracking-tight">Solicitud de Factura</h3>
+        <p class="text-slate-400 text-sm mt-2 font-medium">
+          Pedido <span id="modal-order-id" class="text-brand-gold">#000000</span
+          >
+        </p>
+      </div>
+
+      <form id="invoice-form" class="p-8 space-y-5">
+        <input type="hidden" id="form-order-id" name="orderId" />
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="col-span-2 space-y-1.5">
+            <label
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Nombre o Razón Social</label
+            >
+            <input
+              type="text"
+              name="razon_social"
+              required
+              placeholder="Ej: Empresa S.L. o Nombre Completo"
+              class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-gold/10 focus:border-brand-gold outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >NIF / CIF / DNI</label
+            >
+            <input
+              type="text"
+              name="nif"
+              required
+              placeholder="Ej: B12345678"
+              class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-gold/10 focus:border-brand-gold outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300 uppercase"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Ciudad</label
+            >
+            <input
+              type="text"
+              name="ciudad"
+              required
+              placeholder="Ej: Madrid"
+              class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-gold/10 focus:border-brand-gold outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+            />
+          </div>
+
+          <div class="col-span-2 space-y-1.5">
+            <label
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Dirección Fiscal Completa</label
+            >
+            <input
+              type="text"
+              name="direccion"
+              required
+              placeholder="Calle, número, piso..."
+              class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-gold/10 focus:border-brand-gold outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Código Postal</label
+            >
+            <input
+              type="text"
+              name="codigo_postal"
+              required
+              placeholder="Ej: 28001"
+              class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand-gold/10 focus:border-brand-gold outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+            />
+          </div>
+        </div>
+
+        <div class="pt-4">
+          <button
+            type="submit"
+            class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-gold transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 group"
+          >
+            Generar y Enviar Factura
+            <svg
+              class="w-5 h-5 group-hover:translate-x-1 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg
+            >
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {/* Modal para Devolución (Informativo) */}
+  <div
+    id="return-modal"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+  >
+    <div
+      class="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300"
+    >
+      <div class="bg-slate-100 p-8 text-slate-900 relative">
+        <button
+          id="close-return-modal"
+          class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 transition-colors"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"></path></svg
+          >
+        </button>
+        <div
+          class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-2"
+        >
+          <span class="w-6 h-px bg-brand-gold"></span>
+          Gestión de Devoluciones
+        </div>
+        <h3 class="text-2xl font-black tracking-tight">Solicitud Iniciada</h3>
+        <p class="text-slate-500 text-sm mt-2 font-medium">
+          Pedido <span id="return-modal-order-id" class="text-brand-gold"
+            >#000000</span
+          >
+        </p>
+      </div>
+
+      <div class="p-8 space-y-6">
+        <div class="flex gap-4">
+          <div
+            class="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center flex-shrink-0"
+          >
+            <span class="text-brand-gold font-bold">1</span>
+          </div>
+          <div>
+            <p class="text-sm font-bold text-slate-900 mb-1">
+              Instrucciones de Envío
+            </p>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Debes enviar los artículos en su embalaje original a nuestra
+              central logística: <br />
+              <strong class="text-slate-700"
+                >Calle de la Moda 123, Polígono Industrial, Madrid (28045)</strong
+              >.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-4">
+          <div
+            class="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center flex-shrink-0"
+          >
+            <span class="text-brand-gold font-bold">2</span>
+          </div>
+          <div>
+            <p class="text-sm font-bold text-slate-900 mb-1">
+              Confirmación por Email
+            </p>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Hemos enviado un correo electrónico con la <strong
+                >etiqueta de devolución</strong
+              > y el formulario a completar a tu email asociado.
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 italic">
+          <div class="flex gap-3">
+            <svg
+              class="w-5 h-5 text-brand-gold flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            <p class="text-[11px] text-slate-500 font-medium leading-relaxed">
+              <strong class="text-slate-700">Aviso importante:</strong> Una vez recibido
+              y validado el paquete en nuestros almacenes, el reembolso se procesará
+              automáticamente en tu método de pago original en un plazo de 5 a 7 días
+              hábiles.
+            </p>
+          </div>
+        </div>
+
+        <button
+          id="btn-confirm-return-close"
+          class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-gold transition-all shadow-xl shadow-slate-900/10"
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+{/* Inyectar datos de perfil en una variable invisible para JS */}
+<div
+  id="billing-data-ref"
+  class="hidden"
+  data-razon={profile?.billing_razon_social || ""}
+  data-nif={profile?.billing_nif || ""}
+  data-direccion={profile?.billing_direccion || ""}
+  data-ciudad={profile?.billing_ciudad || ""}
+  data-cp={profile?.billing_codigo_postal || ""}
+>
+</div>
+
+<script>
+  // Lógica para el Modal de Factura
+  const modal = document.getElementById("invoice-modal");
+  const closeModalBtn = document.getElementById("close-modal");
+  const invoiceForm = document.getElementById(
+    "invoice-form",
+  ) as HTMLFormElement;
+  const modalOrderIdSpan = document.getElementById("modal-order-id");
+  const formOrderIdInput = document.getElementById(
+    "form-order-id",
+  ) as HTMLInputElement;
+
+  // Abrir modal
+  document.querySelectorAll(".btn-request-invoice").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const b = btn as HTMLButtonElement;
+      if (modal && modalOrderIdSpan && formOrderIdInput) {
+        modalOrderIdSpan.innerText = `#${b.dataset.orderLabel}`;
+        formOrderIdInput.value = b.dataset.orderId || "";
+
+        // Autofill desde el elemento de referencia
+        const ref = document.getElementById("billing-data-ref");
+        if (ref && invoiceForm) {
+          (
+            invoiceForm.querySelector(
+              '[name="razon_social"]',
+            ) as HTMLInputElement
+          ).value = ref.dataset.razon || "";
+          (
+            invoiceForm.querySelector('[name="nif"]') as HTMLInputElement
+          ).value = ref.dataset.nif || "";
+          (
+            invoiceForm.querySelector('[name="direccion"]') as HTMLInputElement
+          ).value = ref.dataset.direccion || "";
+          (
+            invoiceForm.querySelector('[name="ciudad"]') as HTMLInputElement
+          ).value = ref.dataset.ciudad || "";
+          (
+            invoiceForm.querySelector(
+              '[name="codigo_postal"]',
+            ) as HTMLInputElement
+          ).value = ref.dataset.cp || "";
+        }
+
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+    });
+  });
+
+  // Cerrar modal
+  const closeModal = () => {
+    if (modal) {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+  };
+
+  closeModalBtn?.addEventListener("click", closeModal);
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  // Lógica para el Modal de Devolución
+  const returnModal = document.getElementById("return-modal");
+  const closeReturnModalBtn = document.getElementById("close-return-modal");
+  const confirmReturnCloseBtn = document.getElementById(
+    "btn-confirm-return-close",
+  );
+  const returnModalOrderIdSpan = document.getElementById(
+    "return-modal-order-id",
+  );
+
+  document.querySelectorAll(".btn-request-return").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const b = btn as HTMLButtonElement;
+      if (returnModal && returnModalOrderIdSpan) {
+        returnModalOrderIdSpan.innerText = `#${b.dataset.orderLabel}`;
+        returnModal.classList.remove("hidden");
+        returnModal.classList.add("flex");
+      }
+    });
+  });
+
+  const closeReturnModal = () => {
+    if (returnModal) {
+      returnModal.classList.add("hidden");
+      returnModal.classList.remove("flex");
+    }
+  };
+
+  closeReturnModalBtn?.addEventListener("click", closeReturnModal);
+  confirmReturnCloseBtn?.addEventListener("click", closeReturnModal);
+  returnModal?.addEventListener("click", (e) => {
+    if (e.target === returnModal) closeReturnModal();
+  });
+
+  // Enviar Formulario de Factura
+  invoiceForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const submitBtn = invoiceForm.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
+    const formData = new FormData(invoiceForm);
+    const data = {
+      orderId: formData.get("orderId"),
+      fiscalData: {
+        razon_social: formData.get("razon_social"),
+        nif: formData.get("nif"),
+        direccion: formData.get("direccion"),
+        ciudad: formData.get("ciudad"),
+        codigo_postal: formData.get("codigo_postal"),
+      },
+    };
+
+    try {
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Procesando...";
+
+      const response = await fetch("/api/orders/request-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Error al procesar la factura");
+
+      alert("¡Factura generada y enviada a tu email!");
+      window.location.reload();
+    } catch (err) {
+      alert("Hubo un error al procesar tu solicitud.");
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Generar y Enviar Factura";
+    }
+  });
+
+  // Enviar Ticket/Recibo
+  document.querySelectorAll(".btn-send-ticket").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const b = btn as HTMLButtonElement;
+      const originalHtml = b.innerHTML;
+
+      try {
+        b.disabled = true;
+        b.innerHTML = "Enviando...";
+
+        const response = await fetch("/api/send-invoice", {
+          // Reusamos el endpoint pero ahora envía ticket
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: b.dataset.orderId }),
+        });
+
+        if (!response.ok) throw new Error("Error");
+
+        b.innerHTML = "✓ Enviado";
+        setTimeout(() => {
+          b.disabled = false;
+          b.innerHTML = originalHtml;
+        }, 3000);
+      } catch (err) {
+        b.innerHTML = "Error";
+        setTimeout(() => {
+          b.disabled = false;
+          b.innerHTML = originalHtml;
+        }, 3000);
+      }
+    });
+  });
+
+  // Reenviar Factura Oficial (ya existente)
+  document.querySelectorAll(".btn-send-official-invoice").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const b = btn as HTMLButtonElement;
+      const originalHtml = b.innerHTML;
+
+      try {
+        b.disabled = true;
+        b.innerHTML = "Enviando...";
+
+        const response = await fetch("/api/orders/request-invoice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: b.dataset.orderId,
+            fiscalData: null,
+          }), // Si fiscalData es null, usa los existentes
+        });
+
+        if (!response.ok) throw new Error("Error");
+
+        b.innerHTML = "✓ Enviada";
+        setTimeout(() => {
+          b.disabled = false;
+          b.innerHTML = originalHtml;
+        }, 3000);
+      } catch (err) {
+        b.innerHTML = "Error";
+        setTimeout(() => {
+          b.disabled = false;
+          b.innerHTML = originalHtml;
+        }, 3000);
+      }
+    });
+  });
+
+  // Lógica para cancelar pedido
+  const cancelButtons = document.querySelectorAll(".btn-cancel-order");
+  cancelButtons.forEach((button) => {
+    button.addEventListener("click", async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const orderId = btn.dataset.orderId;
+
+      if (!confirm("¿Estás seguro de cancelar este pedido?")) return;
+
+      try {
+        btn.disabled = true;
+        btn.innerText = "Cancelando...";
+
+        const response = await fetch("/api/orders/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Error al cancelar");
+        }
+        window.location.reload();
+      } catch (err: any) {
+        alert(err.message || "Error al cancelar");
+        btn.disabled = false;
+        btn.innerText = "Cancelar Pedido";
+      }
+    });
+  });
+</script>

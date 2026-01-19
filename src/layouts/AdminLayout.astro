@@ -1,0 +1,213 @@
+---
+import "../styles/global.css";
+import AdminSidebar from "../components/islands/AdminSidebar";
+import { supabase } from "../lib/supabase";
+
+interface Props {
+    title: string;
+}
+
+const { title } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+// Obtener todas las categorías
+const { data: categories } = await supabase
+    .from("categories")
+    .select("id, name, slug, parent_id")
+    .order("name");
+
+// Obtener conteo de consultas pendientes
+const { count: pendingCount } = await supabase
+    .from("product_inquiries")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
+---
+
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="generator" content={Astro.generator} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+            rel="stylesheet"
+        />
+        <title>{title} | FashionStore Admin</title>
+        <style is:global>
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 4px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.05);
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.2);
+            }
+            body {
+                font-family: "Outfit", sans-serif;
+            }
+        </style>
+    </head>
+    <body class="h-screen flex overflow-hidden bg-[#F8FAFC]">
+        <!-- Sidebar -->
+        <aside
+            class="w-72 bg-[#0F172A] text-white flex flex-col hidden md:flex shadow-2xl z-50"
+        >
+            <div class="h-20 flex items-center px-8 border-b border-white/5">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-8 h-8 bg-brand-gold rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-brand-gold/20"
+                    >
+                        F
+                    </div>
+                    <span class="text-xl font-bold tracking-tight text-white"
+                        >Fashion<span
+                            class="text-brand-gold font-serif italic ml-0.5"
+                            >Admin</span
+                        ></span
+                    >
+                </div>
+            </div>
+
+            <AdminSidebar
+                client:load
+                categories={categories || []}
+                pendingCount={pendingCount || 0}
+                currentPath={currentPath}
+            />
+
+            <div class="p-6 border-t border-white/5 bg-[#1E293B]/30">
+                <button
+                    id="logout-btn"
+                    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-slate-800 border border-slate-700 rounded-xl hover:bg-red-600 hover:border-red-500 transition-all duration-300 group"
+                >
+                    <svg
+                        class="w-4 h-4 text-slate-400 group-hover:text-white transition-colors"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                        ></path>
+                    </svg>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <header
+                class="h-20 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 z-40"
+            >
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800 tracking-tight">
+                        {title}
+                    </h1>
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <span
+                            ><span class="text-white">Fashion</span><span
+                                class="text-yellow-400">Store</span
+                            ></span
+                        >
+                        <span>/</span>
+                        <span class="text-slate-500 font-medium"
+                            >Panel de Control</span
+                        >
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <!-- Buscador rápido (Visual) -->
+                    <div
+                        class="hidden lg:flex items-center bg-slate-100 rounded-full px-4 py-2 w-64 border border-transparent focus-within:border-brand-gold/30 focus-within:bg-white transition-all"
+                    >
+                        <svg
+                            class="w-4 h-4 text-slate-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            ></path>
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="Buscar..."
+                            class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full text-slate-600"
+                        />
+                    </div>
+
+                    <div class="h-8 w-px bg-slate-200"></div>
+
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden sm:block">
+                            <p
+                                class="text-sm font-bold text-slate-800 leading-tight"
+                            >
+                                Admin Principal
+                            </p>
+                            <p
+                                class="text-[10px] uppercase tracking-wider font-bold text-brand-gold"
+                            >
+                                Super Usuario
+                            </p>
+                        </div>
+                        <div
+                            class="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold border-2 border-white shadow-md"
+                        >
+                            AP
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+                <div class="max-w-[1600px] mx-auto">
+                    <slot />
+                </div>
+            </main>
+        </div>
+
+        <script>
+            import { supabase } from "../lib/supabase";
+            import { clearCart } from "../stores/cartStore";
+            import { clearFavorites } from "../stores/favoriteStore";
+
+            const logoutBtn = document.getElementById("logout-btn");
+            if (logoutBtn) {
+                logoutBtn.addEventListener("click", async () => {
+                    await supabase.auth.signOut();
+
+                    // Limpiar local state
+                    clearCart();
+                    clearFavorites();
+
+                    // Limpiar cookies
+                    document.cookie =
+                        "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
+                    document.cookie =
+                        "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
+
+                    window.location.href = "/login";
+                });
+            }
+        </script>
+    </body>
+</html>

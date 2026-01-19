@@ -1,0 +1,337 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+if (!accessToken) return Astro.redirect("/login");
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+if (!user || user.app_metadata?.role !== "admin") return Astro.redirect("/");
+
+const { data: popups, error } = await supabase
+    .from("popups")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+const statusBadge = (activa: boolean, inicio: string, fin: string | null) => {
+    const now = new Date();
+    const startDate = new Date(inicio);
+    const endDate = fin ? new Date(fin) : null;
+
+    if (!activa) return "bg-red-50 text-red-600 border-red-100";
+    if (startDate > now) return "bg-blue-50 text-blue-600 border-blue-100";
+    if (endDate && endDate < now)
+        return "bg-slate-50 text-slate-400 border-slate-100";
+    return "bg-green-50 text-green-600 border-green-100";
+};
+
+const statusText = (activa: boolean, inicio: string, fin: string | null) => {
+    const now = new Date();
+    const startDate = new Date(inicio);
+    const endDate = fin ? new Date(fin) : null;
+
+    if (!activa) return "Desactivado";
+    if (startDate > now) return "Programado";
+    if (endDate && endDate < now) return "Expirado";
+    return "Activo";
+};
+---
+
+<AdminLayout title="Gestión de Pop-ups">
+    <div
+        class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700"
+    >
+        <header
+            class="flex flex-col md:flex-row md:items-end justify-between gap-6"
+        >
+            <div class="space-y-2">
+                <div
+                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+                >
+                    <span class="w-8 h-px bg-brand-gold"></span>
+                    Marketing & Conversión
+                </div>
+                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
+                    Sistema de <span class="text-brand-gold italic font-serif"
+                        >Pop-ups</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium tracking-tight">
+                    Crea ofertas y avisos impactantes que se muestran
+                    automáticamente a tus clientes.
+                </p>
+            </div>
+
+            <a
+                href="/admin/popups/nuevo"
+                class="inline-flex items-center px-6 py-3 border border-transparent rounded-2xl shadow-lg shadow-brand-gold/20 text-sm font-bold text-white bg-slate-900 hover:bg-brand-gold transition-all hover:-translate-y-1"
+            >
+                <svg
+                    class="w-5 h-5 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nuevo Pop-up
+            </a>
+        </header>
+
+        <div
+            class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden"
+        >
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50">
+                            <th
+                                class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                                >Pop-up</th
+                            >
+                            <th
+                                class="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                                >Tipo / Acción</th
+                            >
+                            <th
+                                class="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                                >Estado</th
+                            >
+                            <th
+                                class="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                                >Vigencia</th
+                            >
+                            <th
+                                class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right"
+                                >Acciones</th
+                            >
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {
+                            popups?.map((p) => (
+                                <tr class="hover:bg-slate-50/80 transition-all group">
+                                    <td class="px-8 py-5">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-50">
+                                                {p.imagen_url ? (
+                                                    <img
+                                                        src={p.imagen_url}
+                                                        alt=""
+                                                        class="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <svg
+                                                        class="w-6 h-6 text-slate-300"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div class="text-sm font-bold text-slate-800">
+                                                    {p.titulo}
+                                                </div>
+                                                <div class="text-[10px] text-slate-400 line-clamp-1 max-w-[200px]">
+                                                    {p.contenido ||
+                                                        "Sin descripción"}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div class="flex flex-col">
+                                            <span class="text-[10px] font-black uppercase text-brand-gold tracking-widest">
+                                                {p.tipo_accion}
+                                            </span>
+                                            <span class="text-xs font-medium text-slate-500 truncate max-w-[150px]">
+                                                {p.valor_accion || "-"}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <span
+                                            class={`px-3 py-1 text-[9px] font-black uppercase rounded-full border ${statusBadge(p.activa, p.fecha_inicio, p.fecha_fin)}`}
+                                        >
+                                            {statusText(
+                                                p.activa,
+                                                p.fecha_inicio,
+                                                p.fecha_fin,
+                                            )}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div class="text-[10px] font-medium text-slate-500">
+                                            <div>
+                                                Desde:{" "}
+                                                {new Date(
+                                                    p.fecha_inicio,
+                                                ).toLocaleDateString()}
+                                            </div>
+                                            <div class="opacity-60">
+                                                Fin:{" "}
+                                                {p.fecha_fin
+                                                    ? new Date(
+                                                          p.fecha_fin,
+                                                      ).toLocaleDateString()
+                                                    : "Indefinido"}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-5 text-right">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <a
+                                                href={`/admin/popups/editar/${p.id}`}
+                                                class="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-white hover:bg-slate-900 transition-all border border-slate-100"
+                                                title="Editar"
+                                            >
+                                                <svg
+                                                    class="w-4 h-4"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                    />
+                                                </svg>
+                                            </a>
+                                            <button
+                                                onclick={`togglePopup('${p.id}', ${!p.activa})`}
+                                                title={
+                                                    p.activa
+                                                        ? "Desactivar"
+                                                        : "Activar"
+                                                }
+                                                class={`p-2 rounded-xl border transition-all ${p.activa ? "bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-600 hover:text-white" : "bg-green-50 text-green-600 border-green-100 hover:bg-green-600 hover:text-white"}`}
+                                            >
+                                                {p.activa ? (
+                                                    <svg
+                                                        class="w-4 h-4"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M10 9v6m4-6v6m-9-4h18"
+                                                        />
+                                                    </svg>
+                                                ) : (
+                                                    <svg
+                                                        class="w-4 h-4"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M5 13l4 4L19 7"
+                                                        />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                            <button
+                                                onclick={`deletePopup('${p.id}')`}
+                                                class="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-white hover:bg-red-500 transition-all border border-slate-100"
+                                                title="Eliminar"
+                                            >
+                                                <svg
+                                                    class="w-4 h-4"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2m3 5h0M6.5 13H4"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        }
+                        {
+                            (!popups || popups.length === 0) && (
+                                <tr>
+                                    <td
+                                        colspan="5"
+                                        class="px-8 py-20 text-center"
+                                    >
+                                        <div class="text-slate-400 font-medium">
+                                            No hay pop-ups configurados.
+                                        </div>
+                                        <a
+                                            href="/admin/popups/nuevo"
+                                            class="text-brand-gold font-bold text-sm mt-2 inline-block"
+                                        >
+                                            Crea el primero ahora
+                                        </a>
+                                    </td>
+                                </tr>
+                            )
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script is:inline>
+        async function togglePopup(id, activa) {
+            try {
+                const res = await fetch("/api/admin/popups", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "toggle",
+                        id,
+                        data: { activa },
+                    }),
+                });
+                if (res.ok) window.location.reload();
+            } catch (err) {
+                alert("Error al actualizar");
+            }
+        }
+
+        async function deletePopup(id) {
+            if (!confirm("¿Seguro que quieres eliminar este pop-up?")) return;
+            try {
+                const res = await fetch("/api/admin/popups", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "delete", id }),
+                });
+                if (res.ok) window.location.reload();
+            } catch (err) {
+                alert("Error al eliminar");
+            }
+        }
+    </script>
+</AdminLayout>
