@@ -39,21 +39,18 @@ function formatPrice(cents: number) {
     class="relative h-[85vh] lg:h-[91vh] overflow-hidden bg-slate-900 font-sans"
   >
     <div id="hero-slider" class="absolute inset-0">
-      <!-- SLIDE 1: URBAN COLLECTION (Image 3) -->
-      <div
-        class="hero-slide absolute inset-0 opacity-100 transition-opacity duration-1000 ease-in-out z-10"
-        data-active
-      >
+      <!-- SLIDE 1: URBAN COLLECTION -->
+      <div class="hero-slide absolute inset-0" data-active>
         <img
           src="/hero/slide-5.jpg"
           alt="Colección Urbana"
           class="w-full h-full object-cover"
         />
-        <div class="absolute inset-0 bg-black/30"></div>
+        <div class="absolute inset-0 bg-black/40"></div>
         <div
           class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6"
         >
-          <div class="max-w-2xl animate-fade-in-up">
+          <div class="max-w-2xl slide-content">
             <div
               class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-brand-gold mb-6"
             >
@@ -95,20 +92,18 @@ function formatPrice(cents: number) {
         </div>
       </div>
 
-      <!-- SLIDE 2: EXECUTIVE (Image 0) -->
-      <div
-        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
-      >
+      <!-- SLIDE 2: EXECUTIVE -->
+      <div class="hero-slide absolute inset-0">
         <img
           src="/hero/slide-1.jpg"
           alt="Executive Look"
           class="w-full h-full object-cover"
         />
-        <div class="absolute inset-0 bg-black/30"></div>
+        <div class="absolute inset-0 bg-black/40"></div>
         <div
           class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6"
         >
-          <div class="max-w-2xl">
+          <div class="max-w-2xl slide-content">
             <div
               class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-white/80 mb-6"
             >
@@ -138,20 +133,18 @@ function formatPrice(cents: number) {
         </div>
       </div>
 
-      <!-- SLIDE 3: SPORT (Image 1) -->
-      <div
-        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
-      >
+      <!-- SLIDE 3: SPORT -->
+      <div class="hero-slide absolute inset-0">
         <img
           src="/hero/slide-2.jpg"
           alt="Sport Performance"
           class="w-full h-full object-cover"
         />
-        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="absolute inset-0 bg-black/30"></div>
         <div
           class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6"
         >
-          <div class="max-w-2xl">
+          <div class="max-w-2xl slide-content">
             <div
               class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-white mb-6"
             >
@@ -181,20 +174,18 @@ function formatPrice(cents: number) {
         </div>
       </div>
 
-      <!-- SLIDE 4: ACCESSORIES (Image 2) -->
-      <div
-        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
-      >
+      <!-- SLIDE 4: ACCESSORIES -->
+      <div class="hero-slide absolute inset-0">
         <img
           src="/hero/slide-4.jpg"
           alt="Accesorios de Lujo"
           class="w-full h-full object-cover"
         />
-        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="absolute inset-0 bg-black/50"></div>
         <div
           class="relative z-20 h-full flex items-center justify-center max-w-7xl mx-auto px-6 text-center"
         >
-          <div class="max-w-3xl">
+          <div class="max-w-3xl slide-content">
             <div
               class="text-[10px] font-black uppercase tracking-[0.6em] text-brand-gold mb-6"
             >
@@ -221,28 +212,26 @@ function formatPrice(cents: number) {
         </div>
       </div>
 
-      <!-- SLIDE 5: FOOTWEAR (Image 4) -->
-      <div
-        class="hero-slide absolute inset-0 opacity-0 transition-opacity duration-1000 ease-in-out z-0"
-      >
+      <!-- SLIDE 5: FOOTWEAR -->
+      <div class="hero-slide absolute inset-0">
         <img
           src="/hero/slide-3.jpg"
           alt="Calzado Premium"
           class="w-full h-full object-cover"
         />
-        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="absolute inset-0 bg-black/40"></div>
         <div
           class="relative z-20 h-full flex items-center max-w-7xl mx-auto px-6 justify-end text-right"
         >
-          <div class="max-w-2xl">
+          <div class="max-w-2xl slide-content">
             <div
-              class="flex items-center gap-2 justify-end text-[10px] font-black uppercase tracking-[0.5em] text-brand-black/80 mb-6 font-sans"
+              class="flex items-center gap-2 justify-end text-[10px] font-black uppercase tracking-[0.5em] text-white/80 mb-6 font-sans"
             >
               Footwear Selection
-              <span class="w-12 h-px bg-brand-black/80"></span>
+              <span class="w-12 h-px bg-white/80"></span>
             </div>
             <h2
-              class="text-6xl md:text-8xl font-black text-brand-black mb-6 tracking-tighter leading-[0.9]"
+              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
             >
               PASO<br /><span
                 class="text-brand-gold italic font-serif font-light"
@@ -250,13 +239,13 @@ function formatPrice(cents: number) {
               >
             </h2>
             <p
-              class="text-xl text-slate-700 mb-10 max-w-lg ml-auto font-medium leading-relaxed"
+              class="text-xl text-gray-200 mb-10 max-w-lg ml-auto font-medium leading-relaxed"
             >
               Desde las últimas sneakers hasta zapatos de vestir artesanales.
             </p>
             <a
               href="/catalogo/calzado"
-              class="inline-flex items-center gap-4 bg-brand-black text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold transition-all shadow-xl"
+              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold transition-all shadow-xl"
             >
               Explorar Sneakers
             </a>
@@ -505,19 +494,36 @@ function formatPrice(cents: number) {
 </BaseLayout>
 
 <style>
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(40px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  /* Base del Slide */
+  .hero-slide {
+    opacity: 0;
+    z-index: 0;
+    pointer-events: none;
+    transition: opacity 1s ease-in-out;
   }
-  .animate-fade-in-up {
-    animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  /* Slide Activo */
+  .hero-slide[data-active] {
+    opacity: 1;
+    z-index: 10;
+    pointer-events: auto;
   }
+
+  /* Contenido del Slide (Texto) */
+  .slide-content {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: 0.4s;
+  }
+
+  /* Animación cuando el slide padre está activo */
+  .hero-slide[data-active] .slide-content {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Indicador de puntos */
   .hero-dot[data-active] {
     width: 40px;
     background-color: #c6a87c;
@@ -536,11 +542,9 @@ function formatPrice(cents: number) {
 
     slides.forEach((slide, i) => {
       if (i === index) {
-        slide.classList.remove("opacity-0", "z-0");
-        slide.classList.add("opacity-100", "z-10");
+        slide.setAttribute("data-active", "");
       } else {
-        slide.classList.remove("opacity-100", "z-10");
-        slide.classList.add("opacity-0", "z-0");
+        slide.removeAttribute("data-active");
       }
     });
 

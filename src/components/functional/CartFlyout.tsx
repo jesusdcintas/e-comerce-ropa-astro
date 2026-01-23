@@ -57,7 +57,7 @@ export default function CartFlyout() {
 
     return (
         <div
-            className={`fixed inset-0 z-50 overflow-hidden ${$isCartOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+            className={`fixed inset-0 z-[100000] overflow-hidden ${$isCartOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
             aria-labelledby="slide-over-title"
             role="dialog"
             aria-modal="true"

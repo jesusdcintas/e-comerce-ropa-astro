@@ -29,79 +29,94 @@ const isCheckoutRedirect = redirect === "/checkout";
 
 <BaseLayout title="Acceso - FashionStore" showPopup={false}>
   <div
-    class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
+    class="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-10"
   >
-    <div class="max-w-md w-full space-y-8">
-      <div>
-        <h2
-          class="mt-6 text-center text-3xl font-extrabold text-gray-900 font-serif"
+    <div class="max-w-md w-full space-y-12">
+      <div class="text-center">
+        <div
+          class="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold mb-6"
         >
-          <span class="text-gray-900">Fashion</span><span
-            class="text-yellow-600">Store</span
-          >
+          <span class="w-8 h-px bg-brand-gold"></span>
+          Acceso Exclusivo
+          <span class="w-8 h-px bg-brand-gold"></span>
+        </div>
+        <h2 class="text-6xl font-black text-slate-800 tracking-tighter mb-4">
+          Fashion<span class="text-brand-gold italic font-serif">Store</span>
         </h2>
         {
           isCheckoutRedirect ? (
-            <div class="mt-4 p-4 bg-brand-gold/10 border border-brand-gold/20 rounded-xl text-center">
-              <p class="text-sm font-bold text-gray-900 mb-1">
-                Estás a un paso de completar tu pedido
+            <div class="mt-8 p-6 bg-brand-gold/5 border border-brand-gold/10 rounded-3xl text-center backdrop-blur-sm">
+              <p class="text-sm font-black text-slate-800 uppercase tracking-tight mb-1">
+                CASI LO TIENES
               </p>
-              <p class="text-xs text-slate-600">
-                Inicia sesión o regístrate para finalizar tu compra.
+              <p class="text-xs text-slate-500 font-medium">
+                Inicia sesión para completar tu pedido premium.
               </p>
             </div>
           ) : (
-            <p class="mt-2 text-center text-sm text-gray-600">
+            <p class="text-slate-400 font-medium text-lg">
               Inicia sesión para acceder a tu cuenta
             </p>
           )
         }
       </div>
 
-      <form class="mt-8 space-y-6" id="login-form">
+      <form
+        class="mt-10 space-y-6 bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-50"
+        id="login-form"
+      >
         <input type="hidden" id="redirect-url" value={redirect} />
-        <div class="rounded-md shadow-sm -space-y-px">
-          <div>
-            <label for="email" class="sr-only">Email</label>
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <label
+              for="email"
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4"
+              >Tu Email</label
+            >
             <input
               id="email"
               name="email"
               type="email"
               autocomplete="email"
               required
-              class="appearance-none rounded-none rounded-t-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-brand-blue focus:border-brand-blue focus:z-10 sm:text-sm"
-              placeholder="Email"
+              class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all shadow-inner"
+              placeholder="tu@email.com"
             />
           </div>
-          <div>
-            <label for="password" class="sr-only">Contraseña</label>
+          <div class="space-y-2">
+            <label
+              for="password"
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4"
+              >Contraseña</label
+            >
             <input
               id="password"
               name="password"
               type="password"
               autocomplete="current-password"
               required
-              class="appearance-none rounded-none rounded-b-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-brand-blue focus:border-brand-blue focus:z-10 sm:text-sm"
-              placeholder="Contraseña"
+              class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all shadow-inner"
+              placeholder="••••••••"
             />
           </div>
         </div>
 
-        <div id="error-msg" class="text-red-500 text-sm text-center hidden">
+        <div
+          id="error-msg"
+          class="text-red-500 text-[10px] font-black uppercase tracking-widest text-center hidden bg-red-50 py-3 rounded-xl border border-red-100"
+        >
         </div>
 
-        <div>
+        <div class="pt-2">
           <button
             type="submit"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-colors"
+            class="group relative w-full flex justify-center py-4 px-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-brand-gold hover:-translate-y-1 transition-all shadow-xl shadow-slate-900/10 active:scale-95"
           >
-            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+            <span class="absolute left-0 inset-y-0 flex items-center pl-6">
               <svg
-                class="h-5 w-5 text-brand-gold group-hover:text-white transition-colors"
-                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4 text-brand-gold group-hover:text-white transition-colors"
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                aria-hidden="true"
               >
                 <path
                   fill-rule="evenodd"
@@ -109,36 +124,35 @@ const isCheckoutRedirect = redirect === "/checkout";
                   clip-rule="evenodd"></path>
               </svg>
             </span>
-            {isCheckoutRedirect ? "Finalizar y Continuar" : "Iniciar Sesión"}
+            {isCheckoutRedirect ? "CONTINUAR COMPRA" : "INICIAR SESIÓN"}
           </button>
         </div>
 
-        <div class="text-center space-y-2">
-          <p class="text-sm text-gray-600">
+        <div class="text-center space-y-4 pt-6">
+          <p
+            class="text-[11px] font-bold text-slate-400 uppercase tracking-widest"
+          >
             ¿No tienes cuenta?
             <a
               href={isCheckoutRedirect
                 ? "/registro?redirect=/checkout"
                 : "/registro"}
-              class="font-medium text-brand-blue hover:text-blue-700 transition-colors"
+              class="text-brand-gold hover:text-slate-800 transition-colors border-b border-brand-gold/30 ml-1"
             >
               Regístrate aquí
             </a>
           </p>
-          <p class="text-xs">
-            <a
-              href="/recuperar"
-              class="text-slate-400 hover:text-brand-gold transition-colors font-medium"
-            >
-              ¿Has olvidado tu contraseña?
-            </a>
-          </p>
+          <a
+            href="/recuperar"
+            class="inline-block text-[10px] font-black text-slate-300 hover:text-brand-gold transition-colors uppercase tracking-[0.2em]"
+          >
+            ¿Has olvidado tu contraseña?
+          </a>
         </div>
       </form>
     </div>
   </div>
 </BaseLayout>
-
 <script>
   import { supabase } from "../lib/supabase";
 

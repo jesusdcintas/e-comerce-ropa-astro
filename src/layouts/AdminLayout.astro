@@ -59,7 +59,9 @@ const { count: pendingCount } = await supabase
     <body class="h-screen flex overflow-hidden bg-[#F8FAFC]">
         <!-- Sidebar -->
         <aside
-            class="w-72 bg-[#0F172A] text-white flex flex-col hidden md:flex shadow-2xl z-50"
+            id="admin-sidebar"
+            data-collapsed="false"
+            class="w-72 bg-[#0F172A] text-white flex flex-col hidden md:flex shadow-2xl z-50 transition-all duration-300 ease-in-out relative group overflow-hidden"
         >
             <div class="h-20 flex items-center px-8 border-b border-white/5">
                 <div class="flex items-center gap-3">
@@ -68,7 +70,8 @@ const { count: pendingCount } = await supabase
                     >
                         F
                     </div>
-                    <span class="text-xl font-bold tracking-tight text-white"
+                    <span
+                        class="sidebar-text text-xl font-bold tracking-tight text-white transition-opacity duration-300"
                         >Fashion<span
                             class="text-brand-gold font-serif italic ml-0.5"
                             >Admin</span
@@ -102,7 +105,9 @@ const { count: pendingCount } = await supabase
                             d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                         ></path>
                     </svg>
-                    <span>Cerrar Sesión</span>
+                    <span class="sidebar-text transition-opacity duration-300"
+                        >Cerrar Sesión</span
+                    >
                 </button>
             </div>
         </aside>
@@ -112,20 +117,44 @@ const { count: pendingCount } = await supabase
             <header
                 class="h-20 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 z-40"
             >
-                <div>
-                    <h1 class="text-lg font-bold text-slate-800 tracking-tight">
-                        {title}
-                    </h1>
-                    <div class="flex items-center gap-2 text-xs text-slate-400">
-                        <span
-                            ><span class="text-white">Fashion</span><span
-                                class="text-yellow-400">Store</span
-                            ></span
+                <div class="flex items-center gap-4">
+                    <button
+                        id="sidebar-toggle"
+                        class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                        title="Alternar menú lateral"
+                    >
+                        <svg
+                            class="w-6 h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                         >
-                        <span>/</span>
-                        <span class="text-slate-500 font-medium"
-                            >Panel de Control</span
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                    <div>
+                        <h1
+                            class="text-lg font-bold text-slate-800 tracking-tight"
                         >
+                            {title}
+                        </h1>
+                        <div
+                            class="flex items-center gap-2 text-xs text-slate-400"
+                        >
+                            <span
+                                ><span class="text-white">Fashion</span><span
+                                    class="text-yellow-400">Store</span
+                                ></span
+                            >
+                            <span>/</span>
+                            <span class="text-slate-500 font-medium"
+                                >Panel de Control</span
+                            >
+                        </div>
                     </div>
                 </div>
 
@@ -190,24 +219,85 @@ const { count: pendingCount } = await supabase
             import { clearCart } from "../stores/cartStore";
             import { clearFavorites } from "../stores/favoriteStore";
 
-            const logoutBtn = document.getElementById("logout-btn");
-            if (logoutBtn) {
-                logoutBtn.addEventListener("click", async () => {
-                    await supabase.auth.signOut();
+            // Inicializar todo cuando el DOM esté listo
+            document.addEventListener("DOMContentLoaded", () => {
+                const logoutBtn = document.getElementById("logout-btn");
+                if (logoutBtn) {
+                    logoutBtn.addEventListener("click", async () => {
+                        await supabase.auth.signOut();
+                        clearCart();
+                        clearFavorites();
+                        document.cookie =
+                            "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
+                        document.cookie =
+                            "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
+                        window.location.href = "/login";
+                    });
+                }
 
-                    // Limpiar local state
-                    clearCart();
-                    clearFavorites();
+                // Lógica de Toggle de Sidebar
+                const sidebar = document.getElementById("admin-sidebar");
+                const toggleBtn = document.getElementById("sidebar-toggle");
 
-                    // Limpiar cookies
-                    document.cookie =
-                        "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
-                    document.cookie =
-                        "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
+                if (!sidebar || !toggleBtn) return;
 
-                    window.location.href = "/login";
+                // Función para aplicar el estado
+                function applyCollapsedState(collapsed: boolean) {
+                    if (!sidebar) return;
+
+                    sidebar.setAttribute(
+                        "data-collapsed",
+                        collapsed.toString(),
+                    );
+
+                    if (collapsed) {
+                        sidebar.style.width = "80px";
+                        document.body.classList.add("sidebar-is-collapsed");
+                    } else {
+                        sidebar.style.width = "288px"; // w-72
+                        document.body.classList.remove("sidebar-is-collapsed");
+                    }
+
+                    // Despachar evento para componentes React
+                    window.dispatchEvent(
+                        new CustomEvent("sidebar-toggle", {
+                            detail: { collapsed },
+                        }),
+                    );
+                }
+
+                // Cargar estado inicial
+                const savedState =
+                    localStorage.getItem("admin-sidebar-collapsed") === "true";
+                applyCollapsedState(savedState);
+
+                // Evento Click
+                toggleBtn.addEventListener("click", () => {
+                    const isCurrentlyCollapsed =
+                        sidebar.getAttribute("data-collapsed") === "true";
+                    const newState = !isCurrentlyCollapsed;
+
+                    applyCollapsedState(newState);
+                    localStorage.setItem(
+                        "admin-sidebar-collapsed",
+                        newState.toString(),
+                    );
                 });
-            }
+            });
         </script>
+
+        <style is:global>
+            #admin-sidebar[data-collapsed="true"] .sidebar-text {
+                display: none;
+            }
+            #admin-sidebar[data-collapsed="true"] .h-20 {
+                padding-left: 0;
+                padding-right: 0;
+                justify-content: center;
+            }
+            .sidebar-is-collapsed .sidebar-text-only {
+                display: none;
+            }
+        </style>
     </body>
 </html>

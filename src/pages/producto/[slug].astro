@@ -202,7 +202,7 @@ const unavailableVariants = variants?.filter((v) => v.stock === 0) || [];
                                                 variants={variants || []}
                                             />
 
-                                            <div class="grid grid-cols-2 gap-4">
+                                            <div class="grid grid-cols-2 gap-4 mt-2 relative z-10">
                                                 <FavoriteButton
                                                     client:load
                                                     productId={product.id.toString()}

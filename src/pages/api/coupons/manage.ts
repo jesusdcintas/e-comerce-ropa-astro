@@ -32,7 +32,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 cliente_id,
                 regla_id,
                 cliente_ids,
-                generado_por
+                generado_por,
+                es_publico
             } = data;
 
             const { data: newCoupon, error } = await supabaseAdmin
@@ -44,6 +45,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                     cliente_id: cliente_id || null, // Para un solo cliente (legacy/fallback)
                     regla_id: regla_id || null,
                     generado_por: generado_por || 'manual',
+                    es_publico: es_publico || false,
                     activo: true,
                     usado: false
                 })
@@ -66,13 +68,27 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 // Enviar emails a los clientes asignados
                 const { data: profiles } = await supabaseAdmin
                     .from('profiles')
-                    .select('email, nombre')
+                    .select('id, email, nombre')
                     .in('id', cliente_ids);
 
                 if (profiles) {
                     for (const profile of profiles) {
                         if (profile.email) {
                             await sendCouponEmail(profile.email, profile.nombre || 'Cliente', newCoupon);
+
+                            // Crear notificación en DB
+                            await supabaseAdmin
+                                .from('notifications')
+                                .insert({
+                                    user_id: profile.id,
+                                    title: '¡Nuevo Cupón Recibido!',
+                                    body: `Has recibido un cupón de ${newCoupon.descuento_porcentaje}% de descuento: ${newCoupon.codigo}`,
+                                    type: 'coupon',
+                                    metadata: {
+                                        coupon_id: newCoupon.id,
+                                        code: newCoupon.codigo
+                                    }
+                                });
                         }
                     }
                 }
@@ -89,11 +105,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 .insert({
                     nombre,
                     tipo_regla,
-                    monto_minimo: monto_minimo || 0,
+                    monto_minimo: Math.max(1, monto_minimo || 0),
                     numero_minimo: numero_minimo || 0,
                     periodo_dias: periodo_dias || 0,
-                    descuento_porcentaje,
-                    dias_validez: validez,
+                    descuento_porcentaje: 0,
+                    dias_validez: 0,
                     activa: true
                 })
                 .select()
@@ -160,6 +176,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ success: true }), { status: 200 });
         }
 
+        if (action === 'toggle-coupon') {
+            const { id, activo } = data;
+            const { error } = await supabaseAdmin
+                .from('cupones')
+                .update({ activo })
+                .eq('id', id);
+
+            if (error) throw error;
+            return new Response(JSON.stringify({ success: true }), { status: 200 });
+        }
+
         if (action === 'delete-rule') {
             const { id } = data;
 
@@ -200,6 +227,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             await supabaseAdmin.from('cupon_notificados').delete().neq('id', '00000000-0000-0000-0000-000000000000');
             await supabaseAdmin.from('cupon_usos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
             const { error } = await supabaseAdmin.from('cupones').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            if (error) throw error;
+            return new Response(JSON.stringify({ success: true }), { status: 200 });
+        }
+
+        if (action === 'update-rule') {
+            const { id, nombre, tipo_regla, monto_minimo, numero_minimo, periodo_dias, activa } = data;
+            const { error } = await supabaseAdmin
+                .from('reglas_cupones')
+                .update({
+                    nombre,
+                    tipo_regla,
+                    monto_minimo: Math.max(1, monto_minimo || 0),
+                    numero_minimo,
+                    periodo_dias,
+                    activa
+                })
+                .eq('id', id);
             if (error) throw error;
             return new Response(JSON.stringify({ success: true }), { status: 200 });
         }

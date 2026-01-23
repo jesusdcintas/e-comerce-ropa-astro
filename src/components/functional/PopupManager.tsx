@@ -25,6 +25,25 @@ const PopupManager: React.FC = () => {
 
     useEffect(() => {
         const fetchPopups = async () => {
+            const isHomePage = window.location.pathname === '/';
+            const isAfterLogin = sessionStorage.getItem('just_logged_in') === 'true';
+            const homeAlreadyChecked = sessionStorage.getItem('home_popup_checked') === 'true';
+
+            // Solo mostrar si es la Home (y no se ha comprobado ya en esta sesión) o si venimos de un login
+            const shouldShow = (isHomePage && !homeAlreadyChecked) || isAfterLogin;
+
+            if (!shouldShow) return;
+
+            // Si es la home, marcar como ya comprobado para esta sesión de navegación
+            if (isHomePage) {
+                sessionStorage.setItem('home_popup_checked', 'true');
+            }
+
+            // Consumir el flag de login de inmediato si vamos a proceder con la búsqueda
+            if (isAfterLogin) {
+                sessionStorage.removeItem('just_logged_in');
+            }
+
             const now = new Date().toISOString();
             console.log("🔍 Buscando pop-ups activos para:", now);
 
@@ -82,11 +101,6 @@ const PopupManager: React.FC = () => {
                     setTimeout(() => {
                         setActivePopup(popup);
                         setIsVisible(true);
-
-                        // Limpiar el flag de login para que no se repita en cada refresh
-                        if (isAfterLogin) {
-                            sessionStorage.removeItem('just_logged_in');
-                        }
 
                         if (popup.configuracion?.mostrar_una_vez) {
                             localStorage.setItem(`popup_shown_${popup.id}`, 'true');
@@ -150,7 +164,7 @@ const PopupManager: React.FC = () => {
     const { configuracion } = activePopup;
 
     return (
-        <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
             <div
                 className={`relative w-full max-w-lg overflow-hidden rounded-[2.5rem] shadow-2xl transition-all duration-500 transform ${isClosing ? 'scale-90 translate-y-10' : 'scale-100 translate-y-0'}`}
                 style={{ backgroundColor: configuracion.color_fondo || '#ffffff', color: configuracion.color_texto || '#1e293b' }}

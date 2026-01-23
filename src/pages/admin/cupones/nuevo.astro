@@ -191,6 +191,35 @@ const { data: reglas } = await supabase
                             </label>
                         </div>
 
+                        <div
+                            class="flex items-center gap-3 bg-slate-100/50 p-4 rounded-xl border border-slate-200/50 mb-6"
+                        >
+                            <label
+                                class="relative inline-flex items-center cursor-pointer"
+                            >
+                                <input
+                                    type="checkbox"
+                                    name="es_publico"
+                                    class="sr-only peer"
+                                />
+                                <div
+                                    class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-gold"
+                                >
+                                </div>
+                            </label>
+                            <div class="flex flex-col">
+                                <span
+                                    class="text-[10px] font-black uppercase text-slate-800"
+                                    >¿Es un cupón masivo/público?</span
+                                >
+                                <span class="text-[9px] text-slate-400"
+                                    >Si se activa, el cupón no se marcará como
+                                    "usado" globalmente y podrá ser usado por
+                                    todos (límite 1 por cliente).</span
+                                >
+                            </div>
+                        </div>
+
                         <!-- Secciones dinámicas -->
                         <div
                             id="target-section-public"
@@ -394,16 +423,22 @@ const { data: reglas } = await supabase
                                 class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none"
                             >
                                 <option value="numero_compras"
-                                    >Nº de Compras</option
+                                    >Nº de Compras Pagadas</option
                                 >
                                 <option value="compra_minima"
-                                    >Gasto Mínimo (Pedido)</option
+                                    >Gasto Mínimo (Carrito)</option
+                                >
+                                <option value="primera_compra"
+                                    >Primera Compra (Bienvenida)</option
+                                >
+                                <option value="antiguedad"
+                                    >Antigüedad de Cuenta (Días)</option
                                 >
                                 <option value="gasto_periodo"
-                                    >Gasto Acumulado (Total)</option
+                                    >Gasto en los últimos X Días</option
                                 >
-                                <option value="antiguedad_cuenta"
-                                    >Antigüedad de Cuenta (Nuevos)</option
+                                <option value="publico"
+                                    >Cupón Público General</option
                                 >
                             </select>
                         </div>
@@ -664,6 +699,7 @@ const { data: reglas } = await supabase
                                 .trim(),
                             descuento_porcentaje: descuento,
                             fecha_expiracion: exp.toISOString(),
+                            es_publico: formData.get("es_publico") === "on",
                             cliente_ids:
                                 cliente_ids.length > 0 ? cliente_ids : null,
                             regla_id: regla_id || null,

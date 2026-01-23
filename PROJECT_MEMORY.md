@@ -23,6 +23,9 @@
 6. **Cancelación y Reembolso Automatizado**: Implementación de un flujo centralizado que, al cancelar un pedido (`pending` o `paid`), realiza automáticamente el reembolso en Stripe (si procede), restaura el stock de productos/variantes y notifica al cliente por email.
 7. **Fidelización Basada en Eventos**: Las automatizaciones de cupones se disparan instantáneamente desde webhooks de Stripe, pero se optimizaron para procesar solo al usuario del evento, eliminando escaneos masivos innecesarios.
 8. **Resiliencia en Notificaciones**: Implementación de un sistema de "fallback" de email que consulta los metadatos de Auth si el perfil de usuario no contiene una dirección de correo válida, garantizando la entrega de premios.
+9. **Lógica de Cupones en Servidor (RPC)**: Se migró la lógica crítica de validación y consumo de cupones a funciones PostgreSQL (RPC) `rpc_validate_coupon` y `rpc_consume_coupon` con `SECURITY DEFINER`. Esto centraliza las reglas de negocio, mejora la seguridad y asegura la atomicidad en el canje (evitando race conditions).
+10. **Clasificación Explícita de Cupones**: Introducción del campo `es_publico` para diferenciar cupones de uso masivo (no se queman) de cupones individuales o de incidencia.
+11. **Integridad en el Canje**: Implementación de constraint `UNIQUE(cupon_id, order_id)` en la tabla `cupon_usos` para evitar duplicidad de descuentos en reintentos de webhooks.
 
 ## Arquitectura General
 - **Rutas públicas**: `src/pages/` (SSG/SSR). El catálogo principal se encuentra en `/catalogo` (todos los productos). Las categorías usan rutas anidadas bajo `/catalogo/` (ej: `/catalogo/calzado/botines`). La raíz `/` se mantiene como la landing page principal.
@@ -34,9 +37,9 @@
 - **`orders`**: Pedidos completados. Campos críticos: `total_amount`, `coupon_code`, `discount_amount`, `status`.
 - **`order_items`**: Líneas de detalle de cada pedido.
 - **`products`** & **`product_variants`**: Catálogo y tallas/stock.
-- **`cupones`**: Instancias de códigos de descuento. Campos: `codigo`, `usado`, `activo`, `regla_id`.
-- **`reglas_cupones`**: Reglas lógicas que definen las condiciones de los cupones.
-- **`cupon_usos`**: Registro histórico de cada vez que se aplica un cupón.
+- **`cupones`**: Instancias de códigos de descuento. Campos: `codigo`, `usado`, `activo`, `regla_id`, `es_publico`.
+- **`reglas_cupones`**: Reglas lógicas que definen las condiciones. Tipos: `gasto_total`, `gasto_periodo`, `compra_minima`, `numero_compras`, `primera_compra`, `antiguedad`, `publico`.
+- **`cupon_usos`**: Registro histórico de cada vez que se aplica un cupón. Constraint `UNIQUE(cupon_id, order_id)`.
 - **`cupon_asignaciones`**: Vinculación de cupones específicos a perfiles de usuario.
 
 ## Funcionalidades Implementadas
@@ -45,13 +48,15 @@
 - [x] Sistema de Cupones Avanzado: Validación, aplicación dinámica en Stripe y emisión automática por reglas de fidelidad.
 - [x] Gestión de Pedidos: Historial, Tracking en tiempo real y Cancelación automatizada (reembolso + stock).
 - [x] Módulo de Facturación Pro: Perfiles fiscales y generación/envío de facturas PDF.
-- [x] Notificaciones: Sistema de notificaciones en DB y Email (Brevo).
+- [x] Notificaciones: Sistema de notificaciones en DB y Email (Brevo) para pedidos, cupones y consultas de chat (bidireccional).
 - [x] Herramientas de Marketing: Sistema de Pop-ups configurables desde el panel.
 - [x] Panel de administración: Dashboard con KPIs en tiempo real y gestión de catálogo/cupones.
 - [x] Newsletter: Sistema de captación con pop-up, gestión de suscriptores y envío automático de cupones de bienvenida mediante Brevo.
 - [x] Gestión Post-Venta: Flujo completo de cancelación con restauración de stock y flujo informativo de devoluciones con modal dedicado.
 - [x] Hero Slider Premium: Implementación de slider dinámico con 5 escenas de alta resolución y animaciones de texto.
 - [x] Fidelización de Registro & Newsletter: Sistema configurable de cupones de bienvenida. El administrador puede activar/desactivar y ajustar el porcentaje de descuento desde el dashboard. Los cupones se asignan automáticamente al perfil del usuario para ser visibles en su sección personal.
+- [x] Gestión de Cupones Profesional: Sistema robusto con validación por RPC, soporte para cupones públicos, individuales y por reglas complejas (primera compra, antigüedad, gasto mínimo).
+- [x] Integración de Cloudinary: Sistema centralizado de gestión y optimización de imágenes para todo el catálogo.
 
 ## Pendientes (TODO)
 
@@ -59,8 +64,9 @@
 - [ ] Refactor Estético: Evolución a Dark Mode premium avanzado.
 
 ### Técnico/Otros
-- [ ] Confirmar integración de Cloudinary para todas las imágenes.
+- [x] Integración de Cloudinary para la gestión y optimización de imágenes.
 - [ ] Tests de estrés de concurrencia en stock.
+- [ ] Bug: Visibilidad del texto en Hero Slider (tras refactorización a CSS nativo sigue fallando en algunos navegadores).
 
 ## Convenciones y Reglas del Proyecto
 - **Nomenclatura**: Archivos en `kebab-case`, componentes en `PascalCase`.
@@ -69,7 +75,7 @@
 - **UI/Estética**: Evitar el uso de emojis en la interfaz de usuario para mantener una estética profesional y premium; usar iconos vectoriales (SVG) o tipografía de alta calidad en su lugar.
 
 ## Última actualización
-2026-01-16: Rediseño Premium del Hero (Slider), ajuste de políticas de envío (50€), implementación de sistema configurable de cupones de bienvenida y sección de beneficios en el perfil del cliente.
+2026-01-23: Migración total del sistema de cupones a una arquitectura basada en SQL/RPC para máxima seguridad y robustez. Implementación de cupones públicos (`es_publico`), nuevas reglas de fidelización (primera compra, antigüedad) y limpieza profunda de políticas RLS. Confirmada también integración de Cloudinary.
 
 ## Esquema de Base de Datos y Políticas (Backup)
 
@@ -133,7 +139,8 @@ CREATE TABLE public.cupon_usos (
   CONSTRAINT cupon_usos_pkey PRIMARY KEY (id),
   CONSTRAINT cupon_usos_cupon_id_fkey FOREIGN KEY (cupon_id) REFERENCES public.cupones(id),
   CONSTRAINT cupon_usos_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES auth.users(id),
-  CONSTRAINT cupon_usos_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
+  CONSTRAINT cupon_usos_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
+  CONSTRAINT cupon_usos_unique_pedido UNIQUE (cupon_id, order_id)
 );
 
 CREATE TABLE public.cupones (
@@ -148,6 +155,7 @@ CREATE TABLE public.cupones (
   fecha_expiracion timestamp with time zone NOT NULL,
   generado_por character varying DEFAULT 'automatico'::character varying,
   activo boolean DEFAULT true,
+  es_publico boolean DEFAULT false,
   CONSTRAINT cupones_pkey PRIMARY KEY (id),
   CONSTRAINT cupones_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES auth.users(id),
   CONSTRAINT cupones_regla_id_fkey FOREIGN KEY (regla_id) REFERENCES public.reglas_cupones(id),
@@ -264,6 +272,7 @@ CREATE TABLE public.product_inquiries (
   responded_at timestamp with time zone,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  customer_has_unread boolean DEFAULT false,
   CONSTRAINT product_inquiries_pkey PRIMARY KEY (id),
   CONSTRAINT product_inquiries_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
@@ -320,8 +329,8 @@ CREATE TABLE public.reglas_cupones (
   nombre text NOT NULL,
   descripcion text,
   activa boolean DEFAULT true,
-  tipo_regla text NOT NULL CHECK (tipo_regla = ANY (ARRAY['gasto_total'::text, 'gasto_periodo'::text, 'compra_minima'::text, 'numero_compras'::text, 'antiguedad_cuenta'::text])),
-  monto_minimo integer NOT NULL CHECK (monto_minimo > 0),
+  tipo_regla text NOT NULL CHECK (tipo_regla = ANY (ARRAY['gasto_total'::text, 'gasto_periodo'::text, 'compra_minima'::text, 'numero_compras'::text, 'primera_compra'::text, 'antiguedad'::text, 'publico'::text])),
+  monto_minimo integer NOT NULL CHECK (monto_minimo >= 0),
   periodo_dias integer,
   numero_minimo integer,
   descuento_porcentaje integer NOT NULL CHECK (descuento_porcentaje > 0 AND descuento_porcentaje <= 100),
@@ -360,7 +369,7 @@ CREATE TABLE public.settings (
 | public     | cupon_notificados      | Usuarios ven sus notificaciones cupon | {authenticated} | SELECT | (cliente_id = auth.uid())                                                                                                                                                                                                                                                                                                                 |
 | public     | cupon_usos             | Usuarios ven sus usos                 | {authenticated} | SELECT | (cliente_id = auth.uid())                                                                                                                                                                                                                                                                                                                 |
 | public     | cupon_usos             | Admins control total usos             | {authenticated} | ALL    | (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)                                                                                                                                                                                                                                                                 |
-| public     | cupones                | Usuarios ven sus cupones o publicos   | {authenticated} | SELECT | ((cliente_id = auth.uid()) OR (EXISTS ( SELECT 1 FROM cupon_asignaciones WHERE ((cupon_asignaciones.cupon_id = cupones.id) AND (cupon_asignaciones.cliente_id = auth.uid())))) OR ((cliente_id IS NULL) AND (EXISTS ( SELECT 1 FROM reglas_cupones r WHERE ((r.id = cupones.regla_id) AND (r.tipo_regla = 'publico'::text)))))) |
+| public     | cupones                | Usuarios ven cupones elegibles        | {authenticated} | SELECT | ((es_publico = true) OR (cliente_id = auth.uid()) OR (EXISTS ( SELECT 1 FROM cupon_asignaciones WHERE ((cupon_asignaciones.cupon_id = cupones.id) AND (cupon_asignaciones.cliente_id = auth.uid()))))) |
 | public     | cupones                | Admins control total cupones          | {authenticated} | ALL    | (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)                                                                                                                                                                                                                                                                 |
 | public     | favorites              | Favorites_User_All                    | {authenticated} | ALL    | (auth.uid() = user_id)                                                                                                                                                                                                                                                                                                                    |
 | public     | favorites              | Favorites_Admin_Select                | {authenticated} | SELECT | (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)                                                                                                                                                                                                                                                                 |

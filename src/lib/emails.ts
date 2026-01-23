@@ -476,8 +476,104 @@ export const sendOrderCancelledEmail = async (order: any) => {
   }
 };
 /**
- * Genera el PDF del Dashboard (Resumen de KPIs)
+ * Notifica al administrador de una nueva consulta o mensaje
  */
+export const sendAdminInquiryNotification = async (inquiry: any, message: string) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
+  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
+
+  const isNew = !inquiry.responded_at;
+  const subject = isNew
+    ? `[Nueva Consulta] de ${inquiry.customer_name || inquiry.customer_email}`
+    : `[Nuevo Mensaje] Consulta #${inquiry.id.toString().padStart(4, '0')}`;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #0f172a; padding: 40px; text-align: center;">
+        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 10px;">Gestión de Clientes</div>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff;">Notificación de <span style="color: #d4af37;">Soporte</span></h1>
+      </div>
+      <div style="padding: 40px;">
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+          <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">De: ${inquiry.customer_name || 'Cliente'} (${inquiry.customer_email})</p>
+          <div style="height: 1px; background: #e2e8f0; margin: 15px 0;"></div>
+          <p style="margin: 0; font-size: 16px; color: #0f172a; line-height: 1.6; font-style: italic;">"${message}"</p>
+        </div>
+        
+        <div style="text-align: center;">
+          <a href="https://fashionstore-cintas.netlify.app/admin/inquiries" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 18px 40px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">Responder al Cliente</a>
+        </div>
+      </div>
+      <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9;">
+        <p style="margin: 0; font-size: 11px; color: #94a3b8;">ID Consulta: #${inquiry.id.toString().padStart(4, '0')} | Fashion Store Admin</p>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = subject;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store Support', email: from };
+  sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending admin notification:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Notifica al cliente de una respuesta del administrador
+ */
+export const sendCustomerInquiryNotification = async (inquiry: any, message: string) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
+  const to = inquiry.customer_email;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #0f172a; padding: 40px; text-align: center;">
+        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 10px;">Atención Personalizada</div>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff;">Tienes una nueva <span style="color: #d4af37;">Respuesta</span></h1>
+      </div>
+      <div style="padding: 40px;">
+        <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+          Hola <strong>${inquiry.customer_name || ''}</strong>,<br>
+          Nuestro equipo ha respondido a tu consulta sobre <strong>${inquiry.product_name || 'nuestros servicios'}</strong>:
+        </p>
+        
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 1px solid #e2e8f0; margin-bottom: 30px; border-left: 4px solid #d4af37;">
+          <p style="margin: 0; font-size: 15px; color: #0f172a; line-height: 1.6;">${message}</p>
+        </div>
+        
+        <div style="text-align: center;">
+          <a href="https://fashionstore-cintas.netlify.app/mensajes" style="display: inline-block; background-color: #d4af37; color: #ffffff; padding: 18px 40px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;">Ver Conversación Completa</a>
+        </div>
+        
+        <p style="margin-top: 40px; text-align: center; color: #94a3b8; font-size: 12px;">
+          Gracias por confiar en Fashion Store.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `Fashion Store: Tienes un nuevo mensaje de nuestro equipo`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
+  sendSmtpEmail.to = [{ email: to, name: inquiry.customer_name || 'Cliente' }];
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending customer notification:', error);
+    return { success: false, error };
+  }
+};
+
 export const generateDashboardPDF = (stats: any): string => {
   const doc = new jsPDF();
 

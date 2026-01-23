@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { supabase } from "../lib/supabase";
+import GeneralInquiryForm from "../components/islands/GeneralInquiryForm";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 let user = null;
@@ -35,15 +36,17 @@ userInquiries?.forEach((inquiry) => {
     }
 });
 
-// Marcar como leídas si hay alguna no leída
-const hasUnread = userInquiries?.some((i) => i.customer_has_unread);
-if (hasUnread) {
-    await supabase
-        .from("product_inquiries")
-        .update({ customer_has_unread: false })
-        .eq("customer_email", userEmail)
-        .eq("customer_has_unread", true);
-}
+// Marcar como leídas usando privilegios de admin para evitar bloqueos por RLS
+const { createClient } = await import('@supabase/supabase-js');
+const supabaseAdmin = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+await supabaseAdmin
+    .from("product_inquiries")
+    .update({ customer_has_unread: false })
+    .eq("customer_email", userEmail);
 ---
 
 <BaseLayout title="Atención al Cliente - Mensajes">
@@ -69,11 +72,9 @@ if (hasUnread) {
                     <div class="text-6xl">💬</div>
                     <h3 class="text-2xl font-bold text-slate-800">No tienes mensajes todavía</h3>
                     <p class="text-slate-400 max-w-sm mx-auto">
-                        Cuando realices una consulta sobre un producto, aparecerá aquí el hilo de la conversación.
+                        Inicia una conversación con nuestro equipo de soporte para resolver cualquier duda.
                     </p>
-                    <a href="/" class="inline-block bg-brand-black text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 transition-all">
-                        Explorar Catálogo
-                    </a>
+                    <GeneralInquiryForm client:load buttonText="Contactar con Soporte" />
                 </div>
             ) : (
                 userInquiries.map((inquiry) => (
@@ -100,14 +101,12 @@ if (hasUnread) {
                                             </p>
                                         </div>
                                         <div class={`px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${
-                                            inquiry.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                            inquiry.status === 'answered' ? 'bg-green-50 text-green-600 border-green-100' :
-                                            'bg-slate-50 text-slate-600 border-slate-100'
-                                        }`}>
-                                            <div class={`w-2 h-2 rounded-full bg-current ${inquiry.status === 'pending' ? 'animate-pulse' : ''}`}></div>
-                                            {inquiry.status === 'pending' ? 'Esperando Respuesta' : inquiry.status === 'answered' ? 'Respondida' : 'Cerrada'}
-                                        </div>
-                                    </div>
+                                            inquiry.status === 'closed' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-orange-50 text-orange-600 border-orange-100'
+                                         }`}>
+                                             <div class={`w-2 h-2 rounded-full bg-current ${inquiry.status !== 'closed' ? 'animate-pulse' : ''}`}></div>
+                                             {inquiry.status === 'closed' ? 'Gestionada' : 'En curso'}
+                                         </div>
+                                     </div>
 
                                     <!-- Hilo de Mensajes Estilo Chat -->
                                     <div class="bg-slate-50/50 rounded-[2rem] p-6 border border-slate-100 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -146,38 +145,119 @@ if (hasUnread) {
             )}
         </div>
     </div>
+        </div>
+    </div>
+
+    <!-- Modal de Respuesta Cliente Premium -->
+    <div id="reply-modal" class="fixed inset-0 z-[100003] hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div class="p-8 md:p-10 space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.3em] text-brand-blue mb-1">Centro de Soporte</div>
+                        <h3 class="text-2xl font-black text-slate-800 tracking-tight">Enviar <span class="text-brand-blue italic font-serif">Mensaje</span></h3>
+                    </div>
+                    <button id="close-modal" class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 ml-4">Tu Consulta</label>
+                    <textarea 
+                        id="customer-reply-text" 
+                        class="w-full h-40 bg-slate-50 border-none rounded-[2rem] p-6 text-sm font-medium text-slate-700 placeholder:text-slate-300 focus:ring-2 focus:ring-brand-blue/20 transition-all resize-none shadow-inner"
+                        placeholder="Escribe aquí tu duda o mensaje para el equipo..."
+                    ></textarea>
+                </div>
+
+                <div class="flex gap-4 pt-2">
+                    <button id="cancel-reply" class="flex-1 py-4 px-6 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all">Cancelar</button>
+                    <button id="submit-reply" class="flex-[2] py-4 px-6 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-brand-blue transition-all shadow-xl shadow-slate-900/10">Enviar Mensaje</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </BaseLayout>
 
 <script>
     import { supabase } from "../lib/supabase";
 
-    // @ts-ignore
-    window.replyToInquiry = async (id: number) => {
-        const response = prompt("¿Qué quieres decirle al equipo de soporte?");
-        if (!response) return;
+    let activeInquiryId: number | null = null;
+    const modal = document.getElementById('reply-modal');
+    const textarea = document.getElementById('customer-reply-text') as HTMLTextAreaElement;
 
+    // @ts-ignore
+    window.replyToInquiry = (id: number) => {
+        activeInquiryId = id;
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            textarea?.focus();
+        }
+    };
+
+    function closeModal() {
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (textarea) textarea.value = '';
+            activeInquiryId = null;
+        }
+    }
+
+    document.getElementById('close-modal')?.addEventListener('click', closeModal);
+    document.getElementById('cancel-reply')?.addEventListener('click', closeModal);
+    document.getElementById('reply-modal')?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    document.getElementById('submit-reply')?.addEventListener('click', async () => {
+        if (!activeInquiryId || !textarea.value.trim()) return;
+
+        const response = textarea.value.trim();
+        const submitBtn = document.getElementById('submit-reply') as HTMLButtonElement;
+        
         try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enviando...';
+
             const { error: msgError } = await supabase
                 .from("inquiry_messages")
                 .insert({
-                    inquiry_id: id,
+                    inquiry_id: activeInquiryId,
                     sender_role: 'customer',
                     message: response
                 });
 
             if (msgError) throw msgError;
 
-            // Volver a poner en pendiente para que el admin lo vea
+            // Volver a poner en pendiente para que el admin lo vea y marcar como leída para el cliente
             await supabase
                 .from("product_inquiries")
-                .update({ status: 'pending' })
-                .eq("id", id);
+                .update({ 
+                    status: 'pending',
+                    customer_has_unread: false 
+                })
+                .eq("id", activeInquiryId);
+
+            // Notificar al admin por email (sin esperar para no bloquear)
+            fetch('/api/inquiry-notification', {
+                method: 'POST',
+                body: JSON.stringify({
+                    inquiryId: activeInquiryId,
+                    message: response,
+                    type: 'to_admin'
+                })
+            }).catch(err => console.error("Email notification failed:", err));
 
             location.reload();
         } catch (error: any) {
             alert("Error al enviar el mensaje: " + error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enviar Mensaje';
         }
-    };
+    });
 </script>
 
 <style>

@@ -31,29 +31,63 @@ if (sessionError || !user) {
     return Astro.redirect("/login");
 }
 
-// Obtener cupones del usuario
-const { data: coupons, error: fetchError } = await supabaseAuth
-    .from("cupones")
-    .select(
-        `
-    *,
-    regla:reglas_cupones!regla_id(nombre, descripcion)
-  `,
-    )
-    .eq("activo", true)
-    .gte("fecha_expiracion", new Date().toISOString())
-    .eq("usado", false)
-    .order("fecha_expiracion", { ascending: true });
-
-// Filtrar cupones públicos: Solo mostrar si no los ha usado el usuario ya
-const { data: usedCoupons } = await supabaseAuth
-    .from("cupon_usos")
+// 1. Obtener IDs de cupones asignados directamente al usuario
+const { data: assignments } = await supabaseAuth
+    .from("cupon_asignaciones")
     .select("cupon_id")
     .eq("cliente_id", user.id);
 
-const usedCouponIds = usedCoupons?.map((u) => u.cupon_id) || [];
+const assignedIds = assignments?.map((a) => a.cupon_id).filter(Boolean) || [];
+
+// Usar Service Role para diagnosticar si es un problema de RLS
+const supabaseAdmin = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+// 2. Obtener cupones (usamos Admin para asegurar que los vemos todos independientemente de RLS local)
+// Solo mostramos:
+// - Cupones públicos SIN regla (General / Todos)
+// - Cupones asignados directamente (cliente_id)
+// - Cupones distribuidos específicamente (assignedIds)
+let orFilter = `and(es_publico.eq.true,regla_id.is.null),cliente_id.eq.${user.id}`;
+if (assignedIds.length > 0) {
+    orFilter += `,id.in.(${assignedIds.join(",")})`;
+}
+
+const { data: coupons, error: fetchError } = await supabaseAdmin
+    .from("cupones")
+    .select("*, reglas_cupones!cupones_regla_id_fkey(nombre, descripcion)")
+    .or(orFilter)
+    .eq("activo", true)
+    .eq("usado", false);
+
+if (fetchError) {
+    console.error("[DEBUG Mis Cupones] Fetch Error:", fetchError);
+} else {
+    console.log(
+        "[DEBUG Mis Cupones] Found:",
+        coupons?.length,
+        "for user:",
+        user.id,
+    );
+}
+
+// 3. Filtrar por expiración localmente
+const now = new Date();
 const availableCoupons =
-    coupons?.filter((c) => !usedCouponIds.includes(c.id)) || [];
+    coupons?.filter((c) => {
+        if (!c.fecha_expiracion) return true;
+        return new Date(c.fecha_expiracion) >= now;
+    }) || [];
+
+// 4. Marcar notificaciones de cupones como leídas automáticamente
+await supabaseAuth
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", user.id)
+    .eq("type", "coupon")
+    .eq("is_read", false);
 ---
 
 <BaseLayout title="Mis Cupones - FashionStore">
@@ -138,11 +172,11 @@ const availableCoupons =
 
                                 <div class="space-y-2 mb-8">
                                     <h3 class="font-bold text-slate-800 text-lg tracking-tight group-hover:text-brand-gold transition-colors">
-                                        {coupon.regla?.nombre ||
+                                        {coupon.reglas_cupones?.nombre ||
                                             "Descuento Personalizado"}
                                     </h3>
                                     <p class="text-[11px] text-slate-400 font-medium leading-relaxed">
-                                        {coupon.regla?.descripcion ||
+                                        {coupon.reglas_cupones?.descripcion ||
                                             "Un obsequio exclusivo para premiar tu confianza en FashionStore."}
                                     </p>
                                 </div>

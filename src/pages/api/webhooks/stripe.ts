@@ -103,18 +103,6 @@ export const POST: APIRoute = async ({ request }) => {
         console.log('[SUCCESS] Uso de cupón registrado');
       }
 
-      // 4. Disparar automatizaciones de cupones
-      const { data: activeRules } = await supabase
-        .from('reglas_cupones')
-        .select('id')
-        .eq('activa', true);
-
-      if (activeRules) {
-        for (const rule of activeRules) {
-          await processRuleAutomations(rule.id, user_id);
-        }
-      }
-
     } catch (error: any) {
       console.error('[ERROR] Error procesando webhook:', error);
     }

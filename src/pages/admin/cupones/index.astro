@@ -17,62 +17,31 @@ const {
 } = await supabase.auth.getUser(accessToken);
 if (!user || user.app_metadata?.role !== "admin") return Astro.redirect("/");
 
-// 1. Obtener Cupones Recientes (DEBUG activado)
-const { data: cupones, error: errCupones } = await supabaseAdmin
+// 1. Obtener Cupones Recientes
+// Intentamos obtener todos los campos para ver qué está fallando
+const { data: cupones, error: cuponesError } = await supabaseAdmin
     .from("cupones")
-    .select("*") // Simplificamos al máximo para probar
-    .order("id", { ascending: false })
-    .limit(20);
+    .select("*")
+    .limit(50);
 
-console.log("--- DEBUG CUPONES ---");
-console.log("Total encontrados:", cupones?.length);
-console.log("Error si existe:", errCupones);
-if (cupones && cupones.length > 0) {
-    console.log("Primer cupón:", cupones[0].codigo);
-}
-console.log("---------------------");
+console.log("[DEBUG] Cupones fetched:", cupones?.length);
+if (cuponesError) console.error("[DEBUG] Cupones error:", cuponesError);
 
 // 2. Obtener Reglas
-let { data: reglas } = await supabaseAdmin
+let { data: reglas, error: reglasError } = await supabaseAdmin
     .from("reglas_cupones")
     .select("*")
-    .order("id", { ascending: false });
+    .order("activa", { ascending: false });
 
-// Verificar si faltan reglas de bienvenida y crearlas si es necesario
-const nombresBienvenida = ["BIENVENIDA_REGISTRO", "BIENVENIDA_NEWSLETTER"];
-const reglasFaltantes = nombresBienvenida.filter(
-    (nombre) => !reglas?.some((r) => r.nombre === nombre),
-);
+if (reglasError) console.error("[DEBUG] Reglas error:", reglasError);
 
-if (reglasFaltantes.length > 0) {
-    for (const nombre of reglasFaltantes) {
-        const { error: insertError } = await supabaseAdmin
-            .from("reglas_cupones")
-            .insert({
-                nombre: nombre,
-                descuento_porcentaje:
-                    nombre === "BIENVENIDA_REGISTRO" ? 10 : 15,
-                tipo_regla: "compra_minima",
-                activa: true,
-                dias_validez: nombre === "BIENVENIDA_REGISTRO" ? 15 : 30,
-                max_cupones_por_cliente: 1,
-                monto_minimo: 1, // Obligatorio > 0 para reglas activas según constraints
-            });
+// 3. Obtener Usuarios para Selección
+const { data: users } = await supabaseAdmin
+    .from("profiles")
+    .select("id, nombre, email")
+    .order("nombre", { ascending: true });
 
-        if (insertError) {
-            console.error(
-                `[Admin Dashboard] Error creando regla ${nombre}:`,
-                insertError,
-            );
-        }
-    }
-    // Recargar reglas después de la inserción
-    const { data: updatedReglas } = await supabaseAdmin
-        .from("reglas_cupones")
-        .select("*")
-        .order("id", { ascending: false });
-    reglas = updatedReglas;
-}
+// El sistema ya no auto-crea reglas aquí para permitir que el admin las gestione/elimine libremente.
 
 // 3. Estadísticas Rápidas
 const { data: stats } = await supabaseAdmin
@@ -161,214 +130,55 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
             </div>
         </div>
 
-        <!-- Cupones de Bienvenida (Novedad) -->
-        <div
-            class="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl overflow-hidden relative"
-        >
-            <div
-                class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none"
-            >
-                <svg
-                    class="w-32 h-32 text-brand-gold"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                    ><path
-                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                    ></path></svg
-                >
-            </div>
-
-            <div class="mb-8">
-                <h2
-                    class="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2"
-                >
-                    <span class="w-2 h-2 bg-brand-gold rounded-full"></span>
-                    Gestión de Cupones de Bienvenida
-                </h2>
-                <p class="text-xs text-slate-400 font-medium">
-                    Controla los descuentos automáticos para nuevos usuarios y
-                    suscriptores.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Registro -->
-                {
-                    (() => {
-                        const reglaRegistro = reglas?.find(
-                            (r) => r.nombre === "BIENVENIDA_REGISTRO",
-                        );
-                        return (
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 relative group transition-all hover:shadow-md">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 class="font-bold text-slate-800 text-sm italic">
-                                            Bienvenida al Registro
-                                        </h3>
-                                        <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                                            Código: WELCOME10-XXXXX
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="toggle-rule-welcome w-12 h-6 flex items-center rounded-full p-1 transition-all duration-300 shadow-inner"
-                                        data-id={reglaRegistro?.id}
-                                        data-active={reglaRegistro?.activa.toString()}
-                                        class:list={[
-                                            reglaRegistro?.activa
-                                                ? "bg-green-500"
-                                                : "bg-slate-300",
-                                        ]}
-                                    >
-                                        <div
-                                            class={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${reglaRegistro?.activa ? "translate-x-6" : ""}`}
-                                        />
-                                    </button>
-                                </div>
-
-                                <div class="flex items-center gap-4">
-                                    <div class="flex-1">
-                                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mb-1 block">
-                                            Porcentaje de Descuento
-                                        </label>
-                                        <div class="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                class="update-discount-input w-20 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-gold/20"
-                                                value={
-                                                    reglaRegistro?.descuento_porcentaje ||
-                                                    10
-                                                }
-                                                data-id={reglaRegistro?.id}
-                                            />
-                                            <span class="text-sm font-bold text-slate-400">
-                                                %
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-[10px] font-medium text-slate-500 italic max-w-[120px]">
-                                            Se envía por email tras crear una
-                                            cuenta.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()
-                }
-
-                <!-- Newsletter -->
-                {
-                    (() => {
-                        const reglaNews = reglas?.find(
-                            (r) => r.nombre === "BIENVENIDA_NEWSLETTER",
-                        );
-                        return (
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 relative group transition-all hover:shadow-md">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 class="font-bold text-slate-800 text-sm italic">
-                                            Bienvenida Newsletter
-                                        </h3>
-                                        <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                                            Código: WELCOME-XXXXX
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="toggle-rule-welcome w-12 h-6 flex items-center rounded-full p-1 transition-all duration-300 shadow-inner"
-                                        data-id={reglaNews?.id}
-                                        data-active={reglaNews?.activa.toString()}
-                                        class:list={[
-                                            reglaNews?.activa
-                                                ? "bg-green-500"
-                                                : "bg-slate-300",
-                                        ]}
-                                    >
-                                        <div
-                                            class={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${reglaNews?.activa ? "translate-x-6" : ""}`}
-                                        />
-                                    </button>
-                                </div>
-
-                                <div class="flex items-center gap-4">
-                                    <div class="flex-1">
-                                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mb-1 block">
-                                            Porcentaje de Descuento
-                                        </label>
-                                        <div class="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                class="update-discount-input w-20 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-gold/20"
-                                                value={
-                                                    reglaNews?.descuento_porcentaje ||
-                                                    15
-                                                }
-                                                data-id={reglaNews?.id}
-                                            />
-                                            <span class="text-sm font-bold text-slate-400">
-                                                %
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-[10px] font-medium text-slate-500 italic max-w-[120px]">
-                                            Se envía por email tras suscribirse.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()
-                }
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 gap-12">
             <!-- Tabla de Cupones Recientes -->
             <div
                 class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-sm"
             >
                 <div
-                    class="p-6 border-b border-slate-50 flex justify-between items-center"
+                    class="p-8 border-b border-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
                 >
-                    <h2 class="font-bold text-slate-800">Cupones Recientes</h2>
-                    {
-                        cupones && cupones.length === 0 && (
-                            <span class="text-[10px] bg-amber-50 text-amber-600 px-2 py-1 rounded">
-                                DEBUG: 0 cupones en DB
-                            </span>
-                        )
-                    }
-                    {
-                        errCupones && (
-                            <span class="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded">
-                                ERROR: {errCupones.message}
-                            </span>
-                        )
-                    }
-                    <div class="flex items-center gap-4">
+                    <div>
+                        <h2
+                            class="font-serif text-2xl text-slate-900 tracking-tight"
+                        >
+                            Cupones Recientes
+                        </h2>
+                        <p
+                            class="text-[10px] text-slate-400 font-extrabold uppercase tracking-[0.2em] mt-1"
+                        >
+                            Últimos códigos generados
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
                         <button
                             id="delete-selected-btn"
-                            class="hidden bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all border border-red-200 shadow-sm"
+                            class="hidden bg-red-50 text-red-600 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all border border-red-200 shadow-sm"
                         >
-                            Borrar seleccionados (<span id="selected-count"
-                                >0</span
-                            >)
+                            Borrar (<span id="selected-count">0</span>)
                         </button>
-                        <a
-                            href="#"
-                            class="text-brand-gold font-bold text-xs uppercase hover:underline"
-                            >Ver todos</a
+
+                        <button
+                            id="open-create-coupon-modal"
+                            class="bg-brand-gold text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] hover:bg-yellow-600 transition-all shadow-xl shadow-brand-gold/30 flex items-center gap-2"
                         >
+                            <span class="text-lg leading-none">+</span> Nuevo
+                        </button>
+
+                        <a
+                            href="/admin/cupones/todos"
+                            class="border-2 border-slate-50 text-slate-400 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] hover:border-brand-gold hover:text-brand-gold transition-all flex items-center"
+                        >
+                            Ver Todos
+                        </a>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50/50">
                             <tr>
-                                <th class="px-6 py-3 w-10">
+                                <th class="w-12 px-6 py-4">
                                     <input
                                         type="checkbox"
                                         id="select-all-coupons"
@@ -376,20 +186,28 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                     />
                                 </th>
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em]"
                                     >Código</th
                                 >
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em]"
                                     >Descuento</th
                                 >
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
-                                    >Regla</th
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em]"
+                                    >Regla Asociada</th
                                 >
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em]"
+                                    >Público/Exclusivo</th
+                                >
+                                <th
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em] text-center"
                                     >Estado</th
+                                >
+                                <th
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em] text-right"
+                                    >Acciones</th
                                 >
                             </tr>
                         </thead>
@@ -398,11 +216,13 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                 (!cupones || cupones.length === 0) && (
                                     <tr>
                                         <td
-                                            colspan="3"
-                                            class="px-6 py-10 text-center text-slate-400"
+                                            colspan="5"
+                                            class="px-6 py-20 text-center"
                                         >
-                                            No se encontraron cupones en la base
-                                            de datos.
+                                            <p class="text-[11px] text-slate-400 font-medium italic">
+                                                No se encontraron cupones en la
+                                                base de datos.
+                                            </p>
                                         </td>
                                     </tr>
                                 )
@@ -431,7 +251,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                                 <option value="">
                                                     Sin Regla
                                                 </option>
-                                                {reglas?.map((r) => (
+                                                {reglas?.map((r: any) => (
                                                     <option
                                                         value={r.id}
                                                         selected={
@@ -445,23 +265,70 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                             </select>
                                         </td>
                                         <td class="px-6 py-4">
-                                            {cupon.usado ? (
-                                                <span class="text-slate-400 line-through">
-                                                    Usado
+                                            {cupon.es_publico ? (
+                                                <span class="bg-brand-gold/10 text-brand-gold px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter border border-brand-gold/20">
+                                                    Público
+                                                </span>
+                                            ) : cupon.cliente_id ? (
+                                                <span class="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter border border-blue-100">
+                                                    Exclusivo
                                                 </span>
                                             ) : (
-                                                <span
-                                                    class={`font-bold ${new Date(cupon.fecha_expiracion) < new Date() ? "text-red-400" : "text-green-500"}`}
-                                                >
-                                                    {new Date(
-                                                        cupon.fecha_expiracion,
-                                                    ) < new Date()
-                                                        ? "Expirado"
-                                                        : "Activo"}
+                                                <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter border border-slate-200">
+                                                    Segmento
                                                 </span>
                                             )}
                                         </td>
-                                        <td class="px-6 py-4 text-right">
+                                        <td class="px-6 py-4 text-center">
+                                            <button
+                                                class="toggle-coupon-active px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter border transition-all"
+                                                class:list={[
+                                                    cupon.activo
+                                                        ? "bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
+                                                        : "bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100",
+                                                ]}
+                                                data-id={cupon.id}
+                                                data-active={cupon.activo.toString()}
+                                            >
+                                                {cupon.activo
+                                                    ? "Activo"
+                                                    : "Inactivo"}
+                                            </button>
+                                        </td>
+                                        <td class="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                            {(cupon.regla_id ||
+                                                cupon.es_publico) &&
+                                                !cupon.usado && (
+                                                    <button
+                                                        type="button"
+                                                        class="propagate-coupon-btn p-1 text-brand-gold hover:text-yellow-600 transition-colors"
+                                                        data-id={cupon.id}
+                                                        data-rule-id={
+                                                            cupon.regla_id ||
+                                                            "all"
+                                                        }
+                                                        title={
+                                                            cupon.es_publico &&
+                                                            !cupon.regla_id
+                                                                ? "Enviar a todos los clientes"
+                                                                : "Distribuir a este segmento ahora"
+                                                        }
+                                                    >
+                                                        <svg
+                                                            class="w-4 h-4"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                stroke-linecap="round"
+                                                                stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                                                            />
+                                                        </svg>
+                                                    </button>
+                                                )}
                                             {!cupon.usado && (
                                                 <button
                                                     type="button"
@@ -498,54 +365,87 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-sm"
             >
                 <div
-                    class="p-6 border-b border-slate-50 flex justify-between items-center"
+                    class="p-8 border-b border-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
                 >
-                    <h2 class="font-bold text-slate-800">
-                        Reglas de Fidelización
-                    </h2>
-                    <div class="flex items-center gap-4">
+                    <div>
+                        <h2
+                            class="font-serif text-2xl text-slate-900 tracking-tight"
+                        >
+                            Reglas de Fidelización
+                        </h2>
+                        <p
+                            class="text-[10px] text-slate-400 font-extrabold uppercase tracking-[0.2em] mt-1"
+                        >
+                            Automatización de premios
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
                         <button
                             id="delete-selected-rules-btn"
-                            class="hidden bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all border border-red-200 shadow-sm"
+                            class="hidden bg-red-50 text-red-600 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all border border-red-200 shadow-sm"
                         >
-                            Borrar Seleccionadas (<span
-                                id="selected-rules-count">0</span
-                            >)
+                            Borrar (<span id="selected-rules-count">0</span>)
                         </button>
+
                         <button
-                            id="run-automations"
-                            class="text-brand-gold font-bold text-xs uppercase hover:underline"
-                            >Ejecutar Ahora</button
+                            id="open-create-rule-modal"
+                            class="bg-brand-gold text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] hover:bg-yellow-600 transition-all shadow-xl shadow-brand-gold/30 flex items-center gap-2"
                         >
+                            <span class="text-lg leading-none">+</span> Nueva
+                        </button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50/50">
                             <tr>
+                                <th class="w-12 px-6 py-4">
+                                    <input
+                                        type="checkbox"
+                                        id="select-all-rules"
+                                        class="rounded border-slate-300 text-brand-gold focus:ring-brand-gold"
+                                    />
+                                </th>
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em]"
                                     >Regla</th
                                 >
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em]"
                                     >Tipo</th
                                 >
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px]"
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em]"
                                     >Vigencia</th
                                 >
                                 <th
-                                    class="px-6 py-3 font-bold text-slate-500 uppercase text-[10px] text-right"
+                                    class="px-6 py-4 font-black text-slate-400 uppercase text-[9px] tracking-[0.2em] text-right"
                                     >Status</th
                                 >
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
                             {
-                                reglas?.map((regla) => (
-                                    <tr class="hover:bg-slate-50/50 transition-colors">
-                                        <td class="px-6 py-4">
+                                reglas?.map((regla: any) => (
+                                    <tr
+                                        class="rule-row group hover:bg-slate-50/50 transition-colors cursor-pointer"
+                                        data-id={regla.id}
+                                        data-nombre={regla.nombre}
+                                        data-tipo={regla.tipo_regla}
+                                        data-monto={regla.monto_minimo}
+                                        data-numero={regla.numero_minimo}
+                                        data-periodo={regla.periodo_dias}
+                                        data-descuento={
+                                            regla.descuento_porcentaje
+                                        }
+                                        data-validez={regla.dias_validez}
+                                        data-activa={regla.activa.toString()}
+                                    >
+                                        <td
+                                            class="px-6 py-4"
+                                            onclick="event.stopPropagation()"
+                                        >
                                             <input
                                                 type="checkbox"
                                                 class="rule-checkbox rounded border-slate-300 text-brand-gold focus:ring-brand-gold"
@@ -553,13 +453,35 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                             />
                                         </td>
                                         <td class="px-6 py-4">
-                                            <span class="font-bold text-slate-700">
-                                                {regla.nombre}
-                                            </span>
-                                            <p class="text-[10px] text-slate-400">
-                                                {regla.descuento_porcentaje}%
-                                                Descuento
-                                            </p>
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-bold text-slate-700">
+                                                    {regla.nombre}
+                                                </span>
+                                                {(regla.nombre ===
+                                                    "BIENVENIDA_REGISTRO" ||
+                                                    regla.nombre ===
+                                                        "BIENVENIDA_NEWSLETTER") && (
+                                                    <span class="text-[8px] bg-brand-gold/10 text-brand-gold px-1.5 py-0.5 rounded font-black uppercase tracking-tighter border border-brand-gold/20">
+                                                        Sistema
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-1 mt-1"
+                                                onclick="event.stopPropagation()"
+                                            >
+                                                <input
+                                                    type="number"
+                                                    value={
+                                                        regla.descuento_porcentaje
+                                                    }
+                                                    data-id={regla.id}
+                                                    class="update-discount-input w-12 px-1 py-0.5 bg-slate-50 border border-slate-100 rounded text-[10px] font-black text-slate-600 outline-none focus:ring-1 focus:ring-brand-gold/30"
+                                                />
+                                                <span class="text-[10px] font-bold text-slate-400">
+                                                    % Desc.
+                                                </span>
+                                            </div>
                                         </td>
                                         <td class="px-6 py-4">
                                             <div class="flex flex-col gap-1">
@@ -592,6 +514,21 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                                             "numero_compras"
                                                         )
                                                             return `Mínimo: ${num} pedidos`;
+                                                        if (
+                                                            regla.tipo_regla ===
+                                                            "primera_compra"
+                                                        )
+                                                            return "Sin compras previas";
+                                                        if (
+                                                            regla.tipo_regla ===
+                                                            "antiguedad"
+                                                        )
+                                                            return `${regla.periodo_dias} días reg.`;
+                                                        if (
+                                                            regla.tipo_regla ===
+                                                            "publico"
+                                                        )
+                                                            return "Uso general";
                                                         return "Sin condición";
                                                     })()}
                                                 </p>
@@ -600,7 +537,10 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                         <td class="px-6 py-4 text-slate-500">
                                             {regla.dias_validez} días
                                         </td>
-                                        <td class="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                        <td
+                                            class="px-6 py-4 text-right flex items-center justify-end gap-3"
+                                            onclick="event.stopPropagation()"
+                                        >
                                             <button
                                                 type="button"
                                                 data-id={regla.id}
@@ -652,38 +592,45 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
 
     <script>
         // 1. Ejecutar Automatización (Manual Trigger)
-        const runBtn = document.getElementById("run-automations");
-        runBtn?.addEventListener("click", async () => {
-            if (
-                !confirm(
-                    "Esto analizará a todos los clientes y enviará emails a los elegibles según las reglas activas. ¿Continuar?",
+        // 1. Propagación de Cupón a Segmento
+        document.querySelectorAll(".propagate-coupon-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const couponId = btn.getAttribute("data-id");
+                const ruleId = btn.getAttribute("data-rule-id");
+
+                if (!couponId || !ruleId) return;
+
+                if (
+                    !confirm(
+                        "¿Quieres enviar y notificar este cupón a todos los clientes que cumplen esta regla ahora?",
+                    )
                 )
-            )
-                return;
+                    return;
 
-            const originalText = runBtn.innerText;
-            runBtn.innerText = "Procesando...";
-            runBtn.setAttribute("disabled", "true");
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                btn.setAttribute("disabled", "true");
 
-            try {
-                const res = await fetch("/api/coupons/auto", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({}),
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert("Automatización completada con éxito.");
-                    location.reload();
-                } else {
-                    alert("Error: " + data.error);
+                try {
+                    const res = await fetch("/api/coupons/auto", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ couponId, ruleId }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                } catch (e) {
+                    alert("Error de conexión");
+                } finally {
+                    btn.innerHTML = originalHTML;
+                    btn.removeAttribute("disabled");
                 }
-            } catch (e) {
-                alert("Error conectando con el servidor");
-            } finally {
-                runBtn.innerText = originalText;
-                runBtn.removeAttribute("disabled");
-            }
+            });
         });
 
         // 2. Selección Múltiple de Cupones
@@ -774,6 +721,33 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                         body: JSON.stringify({
                             action: "delete-coupon",
                             data: { id },
+                        }),
+                    });
+                    const result = await res.json();
+                    if (result.success) window.location.reload();
+                    else window.alert("Error: " + result.error);
+                } catch (e) {
+                    window.alert("Error de conexión");
+                }
+            });
+        });
+
+        // 3. Toggle Estado de Cupón
+        document.querySelectorAll(".toggle-coupon-active").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                const id = btn.getAttribute("data-id");
+                const currentActive =
+                    btn.getAttribute("data-active") === "true";
+                if (!id) return;
+
+                try {
+                    const res = await fetch("/api/coupons/manage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "toggle-coupon",
+                            data: { id, activo: !currentActive },
                         }),
                     });
                     const result = await res.json();
@@ -932,7 +906,10 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 const res = await fetch("/api/coupons/manage", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "purge-all", data: {} }),
+                    body: JSON.stringify({
+                        action: "purge-all",
+                        data: {},
+                    }),
                 });
                 const result = await res.json();
                 if (result.success) window.location.reload();
@@ -954,7 +931,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 try {
                     const res = await fetch("/api/coupons/manage", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
                         body: JSON.stringify({
                             action: "update-coupon-rule",
                             data: { couponId, reglaId },
@@ -982,10 +961,15 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 try {
                     const res = await fetch("/api/coupons/manage", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
                         body: JSON.stringify({
                             action: "update-rule-discount",
-                            data: { id, descuento_porcentaje: descuento },
+                            data: {
+                                id,
+                                descuento_porcentaje: descuento,
+                            },
                         }),
                     });
                     const result = await res.json();
@@ -1015,7 +999,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 try {
                     const res = await fetch("/api/coupons/manage", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
                         body: JSON.stringify({
                             action: "toggle-rule",
                             data: { id, activa: !currentActive },
@@ -1029,5 +1015,961 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 }
             });
         });
+
+        // 9. Modal de Edición de Regla
+        const editModal = document.getElementById("edit-rule-modal");
+        const editForm = document.getElementById(
+            "edit-rule-form",
+        ) as HTMLFormElement;
+        const closeModalBtn = document.getElementById("close-modal");
+        const cancelEditBtn = document.getElementById("cancel-edit");
+
+        const openModal = (ruleData: any) => {
+            if (!editModal || !editForm) return;
+
+            (
+                document.getElementById("edit-rule-id") as HTMLInputElement
+            ).value = ruleData.id;
+            (
+                document.getElementById("edit-rule-nombre") as HTMLInputElement
+            ).value = ruleData.nombre;
+            (
+                document.getElementById("edit-rule-tipo") as HTMLSelectElement
+            ).value = ruleData.tipo;
+            (
+                document.getElementById("edit-rule-activa") as HTMLInputElement
+            ).checked = ruleData.activa === "true";
+
+            const valorInput = document.getElementById(
+                "edit-rule-valor",
+            ) as HTMLInputElement;
+            const periodoInput = document.getElementById(
+                "edit-rule-periodo-dias",
+            ) as HTMLInputElement;
+
+            // Set values based on type
+            if (ruleData.tipo === "numero_compras") {
+                valorInput.value = ruleData.numero;
+            } else {
+                valorInput.value = (parseInt(ruleData.monto) / 100).toString();
+            }
+            periodoInput.value = ruleData.periodo || "0";
+
+            updateModalFields(ruleData.tipo);
+
+            editModal.classList.remove("hidden");
+        };
+
+        const updateModalFields = (tipo: string) => {
+            const valorContainer = document.getElementById(
+                "edit-rule-valor-container",
+            );
+            const valorLabel = document.getElementById("edit-rule-valor-label");
+            const periodContainer = document.getElementById(
+                "edit-rule-periodo-dias-container",
+            );
+            const periodLabel = document.getElementById(
+                "edit-rule-periodo-label",
+            );
+
+            if (tipo === "gasto_periodo") {
+                periodContainer?.classList.remove("hidden");
+                valorContainer?.classList.remove(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel) valorLabel.innerText = "Gasto Acumulado (€)";
+                if (periodLabel)
+                    periodLabel.innerText = "Periodo Evaluado (Días)";
+            } else if (tipo === "gasto_total") {
+                periodContainer?.classList.add("hidden");
+                valorContainer?.classList.remove(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel)
+                    valorLabel.innerText = "Gasto Total Histórico (€)";
+            } else if (tipo === "antiguedad") {
+                periodContainer?.classList.remove("hidden");
+                valorContainer?.classList.add(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (periodLabel)
+                    periodLabel.innerText = "Días desde el registro";
+                if (valorLabel) valorLabel.innerText = "No aplica";
+            } else if (tipo === "primera_compra" || tipo === "publico") {
+                periodContainer?.classList.add("hidden");
+                valorContainer?.classList.add(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel) valorLabel.innerText = "No aplica";
+            } else {
+                periodContainer?.classList.add("hidden");
+                valorContainer?.classList.remove(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel)
+                    valorLabel.innerText =
+                        tipo === "compra_minima"
+                            ? "Gasto Mínimo (€)"
+                            : "Nº de Pedidos";
+            }
+        };
+
+        // Listen for type changes in modal
+        document
+            .getElementById("edit-rule-tipo")
+            ?.addEventListener("change", (e) => {
+                updateModalFields((e.target as HTMLSelectElement).value);
+            });
+
+        // Click row to edit
+        document.querySelectorAll(".rule-row").forEach((row) => {
+            row.addEventListener("click", () => {
+                const data = (row as HTMLElement).dataset;
+                openModal(data);
+            });
+        });
+
+        const closeModal = () => editModal?.classList.add("hidden");
+        closeModalBtn?.addEventListener("click", closeModal);
+        cancelEditBtn?.addEventListener("click", closeModal);
+        editModal?.addEventListener("click", (e) => {
+            if (e.target === editModal) closeModal();
+        });
+
+        editForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+            const id = formData.get("id");
+            const tipo = formData.get("tipo_regla") as string;
+            const valor = parseInt(formData.get("valor_minimo") as string);
+
+            const submitData = {
+                id,
+                nombre: formData.get("nombre"),
+                tipo_regla: tipo,
+                activa: formData.get("activa") === "on",
+                monto_minimo:
+                    tipo === "compra_minima" ||
+                    tipo === "gasto_periodo" ||
+                    tipo === "gasto_total"
+                        ? Math.max(0, (valor || 0) * 100)
+                        : 0,
+                numero_minimo:
+                    tipo === "numero_compras" ? Math.max(0, valor || 0) : 0,
+                periodo_dias:
+                    parseInt(formData.get("periodo_dias") as string) || 0,
+            };
+
+            try {
+                const res = await fetch("/api/coupons/manage", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "update-rule",
+                        data: submitData,
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) location.reload();
+                else alert("Error: " + result.error);
+            } catch (err) {
+                alert("Error de conexión");
+            }
+        });
+
+        // 10. Modal Crear Cupón Manual
+        const createCouponModal = document.getElementById(
+            "create-coupon-modal",
+        );
+        const createCouponForm = document.getElementById(
+            "create-coupon-form",
+        ) as HTMLFormElement;
+        const openCreateCouponBtn = document.getElementById(
+            "open-create-coupon-modal",
+        );
+        const closeCreateCouponBtn = document.getElementById(
+            "close-create-coupon-modal",
+        );
+
+        openCreateCouponBtn?.addEventListener("click", () =>
+            createCouponModal?.classList.remove("hidden"),
+        );
+        closeCreateCouponBtn?.addEventListener("click", () =>
+            createCouponModal?.classList.add("hidden"),
+        );
+
+        // Toggle de objetivo en creación de cupón
+        const targetRadios = createCouponForm?.querySelectorAll(
+            'input[name="target_mode"]',
+        );
+        const targetSections: any = {
+            public: document.getElementById("target-section-public"),
+            specific: document.getElementById("target-section-specific"),
+            segment: document.getElementById("target-section-segment"),
+        };
+
+        targetRadios?.forEach((radio) => {
+            radio.addEventListener("change", (e) => {
+                const val = (e.target as HTMLInputElement).value;
+                Object.keys(targetSections).forEach((k) => {
+                    targetSections[k]?.classList.toggle("hidden", k !== val);
+                });
+            });
+        });
+
+        // Buscador de clientes en modal
+        const clientSearchInModal = document.getElementById(
+            "client-search-modal",
+        ) as HTMLInputElement;
+        const clientItemsInModal =
+            document.querySelectorAll(".client-item-modal");
+        const hiddenSelectInModal = createCouponForm?.querySelector(
+            'select[name="cliente_ids"]',
+        ) as HTMLSelectElement;
+
+        clientSearchInModal?.addEventListener("input", (e) => {
+            const term = (e.target as HTMLInputElement).value.toLowerCase();
+            clientItemsInModal.forEach((item) => {
+                const searchData = (item as HTMLElement).dataset.search || "";
+                (item as HTMLElement).classList.toggle(
+                    "hidden",
+                    !searchData.includes(term),
+                );
+            });
+        });
+
+        clientItemsInModal.forEach((item) => {
+            item.addEventListener("click", () => {
+                const id = (item as HTMLElement).dataset.id;
+                const option = hiddenSelectInModal.querySelector(
+                    `option[value="${id}"]`,
+                ) as HTMLOptionElement;
+                option.selected = !option.selected;
+                item.classList.toggle("bg-brand-gold/5");
+                item.classList.toggle("border-brand-gold");
+                item.querySelector(
+                    ".selection-indicator-modal",
+                )?.classList.toggle("hidden");
+            });
+        });
+
+        createCouponForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(createCouponForm);
+            const mode = formData.get("target_mode");
+
+            let cliente_ids = null;
+            let regla_id = null;
+
+            if (mode === "specific") {
+                cliente_ids = Array.from(
+                    hiddenSelectInModal.selectedOptions,
+                ).map((o) => o.value);
+                if (cliente_ids.length === 0)
+                    return alert("Selecciona al menos un cliente");
+            } else if (mode === "segment") {
+                regla_id = formData.get("regla_id");
+                if (!regla_id) return alert("Selecciona una regla");
+            }
+
+            const validez = parseInt(formData.get("validez") as string);
+            const exp = new Date();
+            exp.setDate(exp.getDate() + validez);
+
+            try {
+                const res = await fetch("/api/coupons/manage", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "create-coupon",
+                        data: {
+                            codigo: (formData.get("codigo") as string)
+                                .toUpperCase()
+                                .trim(),
+                            descuento_porcentaje: parseInt(
+                                formData.get("descuento") as string,
+                            ),
+                            fecha_expiracion: exp.toISOString(),
+                            es_publico: formData.get("es_publico") === "on",
+                            cliente_ids,
+                            regla_id,
+                            generado_por: "manual",
+                        },
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) location.reload();
+                else alert("Error: " + result.error);
+            } catch (err) {
+                alert("Error de conexión");
+            }
+        });
+
+        // 11. Modal Crear Regla
+        const createRuleModal = document.getElementById("create-rule-modal");
+        const createRuleForm = document.getElementById(
+            "create-rule-form",
+        ) as HTMLFormElement;
+        const openCreateRuleBtn = document.getElementById(
+            "open-create-rule-modal",
+        );
+        const closeCreateRuleBtn = document.getElementById(
+            "close-create-rule-modal",
+        );
+
+        openCreateRuleBtn?.addEventListener("click", () =>
+            createRuleModal?.classList.remove("hidden"),
+        );
+        closeCreateRuleBtn?.addEventListener("click", () =>
+            createRuleModal?.classList.add("hidden"),
+        );
+
+        const updateCreateFields = (tipo: string) => {
+            const valorLabel = document.getElementById(
+                "create-rule-valor-label",
+            );
+            const periodContainer = document.getElementById(
+                "create-rule-periodo-dias-container",
+            );
+            const valorContainer = document.getElementById(
+                "create-rule-valor-container",
+            );
+
+            const periodLabel = document.getElementById(
+                "create-rule-periodo-label",
+            );
+
+            if (tipo === "gasto_periodo") {
+                periodContainer?.classList.remove("hidden");
+                valorContainer?.classList.remove(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel) valorLabel.innerText = "Gasto Acumulado (€)";
+                if (periodLabel)
+                    periodLabel.innerText = "Periodo Evaluado (Días)";
+            } else if (tipo === "gasto_total") {
+                periodContainer?.classList.add("hidden");
+                valorContainer?.classList.remove(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel)
+                    valorLabel.innerText = "Gasto Total Histórico (€)";
+            } else if (tipo === "antiguedad") {
+                periodContainer?.classList.remove("hidden");
+                valorContainer?.classList.add(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (periodLabel)
+                    periodLabel.innerText = "Días desde el registro";
+                if (valorLabel) valorLabel.innerText = "No aplica";
+            } else if (tipo === "primera_compra" || tipo === "publico") {
+                periodContainer?.classList.add("hidden");
+                valorContainer?.classList.add(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel) valorLabel.innerText = "No aplica";
+            } else {
+                periodContainer?.classList.add("hidden");
+                valorContainer?.classList.remove(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (valorLabel)
+                    valorLabel.innerText =
+                        tipo === "compra_minima"
+                            ? "Gasto Mínimo (€)"
+                            : "Nº de Pedidos";
+            }
+        };
+
+        document
+            .getElementById("create-rule-tipo")
+            ?.addEventListener("change", (e) => {
+                updateCreateFields((e.target as HTMLSelectElement).value);
+            });
+
+        createRuleForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(createRuleForm);
+            const tipo = formData.get("tipo_regla") as string;
+            const valor = parseInt(formData.get("valor_minimo") as string);
+
+            try {
+                const res = await fetch("/api/coupons/manage", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "create-rule",
+                        data: {
+                            nombre: formData.get("nombre"),
+                            tipo_regla: tipo,
+                            monto_minimo:
+                                tipo === "compra_minima" ||
+                                tipo === "gasto_periodo" ||
+                                tipo === "gasto_total"
+                                    ? Math.max(0, (valor || 0) * 100)
+                                    : 0,
+                            numero_minimo:
+                                tipo === "numero_compras"
+                                    ? Math.max(1, valor || 0)
+                                    : 0,
+                            periodo_dias:
+                                parseInt(
+                                    formData.get("periodo_dias") as string,
+                                ) || 0,
+                        },
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) location.reload();
+                else alert("Error: " + result.error);
+            } catch (err) {
+                alert("Error de conexión");
+            }
+        });
     </script>
+
+    <!-- Modal Nuevo Cupón Manual -->
+    <div
+        id="create-coupon-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    >
+        <div
+            class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+        >
+            <header
+                class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50"
+            >
+                <h3
+                    class="text-lg font-black text-slate-800 uppercase tracking-tighter"
+                >
+                    Generar <span class="text-brand-gold italic"
+                        >Cupón Manual</span
+                    >
+                </h3>
+                <button
+                    id="close-create-coupon-modal"
+                    class="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </header>
+
+            <form
+                id="create-coupon-form"
+                class="p-8 space-y-5 max-h-[80vh] overflow-y-auto custom-scrollbar"
+            >
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label
+                            class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                            >Código del Cupón</label
+                        >
+                        <input
+                            type="text"
+                            name="codigo"
+                            required
+                            placeholder="EJ: VIP25"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none uppercase font-mono font-bold text-slate-700"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                            >Descuento (%)</label
+                        >
+                        <input
+                            type="number"
+                            name="descuento"
+                            min="1"
+                            max="100"
+                            required
+                            value="10"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none font-bold text-slate-700"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                            >Validez (Días)</label
+                        >
+                        <input
+                            type="number"
+                            name="validez"
+                            required
+                            value="30"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none font-bold text-slate-700"
+                        />
+                    </div>
+                </div>
+
+                <div class="space-y-4 pt-4 border-t border-slate-50">
+                    <label
+                        class="block text-[10px] font-black uppercase text-slate-400 tracking-widest"
+                        >Objetivo del Cupón</label
+                    >
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer">
+                            <input
+                                type="radio"
+                                name="target_mode"
+                                value="public"
+                                checked
+                                class="hidden peer"
+                            />
+                            <div
+                                class="p-3 text-center border border-slate-100 rounded-xl peer-checked:border-brand-gold peer-checked:bg-brand-gold/5 peer-checked:text-brand-gold transition-all text-[10px] font-black uppercase"
+                            >
+                                General (Todos)
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input
+                                type="radio"
+                                name="target_mode"
+                                value="specific"
+                                class="hidden peer"
+                            />
+                            <div
+                                class="p-3 text-center border border-slate-100 rounded-xl peer-checked:border-brand-gold peer-checked:bg-brand-gold/5 peer-checked:text-brand-gold transition-all text-[10px] font-black uppercase"
+                            >
+                                Clientes
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input
+                                type="radio"
+                                name="target_mode"
+                                value="segment"
+                                class="hidden peer"
+                            />
+                            <div
+                                class="p-3 text-center border border-slate-100 rounded-xl peer-checked:border-brand-gold peer-checked:bg-brand-gold/5 peer-checked:text-brand-gold transition-all text-[10px] font-black uppercase"
+                            >
+                                Segmento
+                            </div>
+                        </label>
+                    </div>
+
+                    <div
+                        id="target-section-public"
+                        class="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center"
+                    >
+                        <p
+                            class="text-[10px] text-slate-400 font-bold uppercase italic tracking-tighter"
+                        >
+                            Abierto a toda tu base de clientes registrados
+                        </p>
+                    </div>
+
+                    <div id="target-section-specific" class="hidden space-y-3">
+                        <input
+                            type="text"
+                            id="client-search-modal"
+                            placeholder="Buscar cliente..."
+                            class="w-full px-4 py-2 bg-white border border-slate-100 rounded-xl text-xs outline-none"
+                        />
+                        <div
+                            class="max-h-40 overflow-y-auto divide-y divide-slate-50 border border-slate-50 rounded-xl bg-white shadow-inner"
+                        >
+                            {
+                                users?.map((u: any) => (
+                                    <div
+                                        class="client-item-modal flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-all border-l-4 border-transparent"
+                                        data-id={u.id}
+                                        data-search={`${u.nombre} ${u.email}`.toLowerCase()}
+                                    >
+                                        <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-[9px] font-black text-slate-500 uppercase">
+                                            {u.nombre?.charAt(0) ||
+                                                u.email?.charAt(0)}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[10px] font-bold text-slate-800 truncate">
+                                                {(u as any).nombre}
+                                            </p>
+                                            <p class="text-[8px] text-slate-400 truncate">
+                                                {(u as any).email}
+                                            </p>
+                                        </div>
+                                        <div class="selection-indicator-modal hidden">
+                                            <svg
+                                                class="w-4 h-4 text-brand-gold"
+                                                fill="currentColor"
+                                                viewBox="0 0 20 20"
+                                            >
+                                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                        <select name="cliente_ids" multiple class="hidden">
+                            {
+                                users?.map((u: any) => (
+                                    <option value={(u as any).id}>
+                                        {(u as any).email}
+                                    </option>
+                                ))
+                            }
+                        </select>
+                    </div>
+
+                    <div id="target-section-segment" class="hidden">
+                        <select
+                            name="regla_id"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none"
+                        >
+                            <option value="">-- Seleccionar Regla --</option>
+                            {
+                                reglas?.map((r: any) => (
+                                    <option value={(r as any).id}>
+                                        {(r as any).nombre}
+                                    </option>
+                                ))
+                            }
+                        </select>
+                    </div>
+
+                    <div
+                        class="flex items-center gap-3 p-4 bg-brand-gold/5 rounded-2xl border border-brand-gold/10"
+                    >
+                        <label
+                            class="relative inline-flex items-center cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                name="es_publico"
+                                class="sr-only peer"
+                            />
+                            <div
+                                class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-gold"
+                            >
+                            </div>
+                        </label>
+                        <div class="flex flex-col">
+                            <span
+                                class="text-[9px] font-black uppercase text-slate-800"
+                                >¿Permitir uso múltiple? (Masivo)</span
+                            >
+                            <span class="text-[8px] text-slate-400"
+                                >Si se activa, el código no se quema. Permite un
+                                uso por cada cliente del grupo objetivo.</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6 flex gap-3">
+                    <button
+                        type="submit"
+                        class="w-full py-4 px-6 bg-brand-gold text-white rounded-2xl font-black uppercase tracking-widest hover:bg-yellow-600 transition-all shadow-xl shadow-brand-gold/20 text-xs"
+                        >Crear Cupón Ahora</button
+                    >
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Regla -->
+    <div
+        id="create-rule-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    >
+        <div
+            class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+        >
+            <header
+                class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50"
+            >
+                <h3
+                    class="text-lg font-black text-slate-800 uppercase tracking-tighter"
+                >
+                    Crear <span class="text-brand-gold italic"
+                        >Regla Automática</span
+                    >
+                </h3>
+                <button
+                    id="close-create-rule-modal"
+                    class="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </header>
+
+            <form id="create-rule-form" class="p-8 space-y-4">
+                <div class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                            >Nombre de la Regla</label
+                        >
+                        <input
+                            type="text"
+                            name="nombre"
+                            required
+                            placeholder="Ej: Cliente Fiel"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none text-sm font-bold text-slate-700"
+                        />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                                >Condición de Activación</label
+                            >
+                            <select
+                                name="tipo_regla"
+                                id="create-rule-tipo"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-gold/20 transition-all"
+                            >
+                                <option value="numero_compras"
+                                    >Nº Compras Totales</option
+                                >
+                                <option value="compra_minima"
+                                    >Gasto Mínimo en Pedido</option
+                                >
+                                <option value="primera_compra"
+                                    >Primera Compra (Nuevos)</option
+                                >
+                                <option value="antiguedad"
+                                    >Antigüedad de la Cuenta</option
+                                >
+                                <option value="gasto_periodo"
+                                    >Gasto en Periodo</option
+                                >
+                                <option value="gasto_total"
+                                    >Gasto Histórico Total</option
+                                >
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div id="create-rule-valor-container">
+                            <label
+                                id="create-rule-valor-label"
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                                >Valor Umbral (Euros o Cantidad)</label
+                            >
+                            <input
+                                type="number"
+                                name="valor_minimo"
+                                placeholder="Ej: 50"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 font-bold text-slate-700 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    <div id="create-rule-periodo-dias-container" class="hidden">
+                        <label
+                            id="create-rule-periodo-label"
+                            class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                            >Periodo Evaluado (Días)</label
+                        >
+                        <input
+                            type="number"
+                            name="periodo_dias"
+                            value="30"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 font-bold text-slate-700"
+                        />
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button
+                        type="submit"
+                        class="w-full py-4 px-6 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl text-xs"
+                        >Activar Regla Ahora</button
+                    >
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Regla -->
+    <div
+        id="edit-rule-modal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    >
+        <div
+            class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+        >
+            <header
+                class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50"
+            >
+                <h3 class="text-lg font-black text-slate-800">
+                    Editar Regla de Fidelización
+                </h3>
+                <button
+                    id="close-modal"
+                    class="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </header>
+
+            <form id="edit-rule-form" class="p-8 space-y-4">
+                <input type="hidden" name="id" id="edit-rule-id" />
+
+                <div class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                            >Nombre de la Regla</label
+                        >
+                        <input
+                            type="text"
+                            name="nombre"
+                            id="edit-rule-nombre"
+                            required
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none text-sm font-bold text-slate-700"
+                        />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                                >Tipo de Regla</label
+                            >
+                            <select
+                                name="tipo_regla"
+                                id="edit-rule-tipo"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none text-sm font-bold text-slate-700 transition-all"
+                            >
+                                <option value="numero_compras"
+                                    >Nº Compras Totales</option
+                                >
+                                <option value="compra_minima"
+                                    >Gasto Mínimo en Pedido</option
+                                >
+                                <option value="primera_compra"
+                                    >Primera Compra</option
+                                >
+                                <option value="antiguedad"
+                                    >Antigüedad Account</option
+                                >
+                                <option value="gasto_periodo"
+                                    >Gasto en Periodo</option
+                                >
+                                <option value="gasto_total"
+                                    >Gasto Histórico Total</option
+                                >
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div id="edit-rule-valor-container">
+                            <label
+                                id="edit-rule-valor-label"
+                                class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                                >Valor de Referencia</label
+                            >
+                            <input
+                                type="number"
+                                name="valor_minimo"
+                                id="edit-rule-valor"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none text-sm font-bold text-slate-700"
+                            />
+                        </div>
+                    </div>
+
+                    <div id="edit-rule-periodo-dias-container" class="hidden">
+                        <label
+                            id="edit-rule-periodo-label"
+                            class="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1"
+                            >Periodo Evaluado (Días)</label
+                        >
+                        <input
+                            type="number"
+                            name="periodo_dias"
+                            id="edit-rule-periodo-dias"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none text-sm font-bold text-slate-700"
+                        />
+                    </div>
+
+                    <div
+                        class="flex items-center gap-3 pt-4 border-t border-slate-50"
+                    >
+                        <label
+                            class="relative inline-flex items-center cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                name="activa"
+                                id="edit-rule-activa"
+                                class="sr-only peer"
+                            />
+                            <div
+                                class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-gold"
+                            >
+                            </div>
+                        </label>
+                        <span class="text-xs font-bold text-slate-500"
+                            >Regla Activa</span
+                        >
+                    </div>
+                </div>
+
+                <div class="pt-6 flex gap-3">
+                    <button
+                        type="button"
+                        id="cancel-edit"
+                        class="flex-1 py-4 px-6 border border-slate-100 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition-all text-sm"
+                        >Cancelar</button
+                    >
+                    <button
+                        type="submit"
+                        class="flex-1 py-4 px-6 bg-brand-gold text-white rounded-2xl font-bold hover:bg-yellow-600 transition-all shadow-lg shadow-brand-gold/20 text-sm"
+                        >Guardar Cambios</button
+                    >
+                </div>
+            </form>
+        </div>
+    </div>
 </AdminLayout>

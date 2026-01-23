@@ -16,6 +16,25 @@ interface Props {
 export default function AdminSidebar({ categories, pendingCount = 0, currentPath = '' }: Props) {
     const [isProductsOpen, setIsProductsOpen] = useState(currentPath.startsWith('/admin/products'));
     const [openCategories, setOpenCategories] = useState<number[]>([]);
+    const [isCollapsed, setIsCollapsed] = React.useState(false);
+
+    React.useEffect(() => {
+        // Cargar estado inicial
+        const initial = localStorage.getItem('admin-sidebar-collapsed') === 'true';
+        setIsCollapsed(initial);
+
+        const handleToggle = (e: any) => {
+            const collapsed = e.detail.collapsed;
+            setIsCollapsed(collapsed);
+            if (collapsed) {
+                setIsProductsOpen(false);
+                setOpenCategories([]);
+            }
+        };
+
+        window.addEventListener('sidebar-toggle', handleToggle);
+        return () => window.removeEventListener('sidebar-toggle', handleToggle);
+    }, []);
 
     const mainCategories = categories.filter(cat => !cat.parent_id);
     const getSubcategories = (parentId: number) => {
@@ -40,11 +59,11 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
     return (
         <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto custom-scrollbar">
             {/* Dashboard */}
-            <a href="/admin" className={`${navLinkClass} ${isActive('/admin') ? activeClass : inactiveClass}`}>
-                <svg className={`mr-3 h-5 w-5 ${isActive('/admin') ? 'text-brand-gold' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="/admin" className={`${navLinkClass} ${isActive('/admin') ? activeClass : inactiveClass}`} title={isCollapsed ? "Dashboard" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin') ? 'text-brand-gold' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
-                Dashboard
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Dashboard</span>
             </a>
 
             {/* Productos con desplegable */}
@@ -52,21 +71,24 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                 <button
                     onClick={() => setIsProductsOpen(!isProductsOpen)}
                     className={`w-full ${navLinkClass} ${!isActiveParent('/admin/products') ? inactiveClass : activeClass} justify-between`}
+                    title={isCollapsed ? "Portal de Productos" : ""}
                 >
                     <div className="flex items-center">
-                        <svg className={`mr-3 h-5 w-5 ${isActiveParent('/admin/products') ? 'text-brand-gold' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`shrink-0 h-5 w-5 ${isActiveParent('/admin/products') ? 'text-brand-gold' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        Portal de Productos
+                        <span className="sidebar-text overflow-hidden transition-all duration-300">Portal de Productos</span>
                     </div>
-                    <svg
-                        className={`h-4 w-4 transition-transform duration-300 ${isProductsOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    {!isCollapsed && (
+                        <svg
+                            className={`h-4 w-4 transition-transform duration-300 ${isProductsOpen ? 'rotate-180' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    )}
                 </button>
 
                 {isProductsOpen && (
@@ -125,18 +147,20 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                                             onClick={() => toggleCategory(category.id)}
                                             className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-500 hover:text-white rounded-md transition-colors"
                                         >
-                                            <span>{category.name}</span>
-                                            <svg className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                            </svg>
+                                            <span className="sidebar-text transition-all duration-300">{category.name}</span>
+                                            {!isCollapsed && (
+                                                <svg className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            )}
                                         </button>
                                     ) : (
                                         <a href={`/admin/products?category=${category.slug}`} className={`block px-3 py-2 text-xs font-medium transition-colors ${isSearchActive(category.slug) ? 'text-white' : 'text-slate-500 hover:text-white'}`}>
-                                            {category.name}
+                                            <span className="sidebar-text transition-all duration-300">{category.name}</span>
                                         </a>
                                     )}
 
-                                    {hasSubcategories && isOpen && (
+                                    {hasSubcategories && isOpen && !isCollapsed && (
                                         <div className="ml-3 space-y-1 border-l border-white/5 pl-2">
                                             {subcategories.map(subcat => (
                                                 <a
@@ -144,7 +168,7 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                                                     href={`/admin/products?category=${subcat.slug}`}
                                                     className={`block px-3 py-1.5 text-xs transition-colors ${isSearchActive(subcat.slug) ? 'text-brand-gold' : 'text-slate-600 hover:text-brand-gold'}`}
                                                 >
-                                                    {subcat.name}
+                                                    <span className="sidebar-text transition-all duration-300">{subcat.name}</span>
                                                 </a>
                                             ))}
                                         </div>
@@ -157,65 +181,65 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
             </div>
 
             {/* Pedidos */}
-            <a href="/admin/orders" className={`${navLinkClass} ${isActive('/admin/orders') ? activeClass : inactiveClass}`}>
-                <svg className={`mr-3 h-5 w-5 ${isActive('/admin/orders') ? 'text-white' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="/admin/orders" className={`${navLinkClass} ${isActive('/admin/orders') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Pedidos" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/orders') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
-                Gestión de Pedidos
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Pedidos</span>
             </a>
 
             {/* Consultas */}
-            <a href="/admin/inquiries" className={`${navLinkClass} ${isActive('/admin/inquiries') ? activeClass : inactiveClass} justify-between group`}>
+            <a href="/admin/inquiries" className={`${navLinkClass} ${isActive('/admin/inquiries') ? activeClass : inactiveClass} justify-between group`} title={isCollapsed ? "Consultas Clientes" : ""}>
                 <div className="flex items-center">
-                    <svg className={`mr-3 h-5 w-5 ${isActive('/admin/inquiries') ? 'text-white' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/inquiries') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
-                    Consultas Clientes
+                    <span className="sidebar-text overflow-hidden transition-all duration-300">Consultas Clientes</span>
                 </div>
                 {pendingCount > 0 && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold text-[10px] font-black text-white shadow-lg shadow-brand-gold/20 animate-bounce">
+                    <span className={`${isCollapsed ? 'absolute top-1 right-1' : ''} flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold text-[10px] font-black text-white shadow-lg shadow-brand-gold/20 animate-bounce`}>
                         {pendingCount}
                     </span>
                 )}
             </a>
 
             {/* Gestión de Cupones */}
-            <a href="/admin/cupones" className={`${navLinkClass} ${isActive('/admin/cupones') ? activeClass : inactiveClass}`}>
-                <svg className={`mr-3 h-5 w-5 ${isActive('/admin/cupones') ? 'text-white' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="/admin/cupones" className={`${navLinkClass} ${isActive('/admin/cupones') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Cupones" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/cupones') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                 </svg>
-                Gestión de Cupones
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Cupones</span>
             </a>
 
             {/* Campañas Pop-ups */}
-            <a href="/admin/popups" className={`${navLinkClass} ${isActive('/admin/popups') ? activeClass : inactiveClass}`}>
-                <svg className={`mr-3 h-5 w-5 ${isActive('/admin/popups') ? 'text-white' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="/admin/popups" className={`${navLinkClass} ${isActive('/admin/popups') ? activeClass : inactiveClass}`} title={isCollapsed ? "Campañas Pop-ups" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/popups') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                 </svg>
-                Campañas Pop-ups
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Campañas Pop-ups</span>
             </a>
 
             {/* Gestión de Ofertas */}
-            <a href="/admin/offers" className={`${navLinkClass} ${isActive('/admin/offers') ? activeClass : inactiveClass}`}>
-                <svg className={`mr-3 h-5 w-5 ${isActive('/admin/offers') ? 'text-white' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="/admin/offers" className={`${navLinkClass} ${isActive('/admin/offers') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Ofertas" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/offers') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
-                Gestión de Ofertas
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Ofertas</span>
             </a>
 
             {/* Gestión de Novedades */}
-            <a href="/admin/novedades" className={`${navLinkClass} ${isActive('/admin/novedades') ? activeClass : inactiveClass}`}>
-                <svg className={`mr-3 h-5 w-5 ${isActive('/admin/novedades') ? 'text-white' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="/admin/novedades" className={`${navLinkClass} ${isActive('/admin/novedades') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Novedades" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/novedades') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" />
                 </svg>
-                Gestión de Novedades
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Novedades</span>
             </a>
 
             {/* Ver Tienda Pública */}
             <div className="mt-auto pt-10">
-                <a href="/" target="_blank" className="flex items-center px-4 py-3 text-xs font-semibold text-slate-500 hover:text-white border-t border-white/5 group transition-colors">
-                    <span>Ver Tienda en Vivo</span>
-                    <svg className="ml-2 h-4 w-4 transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <a href="/" target="_blank" className="flex items-center px-4 py-3 text-xs font-semibold text-slate-500 hover:text-white border-t border-white/5 group transition-colors" title={isCollapsed ? "Ver Tienda" : ""}>
+                    <span className="sidebar-text transition-all duration-300">Ver Tienda en Vivo</span>
+                    <svg className={`h-4 w-4 transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform ${!isCollapsed ? 'ml-2' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
                 </a>

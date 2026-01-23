@@ -64,6 +64,17 @@ export default function ProductInquiryForm({ productId, productName }: Props) {
 
             if (msgError) throw msgError;
 
+            // Notificar al admin por email
+            fetch('/api/inquiry-notification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    inquiryId: newInquiry.id,
+                    message: formData.message,
+                    type: 'to_admin'
+                })
+            }).catch(err => console.error("Email notification failed:", err));
+
             setSubmitStatus('success');
             setFormData({ name: '', email: '', message: '' });
 

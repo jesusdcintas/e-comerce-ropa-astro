@@ -5,7 +5,7 @@ import { favoriteCount, setFavoriteCount } from '../../stores/favoriteStore';
 import { supabase } from '../../lib/supabase';
 
 interface Props {
-    type: 'cart' | 'favorite' | 'inquiry';
+    type: 'cart' | 'favorite' | 'inquiry' | 'notification' | 'coupon_notification' | 'badge';
     dark?: boolean;
 }
 
@@ -13,6 +13,8 @@ export default function HeaderCounter({ type, dark }: Props) {
     const $cartItems = useStore(cartItems);
     const $favoriteCount = useStore(favoriteCount);
     const [unreadInquiries, setUnreadInquiries] = useState(0);
+    const [unreadNotifications, setUnreadNotifications] = useState(0);
+    const [unreadCouponNotifications, setUnreadCouponNotifications] = useState(0);
     const [mounted, setMounted] = useState(false);
 
     const [isAnimating, setIsAnimating] = useState(false);
@@ -24,6 +26,10 @@ export default function HeaderCounter({ type, dark }: Props) {
             fetchFavoriteCount();
         } else if (type === 'inquiry') {
             fetchUnreadInquiries();
+        } else if (type === 'notification') {
+            fetchAllUnreadNotifications();
+        } else if (type === 'coupon_notification') {
+            fetchUnreadCouponNotifications();
         }
     }, []);
 
@@ -32,14 +38,18 @@ export default function HeaderCounter({ type, dark }: Props) {
             ? Object.values($cartItems).reduce((acc, item) => acc + item.quantity, 0)
             : type === 'favorite'
                 ? $favoriteCount
-                : unreadInquiries;
+                : type === 'notification'
+                    ? unreadNotifications
+                    : type === 'coupon_notification'
+                        ? unreadCouponNotifications
+                        : unreadInquiries;
 
         if (currentCount > prevCount.current) {
             setIsAnimating(true);
             setTimeout(() => setIsAnimating(false), 300);
         }
         prevCount.current = currentCount;
-    }, [$cartItems, $favoriteCount, unreadInquiries, type]);
+    }, [$cartItems, $favoriteCount, unreadInquiries, unreadNotifications, unreadCouponNotifications, type]);
 
     const fetchFavoriteCount = async () => {
         try {
@@ -56,15 +66,19 @@ export default function HeaderCounter({ type, dark }: Props) {
             }
         } catch (error) {
             console.error('Error fetching favorite count:', error);
-            // Silenciar el error para no romper la UI
         }
     };
 
     const fetchUnreadInquiries = async () => {
+        if (typeof window !== 'undefined' && window.location.pathname === '/mensajes') {
+            setUnreadInquiries(0);
+            return;
+        }
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (user?.email) {
-                const { data, count, error } = await supabase
+                const { count, error } = await supabase
                     .from('product_inquiries')
                     .select('*', { count: 'exact', head: true })
                     .eq('customer_email', user.email)
@@ -76,12 +90,55 @@ export default function HeaderCounter({ type, dark }: Props) {
             }
         } catch (error) {
             console.error('Error fetching unread inquiries:', error);
-            // Silenciar el error para no romper la UI
         }
     };
 
-    // Evitar hydration mismatch: no renderizar hasta que el componente esté montado
+    const fetchAllUnreadNotifications = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { count, error } = await supabase
+                    .from('notifications')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
+                    .eq('is_read', false);
+
+                if (!error && count !== null) {
+                    setUnreadNotifications(count);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching unread notifications:', error);
+        }
+    };
+
+    const fetchUnreadCouponNotifications = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { count, error } = await supabase
+                    .from('notifications')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
+                    .eq('type', 'coupon')
+                    .eq('is_read', false);
+
+                if (!error && count !== null) {
+                    setUnreadCouponNotifications(count);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching unread coupon notifications:', error);
+        }
+    };
+
     if (!mounted) return null;
+
+    if (type === 'badge') {
+        return (
+            <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+        );
+    }
 
     if (type === 'cart') {
         const totalItems = Object.values($cartItems).reduce((acc, item) => acc + item.quantity, 0);
@@ -102,6 +159,17 @@ export default function HeaderCounter({ type, dark }: Props) {
         );
     }
 
+    if (type === 'notification' || type === 'coupon_notification') {
+        const count = type === 'notification' ? unreadNotifications : unreadCouponNotifications;
+        if (count === 0) return null;
+        return (
+            <span className={`absolute -top-1 -right-1 bg-red-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'}`}>
+                {count}
+            </span>
+        );
+    }
+
+    // Favorite
     if ($favoriteCount === 0) return null;
     return (
         <span className={`absolute -top-1 -right-1 bg-brand-gold text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'}`}>

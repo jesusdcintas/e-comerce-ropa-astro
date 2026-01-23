@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
-import { generateWelcomeCoupon } from "../../../lib/coupon-system";
 
 const supabaseAdmin = createClient(
     import.meta.env.PUBLIC_SUPABASE_URL,
@@ -34,17 +33,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             if (user) userId = user.id;
         }
 
-        // 3. Generar cupón de bienvenida
-        try {
-            await generateWelcomeCoupon(email, userId);
-        } catch (couponErr) {
-            console.error("Error generating welcome coupon:", couponErr);
-            // No bloqueamos la respuesta al usuario si el email falla
-        }
-
         return new Response(JSON.stringify({
             success: true,
-            message: "¡Gracias por suscribirte! Revisa tu email para recibir tu regalo."
+            message: "¡Gracias por suscribirte a nuestra newsletter!"
         }), { status: 200 });
 
     } catch (err: any) {
