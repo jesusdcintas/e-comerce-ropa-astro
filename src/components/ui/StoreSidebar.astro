@@ -14,9 +14,9 @@ interface CategoryWithSubs {
     subcategories: Subcategory[];
 }
 
-const { currentSlug } = Astro.props;
+const { currentSlug, showBanner = true } = Astro.props;
 
-// Obtener todas las categorías para construir el árbol
+// ... (logic remains same)
 const { data: allCategories } = await supabase
     .from("categories")
     .select("*")
@@ -29,7 +29,6 @@ const categoriesTree: CategoryWithSubs[] = await Promise.all(
         let subs: Subcategory[] = [];
 
         if (cat.id === 1) {
-            // ROPA: Aplanar nivel 2
             const level2 = allCategories?.filter((c) => c.parent_id === cat.id);
             if (level2) {
                 subs =
@@ -44,7 +43,6 @@ const categoriesTree: CategoryWithSubs[] = await Promise.all(
                         })) || [];
             }
         } else if (cat.id === 2) {
-            // COMPLEMENTOS: Renombrar y aplanar
             const level2 =
                 allCategories?.filter((c) => c.parent_id === cat.id) || [];
             subs = level2
@@ -91,130 +89,180 @@ const categoriesTree: CategoryWithSubs[] = await Promise.all(
 ---
 
 <div class="space-y-8">
-    <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
-        <h3
-            class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2"
+    <div
+        class="bg-white rounded-3xl p-6 lg:p-8 border border-slate-100 shadow-sm"
+    >
+        <button
+            id="mobile-filter-toggle"
+            class="lg:hidden w-full flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-800"
         >
-            <span class="w-4 h-px bg-slate-200"></span>
-            Filtros
-        </h3>
-
-        <div class="space-y-4">
-            <!-- Ver Todo -->
-            <a
-                href="/catalogo"
-                class={`block text-sm font-bold transition-all ${!currentSlug || currentSlug === "productos" ? "text-brand-gold translate-x-1" : "text-slate-600 hover:text-brand-gold hover:translate-x-1"}`}
+            <span class="flex items-center gap-2">
+                <span class="w-4 h-px bg-brand-gold"></span>
+                Filtros de Categoría
+            </span>
+            <svg
+                class="w-4 h-4 transition-transform"
+                id="filter-arrow"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
             >
-                Todo el catálogo
-            </a>
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </button>
 
-            <div class="h-px bg-slate-50 my-2"></div>
+        <div
+            id="filter-content"
+            class="hidden lg:block mt-6 lg:mt-0 pt-6 lg:pt-0 border-t lg:border-t-0 border-slate-50"
+        >
+            <h3
+                class="hidden lg:flex text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 items-center gap-2"
+            >
+                <span class="w-4 h-px bg-slate-200"></span>
+                Filtros
+            </h3>
 
-            {
-                categoriesTree.map((cat) => {
-                    const isActive =
-                        currentSlug === cat.slug ||
-                        cat.subcategories.some((s) => s.slug === currentSlug);
+            <div class="space-y-4">
+                <!-- Ver Todo -->
+                <a
+                    href="/catalogo"
+                    class={`block text-sm font-bold transition-all ${!currentSlug || currentSlug === "productos" ? "text-brand-gold translate-x-1" : "text-slate-600 hover:text-brand-gold hover:translate-x-1"}`}
+                >
+                    Todo el catálogo
+                </a>
 
-                    return (
-                        <div class="category-group" data-slug={cat.slug}>
-                            <button
-                                type="button"
-                                class={`w-full flex items-center justify-between text-sm font-bold py-2 transition-all group ${isActive ? "text-slate-900" : "text-slate-600 hover:text-slate-900"}`}
-                                data-toggle={cat.id}
-                            >
-                                <span class="flex items-center gap-2">
-                                    <a
-                                        href={`/catalogo/${cat.slug}`}
-                                        class="hover:text-brand-gold transition-colors"
-                                    >
-                                        {cat.name}
-                                    </a>
-                                </span>
-                                <svg
-                                    class={`w-4 h-4 transition-transform duration-300 ${isActive ? "rotate-180 text-brand-gold" : "text-slate-300"}`}
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
+                <div class="h-px bg-slate-50 my-2"></div>
+
+                {
+                    categoriesTree.map((cat) => {
+                        const isActive =
+                            currentSlug === cat.slug ||
+                            cat.subcategories.some(
+                                (s) => s.slug === currentSlug,
+                            );
+
+                        return (
+                            <div class="category-group" data-slug={cat.slug}>
+                                <button
+                                    type="button"
+                                    class={`w-full flex items-center justify-between text-sm font-bold py-2 transition-all group ${isActive ? "text-slate-900" : "text-slate-600 hover:text-slate-900"}`}
+                                    data-toggle={cat.id}
                                 >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M19 9l-7 7-7-7"
-                                    />
-                                </svg>
-                            </button>
-
-                            <div
-                                id={`subs-${cat.id}`}
-                                class={`mt-2 ml-4 space-y-2 overflow-hidden transition-all duration-300 ${isActive ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}
-                            >
-                                <div class="border-l-2 border-slate-50 pl-4 py-1 space-y-1">
-                                    {cat.subcategories.map((sub) => (
+                                    <span class="flex items-center gap-2">
                                         <a
-                                            href={`/catalogo/${cat.slug}/${sub.slug}`}
-                                            class={`block text-xs font-semibold py-1.5 transition-all ${currentSlug === sub.slug ? "text-brand-gold translate-x-1" : "text-slate-400 hover:text-slate-900 hover:translate-x-1"}`}
+                                            href={`/catalogo/${cat.slug}`}
+                                            class="hover:text-brand-gold transition-colors"
                                         >
-                                            {sub.name}
+                                            {cat.name}
                                         </a>
-                                    ))}
-                                    <a
-                                        href={`/catalogo/${cat.slug}`}
-                                        class="block text-[10px] uppercase tracking-widest font-black text-slate-300 pt-2 hover:text-brand-gold"
+                                    </span>
+                                    <svg
+                                        class={`w-4 h-4 transition-transform duration-300 ${isActive ? "rotate-180 text-brand-gold" : "text-slate-300"}`}
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
                                     >
-                                        Ver todo {cat.name} →
-                                    </a>
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M19 9l-7 7-7-7"
+                                        />
+                                    </svg>
+                                </button>
+
+                                <div
+                                    id={`subs-${cat.id}`}
+                                    class={`mt-2 ml-4 space-y-2 overflow-hidden transition-all duration-300 ${isActive ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}
+                                >
+                                    <div class="border-l-2 border-slate-50 pl-4 py-1 space-y-1">
+                                        {cat.subcategories.map((sub) => (
+                                            <a
+                                                href={`/catalogo/${cat.slug}/${sub.slug}`}
+                                                class={`block text-xs font-semibold py-1.5 transition-all ${currentSlug === sub.slug ? "text-brand-gold translate-x-1" : "text-slate-400 hover:text-slate-900 hover:translate-x-1"}`}
+                                            >
+                                                {sub.name}
+                                            </a>
+                                        ))}
+                                        <a
+                                            href={`/catalogo/${cat.slug}`}
+                                            class="block text-[10px] uppercase tracking-widest font-black text-slate-300 pt-2 hover:text-brand-gold"
+                                        >
+                                            Ver todo {cat.name} →
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })
-            }
+                        );
+                    })
+                }
+            </div>
         </div>
     </div>
 
-    <!-- Banner Ayuda Premium -->
-    <div class="relative overflow-hidden group">
-        <div
-            class="absolute inset-0 bg-slate-900 rounded-3xl transition-transform duration-500 group-hover:scale-[1.02]"
-        >
-        </div>
-        <div class="relative p-8 text-white">
-            <h4 class="text-xl font-serif font-bold mb-3">¿Necesitas ayuda?</h4>
-            <p class="text-sm text-slate-400 mb-6 leading-relaxed">
-                Nuestro equipo de personal shoppers está disponible para
-                asesorarte de forma exclusiva.
-            </p>
-            <a
-                href="/ayuda"
-                class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-brand-gold hover:text-white transition-colors"
-            >
-                Contactar ahora
-                <svg
-                    class="w-4 h-4 transition-transform group-hover:translate-x-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                </svg>
-            </a>
-        </div>
-    </div>
+    {
+        showBanner && (
+            <div class="relative overflow-hidden group hidden lg:block">
+                <div class="absolute inset-0 bg-slate-900 rounded-3xl transition-transform duration-500 group-hover:scale-[1.02]"></div>
+                <div class="relative p-8 text-white">
+                    <h4 class="text-xl font-serif font-bold mb-3">
+                        ¿Necesitas ayuda?
+                    </h4>
+                    <p class="text-sm text-slate-400 mb-6 leading-relaxed">
+                        Nuestro equipo de personal shoppers está disponible para
+                        asesorarte de forma exclusiva.
+                    </p>
+                    <a
+                        href="/ayuda"
+                        class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-brand-gold hover:text-white transition-colors"
+                    >
+                        Contactar ahora
+                        <svg
+                            class="w-4 h-4 transition-transform group-hover:translate-x-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M17 8l4 4m0 0l-4 4m4-4H3"
+                            />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        )
+    }
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    function initSidebar() {
         const triggers = document.querySelectorAll("[data-toggle]");
+        const mobileToggle = document.getElementById("mobile-filter-toggle");
+        const filterContent = document.getElementById("filter-content");
+        const filterArrow = document.getElementById("filter-arrow");
+
+        if (mobileToggle && filterContent && filterArrow) {
+            mobileToggle.addEventListener("click", () => {
+                const isHidden = filterContent.classList.contains("hidden");
+                if (isHidden) {
+                    filterContent.classList.remove("hidden");
+                    filterArrow.classList.add("rotate-180");
+                } else {
+                    filterContent.classList.add("hidden");
+                    filterArrow.classList.remove("rotate-180");
+                }
+            });
+        }
 
         triggers.forEach((trigger) => {
             trigger.addEventListener("click", (e) => {
-                // If clicked on the link itself, don't toggle
                 if ((e.target as HTMLElement).tagName === "A") return;
 
                 const id = trigger.getAttribute("data-toggle");
@@ -224,7 +272,6 @@ const categoriesTree: CategoryWithSubs[] = await Promise.all(
                 if (menu && arrow) {
                     const isOpen = menu.classList.contains("max-h-[500px]");
 
-                    // Close others (opcional, user preference - usually better to keep it clean)
                     document.querySelectorAll('[id^="subs-"]').forEach((m) => {
                         m.classList.remove("max-h-[500px]", "opacity-100");
                         m.classList.add("max-h-0", "opacity-0");
@@ -245,5 +292,9 @@ const categoriesTree: CategoryWithSubs[] = await Promise.all(
                 }
             });
         });
-    });
+    }
+
+    // Inicializar en carga y en navegación de Astro
+    initSidebar();
+    document.addEventListener("astro:after-swap", initSidebar);
 </script>

@@ -12,7 +12,7 @@
 - **Pagos**: [Stripe](https://stripe.com/).
 - **Emails**: [Brevo](https://www.brevo.com/) (anteriormente Sendinblue).
 - **PDFs**: [jspdf](https://github.com/parallax/jsPDF).
-- **Deployment**: Configurado para Node.js (Vite/Node adapter).
+- **Deployment**: Configurado para Node.js (Vite/Node adapter) en modo SSR. Desplegado en **Coolify** utilizando el puerto **4321** y el script de inicio `npm run start` (`node ./dist/server/entry.mjs`).
 
 ## Decisiones Clave
 1. **Validación de Cupones en Servidor (RPC)**: Se utiliza `rpc_validate_coupon` y `rpc_consume_coupon` con `SECURITY DEFINER`. Esto centraliza las reglas de negocio, mejora la seguridad y asegura la atomicidad en el canje (evitando race conditions). La validación es estricta: aunque un usuario conozca un código, el servidor lo rechazará si no cumple la regla de segmentación asignada.
@@ -48,6 +48,7 @@
 - [ ] Refactor Estético: Evolución a Dark Mode premium avanzado.
 - [ ] Tests de estrés de concurrencia en stock.
 - [ ] Bug: Visibilidad del texto en Hero Slider en algunos navegadores específicos.
+- [ ] Funcionalidad: Permitir descarga/visualización de facturas PDF directamente desde el panel de Cliente y Admin (actualmente solo por email).
 
 ## Convenciones y Reglas del Proyecto
 - **Precios**: Siempre en **céntimos** (integer).
@@ -55,7 +56,7 @@
 - **UI**: Sin emojis; usar SVGs premium.
 
 ## Última actualización
-2026-01-23: Finalización del Sistema de Cupones 2.0 con arquitectura Target/Behavior. Corrección de lógica de redención por céntimos y blindaje de seguridad RPC. Saneamiento del sistema de notificaciones de soporte y sincronización de cupones en el perfil de usuario.
+2026-01-26: Optimización de scripts de despliegue para Coolify (puerto 4321, script start). Sincronización de variables de entorno y limpieza de advertencias en el proceso de build. Finalización del Sistema de Cupones 2.0.
 
 ## Esquema de Base de Datos y Políticas (Backup)
 
