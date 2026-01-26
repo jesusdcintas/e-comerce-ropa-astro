@@ -357,45 +357,19 @@ const statusLabels: Record<string, string> = {
                   )}
                 </div>
 
-                <div class="flex items-center gap-6">
+                <div class="flex flex-wrap items-start justify-end gap-x-12 gap-y-10">
                   {/* Siempre disponible: Recibo de compra */}
-                  <div class="flex flex-col items-end">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                      Documentación Básica
+                  <div class="flex flex-col items-center gap-3">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                      Ticket de Compra
                     </span>
-                    <button
-                      class="btn-send-ticket text-[10px] font-black text-slate-800 hover:text-brand-gold transition-colors flex items-center gap-2 uppercase tracking-[0.15em] bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm"
-                      data-order-id={order.id}
-                    >
-                      <svg
-                        class="w-3.5 h-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2.5"
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      Recibo / Ticket
-                    </button>
-                  </div>
-
-                  {/* Bajo demanda: Factura Oficial */}
-                  <div class="flex flex-col items-end">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                      Gestión Fiscal
-                    </span>
-                    {order.invoice_number ? (
+                    <div class="flex flex-col items-center gap-2">
                       <button
-                        class="btn-send-official-invoice text-[10px] font-black text-brand-gold hover:text-slate-900 transition-colors flex items-center gap-2 uppercase tracking-[0.15em] bg-brand-gold/5 px-4 py-2 rounded-xl border border-brand-gold/20"
+                        class="btn-send-ticket min-w-[170px] h-11 text-[10px] font-black text-slate-800 hover:text-brand-gold transition-colors flex items-center justify-center gap-2 uppercase tracking-[0.1em] bg-white px-6 rounded-2xl border border-slate-200 shadow-sm"
                         data-order-id={order.id}
                       >
                         <svg
-                          class="w-3.5 h-3.5"
+                          class="w-4 h-4"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -403,34 +377,87 @@ const statusLabels: Record<string, string> = {
                           <path
                             stroke-linecap="round"
                             stroke-linejoin="round"
-                            stroke-width="2.5"
+                            stroke-width="2.2"
                             d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                           />
                         </svg>
-                        Reenviar Factura
+                        Enviar al Email
                       </button>
-                    ) : (
-                      <button
-                        class="btn-request-invoice text-[10px] font-black text-white bg-slate-900 hover:bg-brand-gold transition-all flex items-center gap-2 uppercase tracking-[0.15em] px-4 py-2 rounded-xl shadow-lg shadow-slate-900/10"
-                        data-order-id={order.id}
-                        data-order-label={order.id.toString().padStart(6, "0")}
+                      <a
+                        href={`/api/orders/download-pdf?orderId=${order.id}&type=ticket`}
+                        target="_blank"
+                        class="text-[9px] font-black text-brand-gold hover:underline uppercase tracking-widest mt-1"
                       >
-                        <svg
-                          class="w-3.5 h-3.5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2.5"
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                          />
-                        </svg>
-                        Solicitar Factura
-                      </button>
-                    )}
+                        Ver PDF Online →
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Bajo demanda: Factura Oficial */}
+                  <div class="flex flex-col items-center gap-3">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                      Factura Oficial
+                    </span>
+                    <div class="flex flex-col items-center gap-2">
+                      {order.invoice_number ? (
+                        <>
+                          <button
+                            class="btn-send-official-invoice min-w-[170px] h-11 text-[10px] font-black text-brand-gold hover:text-slate-900 transition-colors flex items-center justify-center gap-2 uppercase tracking-[0.1em] bg-brand-gold/5 px-6 rounded-2xl border border-brand-gold/20"
+                            data-order-id={order.id}
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2.2"
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                              />
+                            </svg>
+                            Reenviar Factura
+                          </button>
+                          <a
+                            href={`/api/orders/download-pdf?orderId=${order.id}&type=invoice`}
+                            target="_blank"
+                            class="text-[9px] font-black text-slate-900 hover:text-brand-gold hover:underline uppercase tracking-widest mt-1"
+                          >
+                            Descargar Factura →
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            class="btn-request-invoice min-w-[170px] h-11 text-[10px] font-black text-white bg-slate-900 hover:bg-brand-gold transition-all flex items-center justify-center gap-2 uppercase tracking-[0.1em] px-6 rounded-2xl shadow-lg shadow-slate-900/10"
+                            data-order-id={order.id}
+                            data-order-label={order.id
+                              .toString()
+                              .padStart(6, "0")}
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2.2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                              />
+                            </svg>
+                            Solicitar Factura
+                          </button>
+                          <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">
+                            No generada aún
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

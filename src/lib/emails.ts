@@ -24,7 +24,7 @@ const calculateVAT = (totalCents: number, rate = 0.21) => {
 /**
  * Genera el PDF del Ticket (Recibo automático) con diseño Premium
  */
-export const generateTicketPDF = (order: any, items: any[]): string => {
+export const generateTicketPDF = (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): string | Buffer => {
   const doc = new jsPDF();
   const ticketNum = order.ticket_number || `T-${order.id.toString().padStart(6, '0')}`;
 
@@ -150,13 +150,17 @@ export const generateTicketPDF = (order: any, items: any[]): string => {
   doc.setTextColor(180, 180, 180);
   doc.text("Gracias por elegir la elegancia de Fashion Store.", 105, 285, { align: "center" });
 
+  if (outputType === 'buffer') {
+    return Buffer.from(doc.output('arraybuffer'));
+  }
+
   return doc.output('datauristring').split(',')[1];
 };
 
 /**
  * Genera el PDF de la Factura con diseño Corporativo/Premium
  */
-export const generateInvoicePDF = (order: any, items: any[]): string => {
+export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): string | Buffer => {
   const doc = new jsPDF();
   const invoiceNum = order.invoice_number || `F-${new Date().getFullYear()}-${order.id.toString().padStart(5, '0')}`;
   const fiscal = order.invoice_fiscal_data || {};
@@ -289,6 +293,10 @@ export const generateInvoicePDF = (order: any, items: any[]): string => {
   doc.text("FashionStore Studio S.L. - Inscrita en el Registro Mercantil de Madrid, Tomo 1234, Folio 56, Sección 8, Hoja M-78901.", 105, 280, { align: "center" });
   doc.text("Este documento cumple con todos los requisitos legales del Real Decreto 1619/2012 de facturación.", 105, 284, { align: "center" });
 
+  if (outputType === 'buffer') {
+    return Buffer.from(doc.output('arraybuffer'));
+  }
+
   return doc.output('datauristring').split(',')[1];
 };
 
@@ -299,7 +307,7 @@ export const generateInvoicePDF = (order: any, items: any[]): string => {
 export const sendOrderReceiptEmail = async (order: any, items: any[]) => {
   const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
-  const pdfBuffer = generateTicketPDF(order, items);
+  const pdfBuffer = generateTicketPDF(order, items) as string;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; overflow: hidden;">
@@ -341,7 +349,7 @@ export const sendOrderReceiptEmail = async (order: any, items: any[]) => {
 export const sendOfficialInvoiceEmail = async (order: any, items: any[]) => {
   const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
-  const pdfBuffer = generateInvoicePDF(order, items);
+  const pdfBuffer = generateInvoicePDF(order, items) as string;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; overflow: hidden;">

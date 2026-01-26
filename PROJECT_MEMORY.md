@@ -38,7 +38,9 @@
 
 ## Funcionalidades Implementadas
 - [x] Sistema de Cupones 2.0: Cupones manuales, masivos, individuales y por reglas de fidelización complejas.
-- [x] Centro de Soporte Premium: Mensajería bidireccional con notificaciones en tiempo real y limpieza de alertas.
+- [x]- Sistema de **Soporte/Mensajería** bidireccional Cliente-Admin.
+- Panel Admin avanzado con gráficos de rendimiento (Chart.js) y gestión de inventario.
+- **Descarga de Documentación**: Generación y visualización dinámica de Tickets y Facturas PDF en cliente y admin.
 - [x] Checkout multi-paso con Stripe y aplicación dinámica de descuentos.
 - [x] Gestión de Pedidos: Tracking, Facturación PDF y Cancelación automatizada.
 - [x] Marketing: Pop-ups configurables, Newsletter y cupones de bienvenida.
@@ -48,7 +50,7 @@
 - [ ] Refactor Estético: Evolución a Dark Mode premium avanzado.
 - [ ] Tests de estrés de concurrencia en stock.
 - [ ] Bug: Visibilidad del texto en Hero Slider en algunos navegadores específicos.
-- [ ] Funcionalidad: Permitir descarga/visualización de facturas PDF directamente desde el panel de Cliente y Admin (actualmente solo por email).
+- [x] Funcionalidad: Permitir descarga/visualización de facturas PDF directamente desde el panel de Cliente y Admin (incorporado con endpoint `/api/orders/download-pdf`).
 
 ## Convenciones y Reglas del Proyecto
 - **Precios**: Siempre en **céntimos** (integer).
