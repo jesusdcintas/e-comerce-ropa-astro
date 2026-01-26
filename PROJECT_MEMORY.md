@@ -60,6 +60,13 @@
 ## Última actualización
 2026-01-26: Optimización de scripts de despliegue para Coolify (puerto 4321, script start). Sincronización de variables de entorno y limpieza de advertencias en el proceso de build. Finalización del Sistema de Cupones 2.0.
 
+## Versiones Estables (Checkpoints)
+- **Commit 86e0281 (26/01/2026)**: Última versión estable 100% funcional. 
+  - Cabecera (Header) estable: Menús de Tienda y Perfil funcionan correctamente.
+  - Gestión de pedidos y facturación PDF unificada.
+  - Sistema de cupones 2.0 integrado.
+
+
 ## Esquema de Base de Datos y Políticas (Backup)
 
 ### Tablas Principales
