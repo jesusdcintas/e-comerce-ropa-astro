@@ -8,6 +8,7 @@ const sortBy = Astro.url.searchParams.get("sort") || "created_at";
 const order = Astro.url.searchParams.get("order") || "desc";
 
 // Configuración de ordenación para Supabase
+const stockFilter = Astro.url.searchParams.get("stock");
 const isAsc = order === "asc";
 
 // Obtener todas las categorías
@@ -21,6 +22,12 @@ let subcategories: any[] = [];
 let products: any[] = [];
 let title = "Todos los Productos";
 
+if (stockFilter === "low") {
+    title = "Productos con Stock Bajo";
+} else if (stockFilter === "out") {
+    title = "Productos Agotados";
+}
+
 if (categorySlug) {
     // Buscar la categoría actual
     currentCategory = allCategories?.find((cat) => cat.slug === categorySlug);
@@ -28,42 +35,94 @@ if (categorySlug) {
     if (currentCategory) {
         title = currentCategory.name;
 
-        // Obtener subcategorías si es una categoría padre
-        subcategories =
-            allCategories?.filter(
-                (cat) => cat.parent_id === currentCategory.id,
-            ) || [];
+        // Función para obtener todos los IDs de subcategorías de forma recursiva (todos los niveles)
+        const getRecursiveCategoryIds = (
+            parentId: number,
+            cats: any[],
+        ): number[] => {
+            const childIds = cats
+                .filter((c) => c.parent_id === parentId)
+                .map((c) => c.id);
+            let allIds = [...childIds];
+            for (const id of childIds) {
+                allIds = [...allIds, ...getRecursiveCategoryIds(id, cats)];
+            }
+            return allIds;
+        };
 
-        // Obtener productos de esta categoría
-        const { data: categoryProducts } = await supabase
+        const allDescendantIds = getRecursiveCategoryIds(
+            currentCategory.id,
+            allCategories || [],
+        );
+        const targetCategoryIds = [currentCategory.id, ...allDescendantIds];
+
+        // Obtener productos de la categoría y todas sus descendientes
+        let query = supabase
             .from("products")
-            .select("*, categories(name, slug)")
-            .eq("category_id", currentCategory.id)
+            .select(
+                "*, categories:categories(name, slug), product_variants(stock)",
+            )
+            .in("category_id", targetCategoryIds)
             .order(sortBy, { ascending: isAsc });
 
-        products = categoryProducts || [];
-
-        // Si tiene subcategorías, también obtener los productos de cada subcategoría
-        if (subcategories.length > 0) {
-            for (const subcat of subcategories) {
-                const { data: subcatProducts } = await supabase
-                    .from("products")
-                    .select("*, categories(name, slug)")
-                    .eq("category_id", subcat.id)
-                    .order(sortBy, { ascending: isAsc });
-
-                subcat.products = subcatProducts || [];
-            }
+        if (stockFilter === "low") {
+            query = query
+                .select(
+                    "*, categories:categories(name, slug), product_variants!inner(stock)",
+                )
+                .lt("product_variants.stock", 3)
+                .gt("product_variants.stock", 0);
+        } else if (stockFilter === "out") {
+            query = query
+                .select(
+                    "*, categories:categories(name, slug), product_variants!inner(stock)",
+                )
+                .eq("product_variants.stock", 0);
         }
+
+        const { data: catProducts } = await query;
+        products =
+            catProducts?.map((p) => ({
+                ...p,
+                stock:
+                    (p.product_variants as any[])?.reduce(
+                        (acc, v) => acc + (v.stock || 0),
+                        0,
+                    ) || 0,
+            })) || [];
     }
 } else {
-    // Obtener todos los productos
-    const { data: allProducts } = await supabase
+    // Obtener todos los productos con filtro de stock opcional
+    let query = supabase
         .from("products")
-        .select("*, categories(name, slug)")
+        .select("*, categories:categories(name, slug), product_variants(stock)")
         .order(sortBy, { ascending: isAsc });
 
-    products = allProducts || [];
+    if (stockFilter === "low") {
+        query = query
+            .select(
+                "*, categories:categories(name, slug), product_variants!inner(stock)",
+            )
+            .lt("product_variants.stock", 3)
+            .gt("product_variants.stock", 0);
+    } else if (stockFilter === "out") {
+        query = query
+            .select(
+                "*, categories:categories(name, slug), product_variants!inner(stock)",
+            )
+            .eq("product_variants.stock", 0);
+    }
+
+    const { data: allProducts } = await query;
+    products =
+        allProducts?.map((p) => ({
+            ...p,
+            stock:
+                (p.product_variants as any[])?.reduce(
+                    (acc, v) => acc + (v.stock || 0),
+                    0,
+                ) || 0,
+        })) || [];
 }
 
 const formatPrice = (cents: number) => (cents / 100).toFixed(2);
@@ -116,14 +175,15 @@ function getSortIcon(column: string) {
                 </p>
             </div>
 
-            <div class="flex items-center gap-3">
-                <button
-                    id="apply-discount-btn"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled
+            <div
+                class="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto"
+            >
+                <!-- Buscador de Productos -->
+                <div
+                    class="flex items-center bg-white rounded-2xl px-5 py-3 w-full md:w-80 border border-slate-100 shadow-sm focus-within:border-brand-gold/30 transition-all group"
                 >
                     <svg
-                        class="w-5 h-5 mr-2 text-red-600"
+                        class="w-4 h-4 text-slate-400 group-focus-within:text-brand-gold transition-colors"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -132,49 +192,77 @@ function getSortIcon(column: string) {
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             stroke-width="2"
-                            d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                         ></path>
                     </svg>
-                    Aplicar Oferta
-                </button>
-                <div class="flex -space-x-2 overflow-hidden mr-4">
-                    {
-                        products
-                            .slice(0, 4)
-                            .map((p) => (
-                                <img
-                                    class="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
-                                    src={p.images?.[0]}
-                                    alt=""
-                                />
-                            ))
-                    }
-                    {
-                        products.length > 4 && (
-                            <div class="flex items-center justify-center h-8 w-8 rounded-full bg-slate-100 ring-2 ring-white text-[10px] font-bold text-slate-400">
-                                +{products.length - 4}
-                            </div>
-                        )
-                    }
+                    <input
+                        type="text"
+                        id="product-search"
+                        placeholder="Buscar producto por nombre..."
+                        class="bg-transparent border-none focus:ring-0 text-sm ml-3 w-full text-slate-600 font-medium placeholder:text-slate-400"
+                    />
                 </div>
-                <a
-                    href="/admin/products/new"
-                    class="inline-flex items-center px-6 py-3 border border-transparent rounded-2xl shadow-lg shadow-brand-gold/20 text-sm font-bold text-white bg-slate-900 hover:bg-brand-gold transition-all hover:-translate-y-1"
-                >
-                    <svg
-                        class="w-5 h-5 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+
+                <div class="flex items-center gap-3">
+                    <button
+                        id="apply-discount-btn"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Nuevo Producto
-                </a>
+                        <svg
+                            class="w-5 h-5 mr-2 text-red-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
+                            ></path>
+                        </svg>
+                        Aplicar Oferta
+                    </button>
+                    <div class="flex -space-x-2 overflow-hidden mr-4">
+                        {
+                            products
+                                .slice(0, 4)
+                                .map((p) => (
+                                    <img
+                                        class="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                                        src={p.images?.[0]}
+                                        alt=""
+                                    />
+                                ))
+                        }
+                        {
+                            products.length > 4 && (
+                                <div class="flex items-center justify-center h-8 w-8 rounded-full bg-slate-100 ring-2 ring-white text-[10px] font-bold text-slate-400">
+                                    +{products.length - 4}
+                                </div>
+                            )
+                        }
+                    </div>
+                    <a
+                        href="/admin/products/new"
+                        class="inline-flex items-center px-6 py-3 border border-transparent rounded-2xl shadow-lg shadow-brand-gold/20 text-sm font-bold text-white bg-slate-900 hover:bg-brand-gold transition-all hover:-translate-y-1"
+                    >
+                        <svg
+                            class="w-5 h-5 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Nuevo Producto
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -580,6 +668,37 @@ function getSortIcon(column: string) {
             alert("Error al aplicar el descuento");
             console.error(error);
         }
+    });
+
+    // Buscador de productos
+    const searchInput = document.getElementById(
+        "product-search",
+    ) as HTMLInputElement;
+    const productRows = document.querySelectorAll(
+        ".product-row",
+    ) as NodeListOf<HTMLElement>;
+
+    searchInput?.addEventListener("input", (e) => {
+        const term = (e.target as HTMLInputElement).value.toLowerCase().trim();
+
+        productRows.forEach((row) => {
+            const name =
+                row
+                    .querySelector(".text-sm.font-bold")
+                    ?.textContent?.toLowerCase() || "";
+            const desc =
+                row
+                    .querySelector(".text-xs.text-slate-400")
+                    ?.textContent?.toLowerCase() || "";
+
+            if (name.includes(term) || desc.includes(term)) {
+                row.classList.remove("hidden");
+            } else {
+                row.classList.add("hidden");
+            }
+        });
+
+        // Actualizar contador si fuera necesario o mostrar mensaje de "no resultados"
     });
 
     document.querySelectorAll(".product-row").forEach((row) => {

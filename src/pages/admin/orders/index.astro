@@ -19,24 +19,65 @@ if (!user || user.app_metadata?.role !== "admin") {
 
 const sortBy = Astro.url.searchParams.get("sort") || "created_at";
 const orderParams = Astro.url.searchParams.get("order") || "desc";
+const period = Astro.url.searchParams.get("period") || "all"; // all, week, month, year
+const dateOffset = parseInt(Astro.url.searchParams.get("offset") || "0");
 const isAsc = orderParams === "asc";
 
+// Lógica de fechas
+const now = new Date();
+let startDate = new Date();
+let endDate = new Date();
+let label = "Todos los pedidos";
+
+if (period === "week") {
+    const day = now.getDay() || 7;
+    startDate.setHours(0, 0, 0, 0);
+    startDate.setDate(now.getDate() - day + 1 + dateOffset * 7);
+    endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 7);
+    label = `Semana del ${startDate.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}`;
+} else if (period === "month") {
+    startDate = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
+    endDate = new Date(now.getFullYear(), now.getMonth() + dateOffset + 1, 1);
+    label = startDate.toLocaleDateString("es-ES", {
+        month: "long",
+        year: "numeric",
+    });
+} else if (period === "year") {
+    startDate = new Date(now.getFullYear() + dateOffset, 0, 1);
+    endDate = new Date(now.getFullYear() + dateOffset + 1, 0, 1);
+    label = `Año ${startDate.getFullYear()}`;
+}
+
 // Obtener pedidos con sus items
-const { data: orders, error } = await supabase
+let query = supabase
     .from("orders")
     .select("*, order_items(*, product:products(images))")
     .order(sortBy, { ascending: isAsc });
 
-// Función para generar URLs de ordenación
-function getSortUrl(column: string) {
+if (period !== "all") {
+    query = query
+        .gte("created_at", startDate.toISOString())
+        .lt("created_at", endDate.toISOString());
+}
+
+const { data: orders, error } = await query;
+
+// Función para generar URLs con filtros preservados
+function getFilterUrl(newParams: Record<string, string | number>) {
     const params = new URLSearchParams(Astro.url.searchParams);
-    if (sortBy === column) {
-        params.set("order", orderParams === "asc" ? "desc" : "asc");
-    } else {
-        params.set("sort", column);
-        params.set("order", "asc");
-    }
+    Object.entries(newParams).forEach(([key, value]) => {
+        if (value === null) params.delete(key);
+        else params.set(key, value.toString());
+    });
     return `?${params.toString()}`;
+}
+
+function getSortUrl(column: string) {
+    return getFilterUrl({
+        sort: column,
+        order: sortBy === column && orderParams === "asc" ? "desc" : "asc",
+    });
 }
 
 function getSortIcon(column: string) {
@@ -69,55 +110,183 @@ const statusText = {
     delivered: "Entregado",
     cancelled: "Cancelado",
 };
+
+const periodLabels = {
+    all: "Histórico",
+    week: "Semana",
+    month: "Mes",
+    year: "Año",
+};
 ---
 
 <AdminLayout title="Gestión de Pedidos">
     <div
         class="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700 pb-20"
     >
-        <!-- Header Section -->
+        <!-- Navigation and Selection Header -->
         <div
-            class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
+            class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8"
         >
-            <div class="space-y-2">
-                <div
-                    class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+            <div
+                class="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-sm w-fit"
+            >
+                <a
+                    href={getFilterUrl({ period: "all", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "all" ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Todo</a
                 >
-                    <span class="w-8 h-px bg-brand-gold"></span>
-                    Logística y Ventas
-                </div>
-                <h2 class="text-5xl font-black text-slate-800 tracking-tighter">
-                    Gestión de <span class="text-brand-gold italic font-serif"
-                        >Pedidos</span
-                    >
-                </h2>
-                <p class="text-slate-400 font-medium">
-                    Controla el flujo de ventas y el estado de los envíos.
-                </p>
+                <a
+                    href={getFilterUrl({ period: "week", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "week" ? "bg-brand-gold text-white shadow-lg shadow-brand-gold/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Semana</a
+                >
+                <a
+                    href={getFilterUrl({ period: "month", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "month" ? "bg-brand-gold text-white shadow-lg shadow-brand-gold/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Mes</a
+                >
+                <a
+                    href={getFilterUrl({ period: "year", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "year" ? "bg-brand-gold text-white shadow-lg shadow-brand-gold/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Año</a
+                >
             </div>
 
-            <div class="flex items-center gap-4">
-                <div
-                    class="bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm"
+            {
+                period !== "all" && (
+                    <div class="flex items-center gap-4 bg-white px-6 py-2.5 rounded-2xl border border-slate-100 shadow-sm">
+                        <a
+                            href={getFilterUrl({ offset: dateOffset - 1 })}
+                            class="p-2 text-slate-400 hover:text-brand-gold transition-colors"
+                        >
+                            <svg
+                                class="w-5 h-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M15 19l-7-7 7-7"
+                                />
+                            </svg>
+                        </a>
+                        <span class="text-sm font-black text-slate-800 uppercase tracking-tight min-w-[120px] text-center">
+                            {label}
+                        </span>
+                        <a
+                            href={getFilterUrl({ offset: dateOffset + 1 })}
+                            class="p-2 text-slate-400 hover:text-brand-gold transition-colors"
+                        >
+                            <svg
+                                class="w-5 h-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </a>
+                    </div>
+                )
+            }
+
+            <button
+                id="export-report-btn"
+                class="inline-flex items-center px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-brand-gold transition-all shadow-xl shadow-slate-900/10 group active:scale-95"
+                data-orders={JSON.stringify(orders)}
+                data-label={label}
+            >
+                <svg
+                    class="w-4 h-4 mr-3 text-brand-gold group-hover:text-white transition-colors"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                 >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    ></path>
+                </svg>
+                Descargar Informe {period !== "all" ? "del Tramo" : "Completo"}
+            </button>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div
+                class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group"
+            >
+                <div class="relative z-10">
                     <div
-                        class="text-[10px] font-black uppercase text-slate-400 mb-1"
+                        class="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest"
+                    >
+                        Resumen del Período
+                    </div>
+                    <div
+                        class="text-3xl font-black text-slate-800 tracking-tighter capitalize"
+                    >
+                        {periodLabels[period as keyof typeof periodLabels]}
+                    </div>
+                </div>
+                <div
+                    class="absolute -right-4 -bottom-4 w-24 h-24 text-slate-50 group-hover:text-slate-100 transition-colors pointer-events-none"
+                >
+                    <svg fill="currentColor" viewBox="0 0 24 24"
+                        ><path
+                            d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"
+                        ></path></svg
+                    >
+                </div>
+            </div>
+
+            <div
+                class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group"
+            >
+                <div class="relative z-10">
+                    <div
+                        class="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest"
                     >
                         Total Pedidos
                     </div>
-                    <div class="text-2xl font-black text-slate-800">
+                    <div
+                        class="text-4xl font-black text-slate-800 tracking-tighter"
+                    >
                         {orders?.length || 0}
                     </div>
                 </div>
                 <div
-                    class="bg-slate-900 px-6 py-4 rounded-2xl shadow-xl shadow-slate-900/10"
+                    class="absolute -right-4 -bottom-4 w-24 h-24 text-slate-50 group-hover:text-slate-100 transition-colors pointer-events-none"
                 >
-                    <div
-                        class="text-[10px] font-black uppercase text-slate-500 mb-1"
+                    <svg fill="currentColor" viewBox="0 0 24 24"
+                        ><path
+                            d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"
+                        ></path></svg
                     >
-                        Ingresos Totales
+                </div>
+            </div>
+
+            <div
+                class="bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl shadow-slate-900/20 relative overflow-hidden group"
+            >
+                <div class="relative z-10">
+                    <div
+                        class="text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest"
+                    >
+                        Importe Facturado
                     </div>
-                    <div class="text-2xl font-black text-brand-gold">
+                    <div
+                        class="text-4xl font-black text-brand-gold tracking-tighter"
+                    >
                         {
                             (
                                 orders?.reduce(
@@ -131,6 +300,15 @@ const statusText = {
                             ).toFixed(2)
                         }€
                     </div>
+                </div>
+                <div
+                    class="absolute -right-4 -bottom-4 w-24 h-24 text-white/5 pointer-events-none"
+                >
+                    <svg fill="currentColor" viewBox="0 0 24 24"
+                        ><path
+                            d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"
+                        ></path></svg
+                    >
                 </div>
             </div>
         </div>
@@ -205,7 +383,10 @@ const statusText = {
                     <tbody class="divide-y divide-slate-50">
                         {
                             orders?.map((order) => (
-                                <tr class="group hover:bg-slate-50/50 transition-colors">
+                                <tr
+                                    class="group hover:bg-slate-50/50 transition-colors cursor-pointer clickable-row"
+                                    data-href={`/admin/orders/${order.id}`}
+                                >
                                     <td class="px-8 py-6">
                                         <div class="font-black text-slate-800">
                                             #
@@ -410,5 +591,86 @@ const statusText = {
                 }
             });
         });
+
+        // Lógica para filas clicables
+        function initClickableRows() {
+            const rows = document.querySelectorAll(".clickable-row");
+            rows.forEach((row) => {
+                row.addEventListener("click", (e) => {
+                    const target = e.target;
+                    if (!target) return;
+
+                    // Si el clic es en un botón, enlace o select específico, no navegar aquí
+                    if (
+                        target.closest("button") ||
+                        target.closest("a") ||
+                        target.closest("select")
+                    ) {
+                        return;
+                    }
+                    const href = row.dataset.href;
+                    if (href) window.location.href = href;
+                });
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", initClickableRows);
+        document.addEventListener("astro:after-swap", initClickableRows);
+
+        // Lógica de exportación
+        function initExport() {
+            const exportBtn = document.getElementById("export-report-btn");
+            if (!exportBtn) return;
+
+            exportBtn.addEventListener("click", async () => {
+                const orders = JSON.parse(exportBtn.dataset.orders || "[]");
+                const label = exportBtn.dataset.label || "Reporte";
+                const originalHtml = exportBtn.innerHTML;
+
+                try {
+                    exportBtn.disabled = true;
+                    exportBtn.style.opacity = "0.7";
+                    exportBtn.innerHTML = `
+                        <svg class="animate-spin h-4 w-4 mr-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Generando...
+                    `;
+
+                    const response = await fetch(
+                        "/api/admin/orders/export-report",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ orders, label }),
+                        },
+                    );
+
+                    if (!response.ok)
+                        throw new Error("Error al generar el reporte");
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `Reporte_Ventas_${label.replace(/\s+/g, "_")}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } catch (err) {
+                    console.error(err);
+                    alert("No se pudo generar el reporte. Inténtalo de nuevo.");
+                } finally {
+                    exportBtn.disabled = false;
+                    exportBtn.style.opacity = "1";
+                    exportBtn.innerHTML = originalHtml;
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", initExport);
+        document.addEventListener("astro:after-swap", initExport);
     </script>
 </AdminLayout>

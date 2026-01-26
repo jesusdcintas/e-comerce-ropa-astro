@@ -18,24 +18,44 @@ if (!user || user.app_metadata?.role !== "admin") {
 
 // --- Lógica de Inteligencia de Negocio ---
 const now = new Date();
-const oneWeekAgo = new Date(
-    now.getTime() - 7 * 24 * 60 * 60 * 1000,
-).toISOString();
-const oneMonthAgo = new Date(
+
+// 1. Inicio de Semana (Lunes)
+const tempWeek = new Date(now);
+const dayOfWeek = tempWeek.getDay();
+const diffToMonday =
+    tempWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+const startOfWeek = new Date(tempWeek.setDate(diffToMonday));
+startOfWeek.setHours(0, 0, 0, 0);
+
+// 2. Inicio de Mes
+const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
+// 3. Inicio de Semestre (Últimos 6 meses naturales)
+const startOfSixMonths = new Date(
     now.getFullYear(),
-    now.getMonth() - 1,
-    now.getDate(),
-).toISOString();
-const sixMonthsAgo = new Date(
-    now.getFullYear(),
-    now.getMonth() - 6,
-    now.getDate(),
-).toISOString();
-const oneYearAgo = new Date(
-    now.getFullYear() - 1,
-    now.getMonth(),
-    now.getDate(),
-).toISOString();
+    now.getMonth() - 5,
+    1,
+    0,
+    0,
+    0,
+    0,
+);
+
+// 4. Inicio de Año (Anual Natural)
+const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+
+const weekIso = startOfWeek.toISOString();
+const monthIso = startOfMonth.toISOString();
+const sixMonthsIso = startOfSixMonths.toISOString();
+const yearIso = startOfYear.toISOString();
+
+// Herramientas de visualización
+const monthName = new Intl.DateTimeFormat("es-ES", { month: "long" }).format(
+    now,
+);
+const currentMonthLabel =
+    monthName.charAt(0).toUpperCase() + monthName.slice(1);
+const currentYear = now.getFullYear();
 
 // 1. Ingresos Totales y por Periodos
 const { data: allSales } = await supabase
@@ -53,10 +73,38 @@ const calculateSales = (sinceIso?: string) => {
 };
 
 const totalSales = calculateSales();
-const weekSales = calculateSales(oneWeekAgo);
-const monthSales = calculateSales(oneMonthAgo);
-const halfYearSales = calculateSales(sixMonthsAgo);
-const yearSales = calculateSales(oneYearAgo);
+const weekSales = calculateSales(weekIso);
+const monthSales = calculateSales(monthIso);
+const halfYearSales = calculateSales(sixMonthsIso);
+const yearSales = calculateSales(yearIso);
+
+// 2. Datos para el Gráfico de Tendencia (Ventas diarias este mes)
+const { data: trendData } = await supabase
+    .from("orders")
+    .select("total_amount, created_at")
+    .neq("status", "cancelled")
+    .gte("created_at", monthIso)
+    .order("created_at", { ascending: true });
+
+// Procesar datos para Chart.js
+const dailyMap = (trendData || []).reduce(
+    (acc: Record<number, number>, curr) => {
+        const day = new Date(curr.created_at).getDate();
+        acc[day] = (acc[day] || 0) + curr.total_amount / 100;
+        return acc;
+    },
+    {},
+);
+
+// Generar etiquetas para todos los días del mes hasta hoy
+const daysInMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+).getDate();
+const currentDay = now.getDate();
+const labelsChart = Array.from({ length: currentDay }, (_, i) => i + 1);
+const dataChart = labelsChart.map((day) => dailyMap[day] || 0);
 
 // 2. Conteo de Pedidos
 const { count: ordersCount } = await supabase
@@ -130,29 +178,6 @@ const statusText: Record<string, string> = {
                     Visualiza el rendimiento de tu tienda en tiempo real.
                 </p>
             </div>
-            <div
-                class="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm"
-            >
-                <button
-                    id="export-pdf"
-                    class="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-brand-gold transition-all flex items-center gap-2"
-                >
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        ></path>
-                    </svg>
-                    Exportar Informe PDF
-                </button>
-            </div>
         </div>
 
         <!-- Pasar datos al cliente para el PDF -->
@@ -166,6 +191,14 @@ const statusText: Record<string, string> = {
                 stockStats,
                 ordersCount,
                 productsCount,
+                periodLabels: {
+                    month: currentMonthLabel,
+                    year: currentYear,
+                },
+                chartData: {
+                    labels: labelsChart,
+                    data: dataChart,
+                },
             })}
             class="hidden"
         >
@@ -173,11 +206,12 @@ const statusText: Record<string, string> = {
 
         <!-- Tarjetas de Resumen de Ingresos -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div
-                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-200/20 transition-all duration-300"
+            <a
+                href="/admin/orders?period=week"
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-200/20 transition-all duration-300 group"
             >
                 <h3
-                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 group-hover:text-blue-500 transition-colors"
                 >
                     Esta Semana
                 </h3>
@@ -187,18 +221,19 @@ const statusText: Record<string, string> = {
                 <div class="mt-4 flex items-center gap-2">
                     <span
                         class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded-lg"
-                        >7 DÍAS</span
+                        >LUNES A DOMINGO</span
                     >
                 </div>
-            </div>
+            </a>
 
-            <div
-                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-purple-200/20 transition-all duration-300"
+            <a
+                href="/admin/orders?period=month"
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-purple-200/20 transition-all duration-300 group"
             >
                 <h3
-                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 group-hover:text-purple-500 transition-colors"
                 >
-                    Último Mes
+                    Mes de {currentMonthLabel}
                 </h3>
                 <p class="text-3xl font-black text-slate-800 tracking-tighter">
                     {monthSales.toFixed(2)}€
@@ -206,18 +241,19 @@ const statusText: Record<string, string> = {
                 <div class="mt-4 flex items-center gap-2">
                     <span
                         class="px-2 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-black rounded-lg"
-                        >30 DÍAS</span
+                        >MES ACTUAL</span
                     >
                 </div>
-            </div>
+            </a>
 
-            <div
-                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-indigo-200/20 transition-all duration-300"
+            <a
+                href="/admin/orders?period=year"
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-indigo-200/20 transition-all duration-300 group"
             >
                 <h3
-                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 group-hover:text-indigo-500 transition-colors"
                 >
-                    Últimos 6 Meses
+                    Último Semestre
                 </h3>
                 <p class="text-3xl font-black text-slate-800 tracking-tighter">
                     {halfYearSales.toFixed(2)}€
@@ -225,18 +261,19 @@ const statusText: Record<string, string> = {
                 <div class="mt-4 flex items-center gap-2">
                     <span
                         class="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-black rounded-lg"
-                        >SEMESTRE</span
+                        >BLOQUE 6 MESES</span
                     >
                 </div>
-            </div>
+            </a>
 
-            <div
-                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-900/5 transition-all duration-300 border-b-4 border-b-slate-900"
+            <a
+                href="/admin/orders?period=year"
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-900/5 transition-all duration-300 border-b-4 border-b-slate-900 group"
             >
                 <h3
-                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1"
+                    class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 group-hover:text-slate-900 transition-colors"
                 >
-                    Ingresos Anuales
+                    Ingresos Anuales ({currentYear})
                 </h3>
                 <p class="text-3xl font-black text-slate-800 tracking-tighter">
                     {yearSales.toFixed(2)}€
@@ -244,60 +281,84 @@ const statusText: Record<string, string> = {
                 <div class="mt-4 flex items-center gap-2">
                     <span
                         class="px-2 py-0.5 bg-slate-900 text-white text-[9px] font-black rounded-lg"
-                        >TOTAL AÑO</span
+                        >CORTE FISCAL</span
                     >
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Estadísticas de Inventario y Operaciones -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Stock Detallado -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Inventario de un Vistazo -->
             <div
-                class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 lg:col-span-1"
+                class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 lg:col-span-1 flex flex-col"
             >
-                <h3 class="text-lg font-black text-slate-800 mb-6">
-                    Estado del Inventario
-                </h3>
-                <div class="space-y-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <div
-                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center"
+                <div class="flex items-center justify-between mb-10">
+                    <h3
+                        class="text-2xl font-black text-slate-800 tracking-tighter"
+                    >
+                        Inventario
+                    </h3>
+                    <a
+                        href="/admin/products"
+                        class="text-[10px] font-black text-brand-gold uppercase tracking-widest hover:text-slate-900 transition-colors"
+                        >Gestionar →</a
+                    >
+                </div>
+                <div class="grid grid-cols-1 gap-4 flex-1">
+                    <!-- Unidades Totales -->
+                    <a
+                        href="/admin/products"
+                        class="group p-5 rounded-3xl bg-slate-50 border border-slate-100 hover:bg-slate-900 hover:border-slate-900 transition-all duration-300"
+                    >
+                        <div class="flex flex-col gap-1">
+                            <span
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-500 transition-colors"
+                                >Total Unidades</span
                             >
-                                <svg
-                                    class="w-6 h-6 text-slate-400"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
+                            <div class="flex items-end justify-between">
+                                <span
+                                    class="text-4xl font-black text-slate-800 group-hover:text-white transition-colors"
+                                    >{stockStats.totalUnits}</span
                                 >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                                    ></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p
-                                    class="text-[10px] font-black text-slate-400 uppercase"
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center text-slate-400 group-hover:bg-white/10 group-hover:text-white transition-all"
                                 >
-                                    Unidades Totales
-                                </p>
-                                <p class="text-xl font-black text-slate-800">
-                                    {stockStats.totalUnits}
-                                </p>
+                                    <svg
+                                        class="w-6 h-6"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                                        ></path>
+                                    </svg>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <div
-                                class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center"
+                    </a>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Stock Bajo -->
+                        <a
+                            href="/admin/products?stock=low"
+                            class="group p-5 rounded-3xl bg-orange-50 border border-orange-100 hover:bg-orange-600 transition-all duration-300"
+                        >
+                            <span
+                                class="text-[10px] font-black text-orange-600/60 uppercase tracking-widest group-hover:text-white/70 transition-colors"
+                                >Bajo (&lt;3)</span
                             >
+                            <div class="flex items-end justify-between mt-1">
+                                <span
+                                    class="text-3xl font-black text-orange-600 group-hover:text-white transition-colors"
+                                    >{stockStats.lowStock}</span
+                                >
                                 <svg
-                                    class="w-6 h-6 text-orange-600"
+                                    class="w-5 h-5 text-orange-600/30 group-hover:text-white/30"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
@@ -310,25 +371,24 @@ const statusText: Record<string, string> = {
                                     ></path>
                                 </svg>
                             </div>
-                            <div>
-                                <p
-                                    class="text-[10px] font-black text-slate-400 uppercase"
-                                >
-                                    Stock Bajo (&lt;3)
-                                </p>
-                                <p class="text-xl font-black text-orange-600">
-                                    {stockStats.lowStock}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <div
-                                class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center"
+                        </a>
+
+                        <!-- Agotados -->
+                        <a
+                            href="/admin/products?stock=out"
+                            class="group p-5 rounded-3xl bg-red-50 border border-red-100 hover:bg-red-600 transition-all duration-300"
+                        >
+                            <span
+                                class="text-[10px] font-black text-red-600/60 uppercase tracking-widest group-hover:text-white/70 transition-colors"
+                                >Agotados</span
                             >
+                            <div class="flex items-end justify-between mt-1">
+                                <span
+                                    class="text-3xl font-black text-red-600 group-hover:text-white transition-colors"
+                                    >{stockStats.outOfStock}</span
+                                >
                                 <svg
-                                    class="w-6 h-6 text-red-600"
+                                    class="w-5 h-5 text-red-600/30 group-hover:text-white/30"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
@@ -341,65 +401,41 @@ const statusText: Record<string, string> = {
                                     ></path>
                                 </svg>
                             </div>
-                            <div>
-                                <p
-                                    class="text-[10px] font-black text-slate-400 uppercase"
-                                >
-                                    Agotados
-                                </p>
-                                <p class="text-xl font-black text-red-600">
-                                    {stockStats.outOfStock}
-                                </p>
-                            </div>
-                        </div>
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Pedidos y Catálogo -->
+            <!-- Gráfico de Tendencia Mensual -->
             <div
-                class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 md:col-span-2 flex flex-col justify-center relative overflow-hidden group"
+                class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 md:col-span-2 flex flex-col relative overflow-hidden group"
             >
-                <div class="grid grid-cols-2 gap-8 relative z-10">
+                <div class="flex items-center justify-between mb-8">
                     <div>
-                        <p
-                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1"
+                        <h3
+                            class="text-xl font-black text-slate-800 tracking-tighter"
                         >
-                            Volumen de Pedidos
-                        </p>
+                            Curva de Rendimiento
+                        </h3>
                         <p
-                            class="text-5xl font-black text-slate-800 tracking-tighter"
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
                         >
-                            {ordersCount}
-                        </p>
-                        <p
-                            class="text-[10px] text-slate-400 mt-2 font-bold italic"
-                        >
-                            PROCESADOS EN TOTAL
+                            Ventas diarias · {currentMonthLabel}
                         </p>
                     </div>
-                    <div>
-                        <p
-                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1"
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="w-2 h-2 rounded-full bg-brand-gold animate-pulse"
+                        ></span>
+                        <span
+                            class="text-[9px] font-black text-slate-400 uppercase"
+                            >Tiempo Real</span
                         >
-                            Referencias
-                        </p>
-                        <p
-                            class="text-5xl font-black text-brand-gold tracking-tighter"
-                        >
-                            {productsCount}
-                        </p>
-                        <p
-                            class="text-[10px] text-slate-400 mt-2 font-bold italic"
-                        >
-                            PRODUCTOS ACTIVOS
-                        </p>
                     </div>
                 </div>
-                <!-- Decoración -->
-                <div
-                    class="absolute -right-16 -top-16 w-64 h-64 bg-slate-50 rounded-full group-hover:bg-slate-100 transition-colors duration-500"
-                >
+
+                <div class="flex-1 min-h-[220px] relative">
+                    <canvas id="salesChart"></canvas>
                 </div>
             </div>
         </div>
@@ -438,7 +474,7 @@ const statusText: Record<string, string> = {
                                 >
                                     <th class="pb-2 pl-4">ID</th>
                                     <th class="pb-2">Cliente</th>
-                                    <th class="pb-2">Monto</th>
+                                    <th class="pb-2">Importe</th>
                                     <th class="pb-2 text-center">Estado</th>
                                     <th class="pb-2 pr-4 text-right"></th>
                                 </tr>
@@ -446,7 +482,10 @@ const statusText: Record<string, string> = {
                             <tbody>
                                 {
                                     recentOrders?.map((order) => (
-                                        <tr class="group hover:bg-slate-50/50 transition-colors rounded-3xl overflow-hidden shadow-sm border border-slate-50">
+                                        <tr
+                                            class="group hover:bg-slate-50/50 transition-colors rounded-3xl overflow-hidden shadow-sm border border-slate-50 cursor-pointer clickable-row"
+                                            data-href={`/admin/orders/${order.id}`}
+                                        >
                                             <td class="py-5 pl-4">
                                                 <span class="text-xs font-black text-slate-400 uppercase tracking-tighter">
                                                     #
@@ -601,54 +640,109 @@ const statusText: Record<string, string> = {
                 </div>
             </div>
         </div>
+
+        <!-- Script para Gráficos -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script is:inline>
+            function updateChart() {
+                const statsElem = document.getElementById("stats-data");
+                if (!statsElem) return;
+
+                const stats = JSON.parse(statsElem.dataset.stats);
+                const ctx = document.getElementById("salesChart");
+                if (!ctx) return;
+
+                // Limpiar anterior si existe
+                if (window.mySalesChart) window.mySalesChart.destroy();
+
+                window.mySalesChart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: stats.chartData.labels,
+                        datasets: [
+                            {
+                                label: "Ventas (€)",
+                                data: stats.chartData.data,
+                                borderColor: "#D4AF37",
+                                backgroundColor: "rgba(212, 175, 55, 0.05)",
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointBackgroundColor: "#D4AF37",
+                                pointBorderColor: "#fff",
+                                pointBorderWidth: 2,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                mode: "index",
+                                intersect: false,
+                                backgroundColor: "#0F172A",
+                                padding: 12,
+                                titleFont: { size: 10, weight: "bold" },
+                                bodyFont: { size: 13, weight: "900" },
+                                displayColors: false,
+                                callbacks: {
+                                    label: (context) =>
+                                        `${context.parsed.y.toFixed(2)}€`,
+                                },
+                            },
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: "rgba(0,0,0,0.03)" },
+                                ticks: {
+                                    font: { size: 10, weight: "bold" },
+                                    callback: (val) => val + "€",
+                                },
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    font: { size: 10, weight: "bold" },
+                                },
+                            },
+                        },
+                    },
+                });
+            }
+
+            document.addEventListener("DOMContentLoaded", updateChart);
+            document.addEventListener("astro:after-swap", updateChart);
+        </script>
+
+        <script>
+            // Lógica para filas clicables
+            function initClickableRows() {
+                const rows = document.querySelectorAll(".clickable-row");
+                rows.forEach((row) => {
+                    row.addEventListener("click", (e) => {
+                        const target = e.target as HTMLElement;
+                        if (!target) return;
+
+                        // Si el clic es en un botón o enlace específico, no navegar aquí
+                        if (
+                            target.closest("button") ||
+                            target.closest("a") ||
+                            target.closest("select")
+                        ) {
+                            return;
+                        }
+                        const href = (row as HTMLElement).dataset.href;
+                        if (href) window.location.href = href;
+                    });
+                });
+            }
+
+            document.addEventListener("DOMContentLoaded", initClickableRows);
+            document.addEventListener("astro:after-swap", initClickableRows);
+        </script>
     </div>
 </AdminLayout>
-
-<script>
-    const exportBtn = document.getElementById("export-pdf");
-    const statsData = document.getElementById("stats-data");
-
-    exportBtn?.addEventListener("click", async () => {
-        const stats = JSON.parse(statsData?.dataset.stats || "{}");
-        const originalHtml = exportBtn.innerHTML;
-
-        try {
-            exportBtn.setAttribute("disabled", "true");
-            exportBtn.innerHTML = `
-                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Generando...
-            `;
-
-            const response = await fetch("/api/export-dashboard", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(stats),
-            });
-
-            if (!response.ok) throw new Error("Error al generar PDF");
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `Resumen_Dashboard_${new Date().toLocaleDateString()}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            exportBtn.innerHTML = originalHtml;
-            exportBtn.removeAttribute("disabled");
-        } catch (err) {
-            console.error(err);
-            exportBtn.innerHTML = '<span class="text-red-400">Error</span>';
-            setTimeout(() => {
-                exportBtn.innerHTML = originalHtml;
-                exportBtn.removeAttribute("disabled");
-            }, 3000);
-        }
-    });
-</script>

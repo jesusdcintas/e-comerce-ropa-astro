@@ -1,0 +1,151 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+if (!accessToken) return Astro.redirect("/login");
+
+const {
+    data: { user: adminUser },
+} = await supabase.auth.getUser(accessToken);
+if (!adminUser || adminUser.app_metadata?.role !== "admin")
+    return Astro.redirect("/");
+
+const supabaseAdmin = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+// 1. Obtener perfiles de la DB
+const { data: profiles, error: pError } = await supabaseAdmin
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+// 2. Obtener metadatos de Auth para los fallbacks (envío predeterminado)
+const {
+    data: { users: authUsers },
+} = await supabaseAdmin.auth.admin.listUsers();
+
+// Mapear Auth con Perfiles para acceso rápido
+const authMap = new Map(authUsers.map((u) => [u.id, u.user_metadata]));
+
+const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
+---
+
+<AdminLayout title="Gestión de Clientes">
+    <div class="space-y-8">
+        <div>
+            <h2 class="text-4xl font-black text-slate-800 tracking-tighter">
+                Control de <span class="text-brand-gold italic font-serif"
+                    >Clientes</span
+                >
+            </h2>
+            <p class="text-slate-400 font-medium">
+                Listado oficial de usuarios registrados.
+            </p>
+        </div>
+
+        <div
+            class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden"
+        >
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50">
+                        <th
+                            class="px-8 py-5 text-[10px] font-black uppercase text-slate-400"
+                            >Cliente</th
+                        >
+                        <th
+                            class="px-6 py-5 text-[10px] font-black uppercase text-slate-400"
+                            >Email</th
+                        >
+                        <th
+                            class="px-6 py-5 text-[10px] font-black uppercase text-slate-400"
+                            >Ciudad</th
+                        >
+                        <th class="px-8 py-5 text-right"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {
+                        profiles?.map((profile: any) => {
+                            const metadata = authMap.get(profile.id) || {};
+
+                            // Lógica de cascada: Facturación > Metadatos Perfil > Email
+                            const name =
+                                profile.billing_razon_social ||
+                                profile.nombre ||
+                                metadata.name ||
+                                profile.email.split("@")[0];
+                            const city =
+                                profile.billing_ciudad ||
+                                metadata.city ||
+                                "---";
+
+                            const url = `/admin/clients/${profile.id}`;
+
+                            return (
+                                <tr class="hover:bg-slate-50 transition-colors group">
+                                    <td class="px-8 py-6">
+                                        <a
+                                            href={url}
+                                            class="flex items-center gap-4 group-hover:text-brand-gold transition-colors"
+                                        >
+                                            <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xs uppercase group-hover:bg-brand-gold transition-colors shadow-sm">
+                                                {name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p class="font-bold">{name}</p>
+                                                <p class="text-[9px] text-slate-400 font-black uppercase tracking-tighter">
+                                                    ID: #
+                                                    {profile.id.substring(0, 8)}
+                                                </p>
+                                            </div>
+                                        </a>
+                                    </td>
+                                    <td class="px-6 py-6 text-sm text-slate-500 font-medium">
+                                        {profile.email}
+                                    </td>
+                                    <td class="px-6 py-6 text-sm text-slate-500 font-medium">
+                                        <div class="flex flex-col">
+                                            <span>{city}</span>
+                                            {profile.billing_ciudad ? (
+                                                <span class="text-[8px] text-blue-400 font-bold uppercase">
+                                                    Facturación
+                                                </span>
+                                            ) : metadata.city ? (
+                                                <span class="text-[8px] text-slate-400 font-bold uppercase">
+                                                    Envío
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-6 text-right">
+                                        <a
+                                            href={url}
+                                            class="inline-flex items-center px-4 py-2 bg-slate-100 text-slate-600 group-hover:bg-brand-gold group-hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                                        >
+                                            Ver Detalles
+                                        </a>
+                                    </td>
+                                </tr>
+                            );
+                        })
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        {
+            (!profiles || profiles.length === 0) && (
+                <div class="p-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                    <p class="text-slate-400 italic font-medium">
+                        No se han encontrado clientes en el sistema.
+                    </p>
+                </div>
+            )
+        }
+    </div>
+</AdminLayout>

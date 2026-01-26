@@ -129,7 +129,7 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
 
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text("Base Imponible (IVA incl.):", 130, y);
+  doc.text("Base Imponible:", 130, y);
   doc.text(vat.base, 185, y, { align: 'right' });
   y += 7;
   doc.text("IVA Aplicado (21%):", 130, y);
@@ -141,7 +141,7 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
   doc.setTextColor(212, 175, 55);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL PAGADO", 125, y);
+  doc.text("TOTAL (IVA Inc.)", 125, y);
   doc.setTextColor(255, 255, 255);
   doc.text(vat.total, 185, y, { align: 'right' });
 
@@ -283,7 +283,7 @@ export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64
   doc.setTextColor(212, 175, 55);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL FACTURA", 125, y);
+  doc.text("TOTAL (IVA Inc.)", 125, y);
   doc.setTextColor(255, 255, 255);
   doc.text(vat.total, 185, y, { align: 'right' });
 
@@ -607,9 +607,14 @@ export const generateDashboardPDF = (stats: any): string => {
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
 
+  const revenueCents = parseFloat(stats.revenue?.replace('€', '') || '0') * 100;
+  const vatStats = calculateVAT(revenueCents);
+
   const entries = [
-    ["Ventas Totales", stats.revenue || '0€'],
     ["Pedidos Realizados", stats.orders_count || '0'],
+    ["Ventas Totales (IVA Inc.)", stats.revenue || '0€'],
+    ["Base Imponible", vatStats.base],
+    ["IVA (21%)", vatStats.iva],
     ["Valor Medio Pedido", stats.avg_order || '0€'],
     ["Nuevos Clientes", stats.new_customers || '0'],
     ["Tasa de Conversión", stats.conv_rate || '0%']
@@ -627,6 +632,129 @@ export const generateDashboardPDF = (stats: any): string => {
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   doc.text("Fashion Store - Reporte Confidencial", 105, 285, { align: "center" });
+
+  return doc.output('datauristring').split(',')[1];
+};
+
+/**
+ * Genera un informe detallado de ventas para exportación PDF
+ */
+export const generateOrdersReportPDF = (orders: any[], label: string): string => {
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, 210, 40, 'F');
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(255, 255, 255);
+  doc.text("INFORME DE VENTAS", 20, 20);
+
+  doc.setFontSize(14);
+  doc.setTextColor(212, 175, 55); // brand-gold
+  doc.text(label.toUpperCase(), 20, 30);
+
+  doc.setFontSize(9);
+  doc.setTextColor(150, 150, 150);
+  doc.text(`Exportado el: ${new Date().toLocaleString('es-ES')}`, 190, 30, { align: 'right' });
+
+  // Resumen del informe
+  let y = 60;
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(16);
+  doc.text("Métricas del Período", 20, y);
+
+  const totalRevenue = orders.reduce((acc, curr) => acc + (curr.status !== 'cancelled' ? curr.total_amount : 0), 0);
+  const vatStats = calculateVAT(totalRevenue);
+  const avgOrder = orders.length > 0 ? (totalRevenue / orders.length) : 0;
+
+  y += 15;
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Total Pedidos:", 30, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(orders.length.toString(), 70, y);
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Total (IVA Inc.):", 110, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(formatPrice(totalRevenue), 160, y);
+
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.text("Ticket Medio:", 30, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(formatPrice(avgOrder), 70, y);
+
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont("helvetica", "bold");
+  doc.text("Base Imponible:", 110, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(vatStats.base, 160, y);
+
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.text("IVA (21%):", 110, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(vatStats.iva, 160, y);
+
+  // Tabla de Pedidos
+  y += 20;
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Detalle de Transacciones", 20, y);
+
+  y += 10;
+  doc.setFillColor(245, 245, 245);
+  doc.rect(15, y, 180, 8, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.text("ID", 18, y + 5.5);
+  doc.text("FECHA", 38, y + 5.5);
+  doc.text("CLIENTE", 65, y + 5.5);
+  doc.text("ESTADO", 115, y + 5.5);
+  doc.text("BASE", 145, y + 5.5, { align: 'right' });
+  doc.text("IVA (21%)", 170, y + 5.5, { align: 'right' });
+  doc.text("TOTAL", 192, y + 5.5, { align: 'right' });
+
+  y += 15;
+  doc.setTextColor(26, 26, 26);
+
+  orders.forEach((order) => {
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+
+      // Header simplificado en nuevas páginas
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 15, 'F');
+      y = 25;
+    }
+
+    const itemVat = calculateVAT(order.total_amount);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`#${order.id.toString().padStart(5, '0')}`, 18, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date(order.created_at).toLocaleDateString('es-ES'), 38, y);
+    doc.text(order.shipping_name.substring(0, 20), 65, y);
+    doc.text(order.status.toUpperCase(), 115, y);
+    doc.text(itemVat.base, 145, y, { align: 'right' });
+    doc.text(itemVat.iva, 170, y, { align: 'right' });
+    doc.text(itemVat.total, 192, y, { align: 'right' });
+
+    y += 8;
+    doc.setDrawColor(245, 245, 245);
+    doc.line(15, y - 4, 195, y - 4);
+  });
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text("Fashion Store - Reporte Generado Automáticamente", 105, 290, { align: "center" });
 
   return doc.output('datauristring').split(',')[1];
 };

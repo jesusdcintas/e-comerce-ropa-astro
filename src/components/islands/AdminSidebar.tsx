@@ -11,9 +11,10 @@ interface Props {
     categories: Category[];
     pendingCount?: number;
     currentPath?: string;
+    currentCategory?: string | null;
 }
 
-export default function AdminSidebar({ categories, pendingCount = 0, currentPath = '' }: Props) {
+export default function AdminSidebar({ categories, pendingCount = 0, currentPath = '', currentCategory = null }: Props) {
     const [isProductsOpen, setIsProductsOpen] = useState(currentPath.startsWith('/admin/products'));
     const [openCategories, setOpenCategories] = useState<number[]>([]);
     const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -138,22 +139,29 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
 
                             const hasSubcategories = subcategories.length > 0;
                             const isOpen = openCategories.includes(category.id);
-                            const isSearchActive = (slug: string) => currentPath === `/admin/products` && new URLSearchParams(window.location.search).get('category') === slug;
+                            const isSearchActive = (slug: string) => currentPath === `/admin/products` && currentCategory === slug;
 
                             return (
                                 <div key={category.id} className="space-y-1">
                                     {hasSubcategories ? (
-                                        <button
-                                            onClick={() => toggleCategory(category.id)}
-                                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-500 hover:text-white rounded-md transition-colors"
-                                        >
-                                            <span className="sidebar-text transition-all duration-300">{category.name}</span>
+                                        <div className="flex items-center justify-between group/cat">
+                                            <a
+                                                href={`/admin/products?category=${category.slug}`}
+                                                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${isSearchActive(category.slug) ? 'text-white font-bold' : 'text-slate-500 hover:text-white'}`}
+                                            >
+                                                <span className="sidebar-text transition-all duration-300">{category.name}</span>
+                                            </a>
                                             {!isCollapsed && (
-                                                <svg className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
+                                                <button
+                                                    onClick={() => toggleCategory(category.id)}
+                                                    className="p-2 text-slate-500 hover:text-brand-gold transition-colors"
+                                                >
+                                                    <svg className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
                                             )}
-                                        </button>
+                                        </div>
                                     ) : (
                                         <a href={`/admin/products?category=${category.slug}`} className={`block px-3 py-2 text-xs font-medium transition-colors ${isSearchActive(category.slug) ? 'text-white' : 'text-slate-500 hover:text-white'}`}>
                                             <span className="sidebar-text transition-all duration-300">{category.name}</span>
@@ -186,6 +194,14 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
                 <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Pedidos</span>
+            </a>
+
+            {/* Clientes */}
+            <a href="/admin/clients" className={`${navLinkClass} ${isActive('/admin/clients') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Clientes" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/clients') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Clientes</span>
             </a>
 
             {/* Consultas */}

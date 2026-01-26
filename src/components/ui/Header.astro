@@ -37,7 +37,15 @@ const userName =
 >
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-20">
-      <!-- Left: Navigation (Desktop) -->
+      <!-- Left: Mobile Menu Trigger (lg:hidden) & Desktop Navigation -->
+      <div class="flex lg:hidden flex-1">
+        <button id="mobile-menu-trigger" class="p-2 -ml-2 text-slate-700 hover:text-brand-gold transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
       <nav class="hidden lg:flex items-center gap-8 flex-1">
         <a
           href="/"
@@ -129,16 +137,16 @@ const userName =
       <div class="flex-shrink-0 flex items-center justify-center">
         <a
           href="/"
-          class="text-3xl font-serif font-black tracking-tighter hover:scale-[1.02] transition-transform flex items-center"
+          class="text-2xl lg:text-3xl font-serif font-black tracking-tighter hover:scale-[1.02] transition-transform flex items-center"
         >
           <span class="text-slate-900">Fashion</span><span class="text-brand-gold ml-1">Store</span>
         </a>
       </div>
 
       <!-- Right: Actions & Search -->
-      <div class="flex-1 flex items-center justify-end gap-3 lg:gap-5">
-        <!-- Search sleek toggle -->
-        <div class="relative hidden sm:block">
+      <div class="flex-1 flex items-center justify-end gap-2 lg:gap-5">
+        <!-- Search Desktop -->
+        <div class="relative hidden lg:block">
           <div class="flex items-center h-10 px-4 bg-slate-50 border border-slate-100 rounded-full focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-gold/20 focus-within:border-brand-gold transition-all w-48 lg:w-64">
             <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -162,11 +170,18 @@ const userName =
           </div>
         </div>
 
+        <!-- Search Mobile Trigger -->
+        <button id="mobile-search-trigger" class="lg:hidden p-2 rounded-full hover:bg-slate-50 transition-colors">
+          <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+
         <!-- Icons Group -->
         <div class="flex items-center gap-1">
           <!-- Ayuda / Soporte -->
           {user && (
-            <a href="/ayuda" class="p-2.5 rounded-full hover:bg-slate-50 transition-colors relative group" title="Ayuda y Soporte">
+            <a href="/ayuda" class="hidden sm:block p-2 rounded-full hover:bg-slate-50 transition-colors relative group" title="Ayuda y Soporte">
               <svg class="w-5 h-5 text-slate-700 group-hover:text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -174,7 +189,7 @@ const userName =
           )}
 
           <!-- Favorites -->
-          <a href="/favoritos" class="p-2.5 rounded-full hover:bg-slate-50 transition-colors relative group" title="Favoritos">
+          <a href="/favoritos" class="p-2 rounded-full hover:bg-slate-50 transition-colors relative group" title="Favoritos">
             <svg class="w-5 h-5 text-slate-700 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
@@ -220,14 +235,14 @@ const userName =
                  </div>
               </div>
             ) : (
-              <a href="/login" class="ml-2 px-5 py-2.5 bg-brand-black text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full hover:bg-brand-gold hover:shadow-lg hover:shadow-brand-gold/20 transition-all">
+              <a href="/login" class="ml-1 px-3 py-2 bg-brand-black text-white text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] rounded-full hover:bg-brand-gold hover:shadow-lg transition-all">
                 Login
               </a>
             )}
           </div>
 
           <!-- Cart -->
-          <button id="cart-button" class="p-2.5 ml-1 rounded-full bg-slate-50 hover:bg-brand-gold group transition-all relative">
+          <button id="cart-button" class="p-2 ml-1 rounded-full bg-slate-50 hover:bg-brand-gold group transition-all relative">
             <svg class="w-5 h-5 text-slate-700 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
@@ -236,8 +251,86 @@ const userName =
         </div>
       </div>
     </div>
+
+    <!-- Mobile Search Overlay (Expandable) -->
+    <div id="mobile-search-bar" class="hidden lg:hidden pb-4 px-2 animate-slide-up">
+      <div class="flex items-center h-12 px-4 bg-slate-50 border border-slate-100 rounded-2xl focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-gold/20 focus-within:border-brand-gold transition-all">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          id="search-input-mobile"
+          type="text"
+          placeholder="¿Qué estás buscando?"
+          class="w-full ml-3 bg-transparent text-sm text-slate-700 focus:outline-none"
+        />
+        <button id="mobile-search-close" class="ml-2 text-slate-400 hover:text-slate-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <!-- Mobile Search Results -->
+      <div id="search-results-mobile" class="hidden mt-2 max-h-[60vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-[10003]">
+        <div id="search-results-content-mobile"></div>
+      </div>
+    </div>
   </div>
 </header>
+
+<!-- Mobile Navigation Drawer -->
+<div id="mobile-menu" class="fixed inset-0 z-[10001] lg:hidden hidden">
+  <div id="mobile-menu-overlay" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0"></div>
+  <div id="mobile-menu-content" class="absolute inset-y-0 left-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col transform -translate-x-full transition-transform duration-300 ease-out">
+    <div class="h-20 flex items-center justify-between px-6 border-b border-gray-100">
+      <a href="/" class="text-2xl font-serif font-black tracking-tighter">
+        <span class="text-slate-900">Fashion</span><span class="text-brand-gold ml-1">Store</span>
+      </a>
+      <button id="mobile-menu-close" class="p-2 text-slate-500 hover:text-brand-gold transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    
+    <nav class="flex-1 overflow-y-auto p-8">
+      <div class="space-y-10">
+        <!-- Main Links -->
+        <div class="space-y-6">
+          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Explorar</p>
+          <a href="/" class="block text-3xl font-bold text-slate-900 hover:text-brand-gold transition-colors">Inicio</a>
+          <a href="/ofertas" class="block text-3xl font-bold text-red-500 hover:text-red-600 transition-colors flex items-center gap-3">
+            Ofertas
+            <span class="flex h-3 w-3 rounded-full bg-red-500 animate-pulse"></span>
+          </a>
+        </div>
+
+        <!-- Categories -->
+        <div class="space-y-6">
+          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Colecciones</p>
+          <div class="space-y-4">
+             <div class="space-y-3">
+                <p class="text-sm font-black text-brand-gold uppercase tracking-widest">Tienda</p>
+                <div class="pl-4 space-y-4 border-l-2 border-slate-100">
+                  <a href="/catalogo/ropa" class="block text-xl font-bold text-slate-700 hover:text-brand-black transition-colors">Ropa</a>
+                  <a href="/catalogo/calzado" class="block text-xl font-bold text-slate-700 hover:text-brand-black transition-colors">Calzado</a>
+                  <a href="/catalogo/complementos" class="block text-xl font-bold text-slate-700 hover:text-brand-black transition-colors">Complementos</a>
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="pt-10 border-t border-slate-50 space-y-4">
+          {!user && (
+            <a href="/login" class="flex items-center justify-center p-4 bg-slate-900 text-white rounded-2xl font-bold text-sm tracking-widest uppercase">
+              Iniciar Sesión
+            </a>
+          )}
+          <p class="text-xs text-slate-400 text-center">FashionStore &copy; 2026<br/>Moda Masculina Premium</p>
+        </div>
+      </div>
+    </nav>
+  </div>
+</div>
 
 <style>
   @keyframes marquee {
@@ -253,13 +346,20 @@ const userName =
     animation-play-state: paused;
   }
   
-  /* Utilities */
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
   }
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Mobile Nav Transitions */
+  #mobile-menu-content.open {
+    transform: translateX(0);
+  }
+  #mobile-menu-overlay.open {
+    opacity: 1;
   }
 </style>
 
@@ -269,7 +369,54 @@ const userName =
   import { clearFavorites } from "../../stores/favoriteStore";
 
   document.addEventListener("DOMContentLoaded", () => {
-    // Listener para abrir el carrito
+    // ---- Navegación Mobile ----
+    const mobileMenuTrigger = document.getElementById("mobile-menu-trigger");
+    const mobileMenuClose = document.getElementById("mobile-menu-close");
+    const mobileMenu = document.getElementById("mobile-menu");
+    const mobileMenuContent = document.getElementById("mobile-menu-content");
+    const mobileMenuOverlay = document.getElementById("mobile-menu-overlay");
+
+    const openMobileMenu = () => {
+      mobileMenu?.classList.remove("hidden");
+      setTimeout(() => {
+        mobileMenuContent?.classList.add("open");
+        mobileMenuOverlay?.classList.add("open");
+      }, 10);
+      document.body.style.overflow = "hidden";
+    };
+
+    const closeMobileMenu = () => {
+      mobileMenuContent?.classList.remove("open");
+      mobileMenuOverlay?.classList.remove("open");
+      setTimeout(() => {
+        mobileMenu?.classList.add("hidden");
+      }, 300);
+      document.body.style.overflow = "";
+    };
+
+    mobileMenuTrigger?.addEventListener("click", openMobileMenu);
+    mobileMenuClose?.addEventListener("click", closeMobileMenu);
+    mobileMenuOverlay?.addEventListener("click", closeMobileMenu);
+
+    // ---- Búsqueda Mobile ----
+    const mobileSearchTrigger = document.getElementById("mobile-search-trigger");
+    const mobileSearchClose = document.getElementById("mobile-search-close");
+    const mobileSearchBar = document.getElementById("mobile-search-bar");
+    const mobileSearchInput = document.getElementById("search-input-mobile") as HTMLInputElement;
+
+    mobileSearchTrigger?.addEventListener("click", () => {
+      mobileSearchBar?.classList.remove("hidden");
+      mobileSearchInput?.focus();
+    });
+
+    mobileSearchClose?.addEventListener("click", () => {
+      mobileSearchBar?.classList.add("hidden");
+      if (mobileSearchInput) mobileSearchInput.value = "";
+      const results = document.getElementById("search-results-mobile");
+      if (results) results.classList.add("hidden");
+    });
+
+    // ---- Carrito & Otros ----
     const cartButton = document.getElementById("cart-button");
     if (cartButton) {
       cartButton.addEventListener("click", () => {
@@ -280,11 +427,9 @@ const userName =
     const header = document.getElementById("main-header");
     if (!header) return;
 
-    // Función para cerrar todo
-    const closeAll = () => {
-      header
-        .querySelectorAll(".nav-dropdown")
-        .forEach((d) => d.classList.add("hidden"));
+    // Función para cerrar menús nav desktop
+    const closeAllDesktopMenus = () => {
+      header.querySelectorAll(".nav-dropdown").forEach((d) => d.classList.add("hidden"));
       header.querySelectorAll(".nav-trigger").forEach((t) => {
         t.setAttribute("aria-expanded", "false");
         const arrow = t.querySelector(".nav-arrow");
@@ -292,50 +437,28 @@ const userName =
       });
     };
 
-    // Función para abrir menú nav
-    const openNavMenu = (key: string, trigger: HTMLElement) => {
-      const menu = header.querySelector(`[data-menu="${key}"]`) as HTMLElement;
-      if (!menu) return;
-
-      menu.classList.remove("hidden");
-      trigger.setAttribute("aria-expanded", "true");
-      const arrow = trigger.querySelector(".nav-arrow");
-      if (arrow) arrow.classList.add("rotate-180");
-    };
-
-    // Clicks en triggers principales (Ropa, Calzado, Complementos)
+    // Mega Menu Desktop Logic
     header.querySelectorAll(".nav-trigger").forEach((trigger) => {
       trigger.addEventListener("click", (e) => {
         e.stopPropagation();
-
         const btn = trigger as HTMLElement;
         const key = btn.getAttribute("data-trigger");
         if (!key) return;
 
-        const menu = header.querySelector(`[data-menu="${key}"]`);
+        const menu = header.querySelector(`[data-menu="${key}"]`) as HTMLElement;
         const isOpen = menu && !menu.classList.contains("hidden");
 
-        closeAllMenus();
+        closeAllDesktopMenus();
+        const profileDropdown = document.getElementById("profile-dropdown");
+        if (profileDropdown) profileDropdown.classList.add("hidden");
         
         if (!isOpen) {
-          openNavMenu(key, btn);
+          menu.classList.remove("hidden");
+          btn.setAttribute("aria-expanded", "true");
+          const arrow = btn.querySelector(".nav-arrow");
+          if (arrow) arrow.classList.add("rotate-180");
         }
       });
-    });
-
-    // Click fuera cierra todo
-    document.addEventListener("click", (e) => {
-      if (!header.contains(e.target as Node)) {
-        closeAllMenus();
-      }
-    });
-
-    // ESC cierra todo
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeAllMenus();
-        hideSearchResults();
-      }
     });
 
     // Menú de Perfil
@@ -343,185 +466,102 @@ const userName =
     const profileDropdown = document.getElementById("profile-dropdown");
     const logoutBtn = document.getElementById("logout-button");
 
-    // Función unificada para cerrar menús
-    const closeAllMenus = () => {
-      closeAll(); // Cierra mega-menús nav
-      if (profileDropdown) profileDropdown.classList.add("hidden");
-    };
-
     if (profileTrigger && profileDropdown) {
       profileTrigger.addEventListener("click", (e) => {
         e.stopPropagation();
         const isHidden = profileDropdown.classList.contains("hidden");
-        
-        // Cerrar otros menús antes de abrir este
-        closeAllMenus(); 
-        
-        if (isHidden) {
-          profileDropdown.classList.remove("hidden");
-        } else {
-          profileDropdown.classList.add("hidden");
-        }
-      });
-
-      // Cerrar dropdown al hacer click fuera
-      document.addEventListener("click", (e) => {
-        const target = e.target as Node;
-        if (profileDropdown && !profileDropdown.contains(target) && profileTrigger && !profileTrigger.contains(target)) {
-          profileDropdown.classList.add("hidden");
-        }
+        closeAllDesktopMenus();
+        if (isHidden) profileDropdown.classList.remove("hidden");
+        else profileDropdown.classList.add("hidden");
       });
     }
 
+    // Logout
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        
         try {
-          // Intentar cerrar sesión en Supabase
           await supabase.auth.signOut();
         } catch (err) {
-          console.error("Error signing out with Supabase:", err);
+          console.error("Logout error", err);
         } finally {
-          // Limpiar stores locales incondicionalmente
           if (typeof clearCart === 'function') clearCart();
           if (typeof clearFavorites === 'function') clearFavorites();
-          
-          // Limpiar cookies de sesión de forma manual para asegurar el cierre
-          const cookiesToClear = ['sb-access-token', 'sb-refresh-token'];
-          cookiesToClear.forEach(name => {
-            document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
-            // También intentar para el dominio actual por si acaso
-            document.cookie = `${name}=; Path=/; Domain=${window.location.hostname}; Max-Age=0; SameSite=Lax`;
-          });
-
-          // Forzar recarga a la home
+          document.cookie = "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
+          document.cookie = "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
           window.location.href = "/";
         }
       });
     }
 
-    // Búsqueda de productos
-    const searchInput = document.getElementById("search-input") as HTMLInputElement;
-    const searchResults = document.getElementById("search-results");
-    const searchResultsContent = document.getElementById(
-      "search-results-content",
-    );
-    let searchTimeout: any;
-
-    const hideSearchResults = () => {
-      if (searchResults) searchResults.classList.add("hidden");
-    };
-
-    const showSearchResults = () => {
-      if (searchResults) searchResults.classList.remove("hidden");
-    };
-
-    const formatPrice = (cents: number) => {
-      return new Intl.NumberFormat("es-ES", {
-        style: "currency",
-        currency: "EUR",
-      }).format(cents / 100);
-    };
-
-    const performSearch = async (query: string) => {
-      if (!query || query.trim().length < 2) {
-        hideSearchResults();
-        return;
+    // Click fuera cierra todo
+    document.addEventListener("click", (e) => {
+      const target = e.target as Node;
+      if (!header.contains(target)) {
+        closeAllDesktopMenus();
+        const profileDropdown = document.getElementById("profile-dropdown");
+        if (profileDropdown) profileDropdown.classList.add("hidden");
       }
+    });
 
-      try {
-        const response = await fetch(
-          `/api/search.json?q=${encodeURIComponent(query)}`,
-        );
-        const data = await response.json();
+    // ---- Sistema de Búsqueda ----
+    const setupSearch = (input: HTMLInputElement, resultsDiv: HTMLElement, contentDiv: HTMLElement) => {
+      let timeout: any;
 
-        if (!data.success || !data.results || data.results.length === 0) {
-          if (searchResultsContent) {
-            searchResultsContent.innerHTML = `
-              <div class="px-4 py-3 text-sm text-gray-500 text-center">
-                No se encontraron productos
-              </div>
-            `;
-          }
-          showSearchResults();
-          return;
-        }
+      const formatPrice = (cents: number) => {
+        return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(cents / 100);
+      };
 
-        if (searchResultsContent) {
-          searchResultsContent.innerHTML = data.results
-            .map(
-              (product: any) => `
-            <a 
-              href="/producto/${product.slug}" 
-              class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
-            >
-              ${
-                product.images && product.images[0]
-                  ? `<img src="${product.images[0]}" alt="${product.name}" class="w-12 h-12 object-cover rounded" />`
-                  : `<div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">Sin imagen</div>`
-              }
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-bold text-gray-900 leading-tight">${product.name}</p>
-                <p class="text-sm text-gray-600">${formatPrice(product.price)}</p>
-              </div>
-            </a>
-          `,
-            )
-            .join("");
-        }
-
-        showSearchResults();
-      } catch (error) {
-        console.error("Error al buscar:", error);
-        if (searchResultsContent) {
-          searchResultsContent.innerHTML = `
-            <div class="px-4 py-3 text-sm text-red-600 text-center">
-              Error al realizar la búsqueda
-            </div>
-          `;
-        }
-        showSearchResults();
-      }
-    };
-
-    // Input de búsqueda con debounce
-    if (searchInput) {
-      searchInput.addEventListener("input", (e) => {
-        const target = e.target as HTMLInputElement;
-        const query = target.value.trim();
-
-        clearTimeout(searchTimeout);
+      input.addEventListener("input", async (e) => {
+        const query = (e.target as HTMLInputElement).value.trim();
+        clearTimeout(timeout);
 
         if (query.length < 2) {
-          hideSearchResults();
+          resultsDiv.classList.add("hidden");
           return;
         }
 
-        searchTimeout = setTimeout(() => {
-          performSearch(query);
+        timeout = setTimeout(async () => {
+          try {
+            const res = await fetch(`/api/search.json?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+
+            if (!data.success || !data.results || data.results.length === 0) {
+              contentDiv.innerHTML = '<div class="px-4 py-3 text-sm text-gray-500 text-center">No se encontró nada</div>';
+              resultsDiv.classList.remove("hidden");
+              return;
+            }
+
+            contentDiv.innerHTML = data.results.map((p: any) => `
+              <a href="/producto/${p.slug}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                <img src="${p.images?.[0] || 'https://via.placeholder.com/50'}" class="w-12 h-12 object-cover rounded" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-bold text-gray-900 leading-tight">${p.name}</p>
+                  <p class="text-sm text-gray-600">${formatPrice(p.price)}</p>
+                </div>
+              </a>
+            `).join("");
+            resultsDiv.classList.remove("hidden");
+          } catch (err) {
+            console.error(err);
+          }
         }, 300);
       });
+    };
 
-      // Focus muestra resultados si hay búsqueda
-      searchInput.addEventListener("focus", () => {
-        const query = searchInput.value.trim();
-        if (query.length >= 2 && searchResultsContent && searchResultsContent.children.length > 0) {
-          showSearchResults();
-        }
-      });
+    // Inicializar búsquedas
+    const desktopInput = document.getElementById("search-input") as HTMLInputElement;
+    const desktopResults = document.getElementById("search-results");
+    const desktopContent = document.getElementById("search-results-content");
+    if (desktopInput && desktopResults && desktopContent) {
+      setupSearch(desktopInput, desktopResults, desktopContent);
+    }
 
-      // Click fuera de la búsqueda cierra resultados
-      document.addEventListener("click", (e) => {
-        if (
-          searchInput && searchResults &&
-          !searchInput.contains(e.target as Node) &&
-          !searchResults.contains(e.target as Node)
-        ) {
-          hideSearchResults();
-        }
-      });
+    const mobileInput = document.getElementById("search-input-mobile") as HTMLInputElement;
+    const mobileResults = document.getElementById("search-results-mobile");
+    const mobileContent = document.getElementById("search-results-content-mobile");
+    if (mobileInput && mobileResults && mobileContent) {
+      setupSearch(mobileInput, mobileResults, mobileContent);
     }
   });
 </script>
