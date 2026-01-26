@@ -368,7 +368,7 @@ const userName =
   import { isCartOpen, clearCart } from "../../stores/cartStore";
   import { clearFavorites } from "../../stores/favoriteStore";
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function initHeader() {
     // ---- Navegación Mobile ----
     const mobileMenuTrigger = document.getElementById("mobile-menu-trigger");
     const mobileMenuClose = document.getElementById("mobile-menu-close");
@@ -478,7 +478,7 @@ const userName =
 
     // Logout
     if (logoutBtn) {
-      logoutBtn.addEventListener("click", async (e) => {
+      const handleLogout = async (e: Event) => {
         e.preventDefault();
         try {
           await supabase.auth.signOut();
@@ -491,7 +491,8 @@ const userName =
           document.cookie = "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
           window.location.href = "/";
         }
-      });
+      };
+      logoutBtn.addEventListener("click", handleLogout);
     }
 
     // Click fuera cierra todo
@@ -563,5 +564,13 @@ const userName =
     if (mobileInput && mobileResults && mobileContent) {
       setupSearch(mobileInput, mobileResults, mobileContent);
     }
-  });
+  }
+
+  // Inicializar en carga inicial y después de cada cambio de página (Astro)
+  document.addEventListener("DOMContentLoaded", initHeader);
+  document.addEventListener("astro:after-swap", initHeader);
+  // Por precaución, si la página ya cargó
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initHeader();
+  }
 </script>
