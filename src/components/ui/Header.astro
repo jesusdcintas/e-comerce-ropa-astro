@@ -199,7 +199,7 @@ const userName =
           <!-- User / Auth -->
           <div class="relative" id="profile-menu">
             {user ? (
-              <button id="profile-trigger" class="flex items-center focus:outline-none p-1 ml-1 relative group">
+              <button id="profile-trigger" class="flex items-center focus:outline-none p-1 ml-1 relative group bg-transparent border-none">
                  <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden hover:border-brand-gold transition-colors">
                     <span class="text-xs font-bold text-slate-600 uppercase">
                       {userName.charAt(0)}
@@ -281,7 +281,7 @@ const userName =
   <div id="mobile-menu-overlay" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0"></div>
   <div id="mobile-menu-content" class="absolute inset-y-0 left-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col transform -translate-x-full transition-all duration-300 ease-out z-[100001]">
     <div class="h-20 flex items-center justify-between px-6 border-b border-gray-100">
-      <a href="/" class="text-2xl font-serif font-black tracking-tighter">
+      <a href="/" class="text-xl font-serif font-black tracking-tighter">
         <span class="text-slate-900">Fashion</span><span class="text-brand-gold ml-1">Store</span>
       </a>
       <button id="mobile-menu-close" class="p-2 text-slate-500 hover:text-brand-gold transition-colors">
@@ -291,41 +291,63 @@ const userName =
       </button>
     </div>
     
-    <nav class="flex-1 overflow-y-auto p-8">
+    <nav class="flex-1 overflow-y-auto p-8 custom-scrollbar">
       <div class="space-y-10">
         <!-- Main Links -->
-        <div class="space-y-6">
-          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Explorar</p>
-          <a href="/" class="block text-3xl font-bold text-slate-900 hover:text-brand-gold transition-colors">Inicio</a>
-          <a href="/ofertas" class="block text-3xl font-bold text-red-500 hover:text-red-600 transition-colors flex items-center gap-3">
-            Ofertas
-            <span class="flex h-3 w-3 rounded-full bg-red-500 animate-pulse"></span>
-          </a>
+        <div class="space-y-8">
+          <p class="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400">Explorar catálogo</p>
+          <div class="space-y-6">
+            <a href="/" class="block text-2xl font-black text-slate-900 hover:text-brand-gold transition-colors tracking-tight">Inicio</a>
+            <a href="/ofertas" class="block text-2xl font-black text-red-500 hover:text-red-600 transition-colors flex items-center gap-3 tracking-tight">
+              Ofertas
+              <span class="flex h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse"></span>
+            </a>
+          </div>
         </div>
 
         <!-- Categories -->
-        <div class="space-y-6">
-          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Colecciones</p>
-          <div class="space-y-4">
-             <div class="space-y-3">
-                <p class="text-sm font-black text-brand-gold uppercase tracking-widest">Tienda</p>
-                <div class="pl-4 space-y-4 border-l-2 border-slate-100">
-                  <a href="/catalogo/ropa" class="block text-xl font-bold text-slate-700 hover:text-brand-black transition-colors">Ropa</a>
-                  <a href="/catalogo/calzado" class="block text-xl font-bold text-slate-700 hover:text-brand-black transition-colors">Calzado</a>
-                  <a href="/catalogo/complementos" class="block text-xl font-bold text-slate-700 hover:text-brand-black transition-colors">Complementos</a>
+        <div class="space-y-8">
+          <p class="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400">Nuestras Colecciones</p>
+          <div class="space-y-6">
+             <div class="space-y-4">
+                <p class="text-xs font-black text-brand-gold uppercase tracking-widest border-l-2 border-brand-gold pl-3">Categorías</p>
+                <div class="pl-3 space-y-6">
+                  <a href="/catalogo/ropa" class="block text-lg font-bold text-slate-700 hover:text-brand-black transition-colors">Moda & Ropa</a>
+                  <a href="/catalogo/calzado" class="block text-lg font-bold text-slate-700 hover:text-brand-black transition-colors">Calzado Premium</a>
+                  <a href="/catalogo/complementos" class="block text-lg font-bold text-slate-700 hover:text-brand-black transition-colors">Complementos</a>
                 </div>
              </div>
           </div>
         </div>
 
+        <!-- User Options (Mobile) -->
+        {user && (
+          <div class="pt-8 border-t border-slate-50 space-y-6">
+            <p class="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400">Mi Cuenta</p>
+            <div class="grid grid-cols-2 gap-4">
+              <a href="/mi-cuenta" class="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors gap-2">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-700">Perfil</span>
+              </a>
+              <a href="/mis-pedidos" class="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors gap-2">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-700">Pedidos</span>
+              </a>
+            </div>
+          </div>
+        )}
+
         <!-- Footer Info -->
         <div class="pt-10 border-t border-slate-50 space-y-4">
           {!user && (
-            <a href="/login" class="flex items-center justify-center p-4 bg-slate-900 text-white rounded-2xl font-bold text-sm tracking-widest uppercase">
+            <a href="/login" class="flex items-center justify-center p-4 bg-slate-900 text-white rounded-2xl font-bold text-sm tracking-widest uppercase shadow-xl shadow-slate-200">
               Iniciar Sesión
             </a>
           )}
-          <p class="text-xs text-slate-400 text-center">FashionStore &copy; 2026<br/>Moda Masculina Premium</p>
+          <div class="text-center space-y-1">
+            <p class="text-[10px] text-slate-400 font-bold">FashionStore &copy; 2026</p>
+            <p class="text-[9px] text-slate-300 uppercase tracking-widest font-medium">Moda Masculina Premium</p>
+          </div>
         </div>
       </div>
     </nav>
@@ -353,6 +375,17 @@ const userName =
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+  }
 </style>
 
 <script>
@@ -371,7 +404,6 @@ const userName =
     const openMobileMenu = () => {
       mobileMenu?.classList.remove("hidden");
       setTimeout(() => {
-        // Forzar el movimiento usando clases de Tailwind directamente
         mobileMenuContent?.classList.remove("-translate-x-full");
         mobileMenuContent?.classList.add("translate-x-0");
         mobileMenuOverlay?.classList.remove("opacity-0");
@@ -416,7 +448,8 @@ const userName =
     // ---- Carrito & Otros ----
     const cartButton = document.getElementById("cart-button");
     if (cartButton) {
-      cartButton.addEventListener("click", () => {
+      cartButton.addEventListener("click", (e) => {
+        e.preventDefault();
         isCartOpen.set(true);
       });
     }
@@ -432,6 +465,8 @@ const userName =
         const arrow = t.querySelector(".nav-arrow");
         if (arrow) arrow.classList.remove("rotate-180");
       });
+      const profileDropdown = document.getElementById("profile-dropdown");
+      if (profileDropdown) profileDropdown.classList.add("hidden");
     };
 
     // Mega Menu Desktop Logic
@@ -446,8 +481,6 @@ const userName =
         const isOpen = menu && !menu.classList.contains("hidden");
 
         closeAllDesktopMenus();
-        const profileDropdown = document.getElementById("profile-dropdown");
-        if (profileDropdown) profileDropdown.classList.add("hidden");
         
         if (!isOpen) {
           menu.classList.remove("hidden");
@@ -465,9 +498,18 @@ const userName =
 
     if (profileTrigger && profileDropdown) {
       profileTrigger.addEventListener("click", (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const isHidden = profileDropdown.classList.contains("hidden");
-        closeAllDesktopMenus();
+        
+        // Cerrar otros menús primero
+        header.querySelectorAll(".nav-dropdown").forEach((d) => d.classList.add("hidden"));
+        header.querySelectorAll(".nav-trigger").forEach((t) => {
+          t.setAttribute("aria-expanded", "false");
+          const arrow = t.querySelector(".nav-arrow");
+          if (arrow) arrow.classList.remove("rotate-180");
+        });
+
         if (isHidden) profileDropdown.classList.remove("hidden");
         else profileDropdown.classList.add("hidden");
       });
@@ -497,8 +539,6 @@ const userName =
       const target = e.target as Node;
       if (!header.contains(target)) {
         closeAllDesktopMenus();
-        const profileDropdown = document.getElementById("profile-dropdown");
-        if (profileDropdown) profileDropdown.classList.add("hidden");
       }
     });
 
