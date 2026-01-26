@@ -15,67 +15,47 @@
 - **Deployment**: Configurado para Node.js (Vite/Node adapter).
 
 ## Decisiones Clave
-1. **Validación de Cupones en Servidor**: Se utiliza un cliente `supabaseAdmin` (Service Role) en el backend para validar y "quemar" cupones, evitando limitaciones de Row Level Security (RLS) en procesos críticos.
-2. **Descuentos vía Stripe Coupons**: Se abandonó el enfoque de "line items negativos" en Stripe a favor de la creación dinámica de cupones temporales de Stripe para mayor compatibilidad y limpieza en la factura.
-3. **Persistencia de Cupones**: La información de descuentos y códigos de cupones se almacena permanentemente en la tabla `orders` para histórico y generación de facturas, independientemente del estado del cupón original.
-4. **Arquitectura de Cupones Híbrida**: Los cupones pueden ser públicos (reutilizables por distintos usuarios) o asignados (exclusivos). La lógica de validación maneja ambos casos.
-5. **Detección de Reutilización**: Se implementaron comprobaciones estrictas en la tabla `cupon_usos` y el campo `usado` en `cupones` para evitar el fraude.
-6. **Cancelación y Reembolso Automatizado**: Implementación de un flujo centralizado que, al cancelar un pedido (`pending` o `paid`), realiza automáticamente el reembolso en Stripe (si procede), restaura el stock de productos/variantes y notifica al cliente por email.
-7. **Fidelización Basada en Eventos**: Las automatizaciones de cupones se disparan instantáneamente desde webhooks de Stripe, pero se optimizaron para procesar solo al usuario del evento, eliminando escaneos masivos innecesarios.
-8. **Resiliencia en Notificaciones**: Implementación de un sistema de "fallback" de email que consulta los metadatos de Auth si el perfil de usuario no contiene una dirección de correo válida, garantizando la entrega de premios.
-9. **Lógica de Cupones en Servidor (RPC)**: Se migró la lógica crítica de validación y consumo de cupones a funciones PostgreSQL (RPC) `rpc_validate_coupon` y `rpc_consume_coupon` con `SECURITY DEFINER`. Esto centraliza las reglas de negocio, mejora la seguridad y asegura la atomicidad en el canje (evitando race conditions).
-10. **Clasificación Explícita de Cupones**: Introducción del campo `es_publico` para diferenciar cupones de uso masivo (no se queman) de cupones individuales o de incidencia.
-11. **Integridad en el Canje**: Implementación de constraint `UNIQUE(cupon_id, order_id)` en la tabla `cupon_usos` para evitar duplicidad de descuentos en reintentos de webhooks.
+1. **Validación de Cupones en Servidor (RPC)**: Se utiliza `rpc_validate_coupon` y `rpc_consume_coupon` con `SECURITY DEFINER`. Esto centraliza las reglas de negocio, mejora la seguridad y asegura la atomicidad en el canje (evitando race conditions). La validación es estricta: aunque un usuario conozca un código, el servidor lo rechazará si no cumple la regla de segmentación asignada.
+2. **Arquitectura de Cupones 2.0 (Target vs Behavior)**: Se separa el "Objetivo" (Audiencia General, Segmento Específico o Cliente individual) del "Comportamiento" (Masivo vs Individual).
+    - **Masivo**: El código permite un uso por cada cliente del grupo objetivo. No se quema.
+    - **Individual**: El cupón se quema tras el primer uso total.
+3. **Visibilidad Restringida**: Los cupones segmentados por reglas solo aparecen en la sección "Mis Cupones" del cliente tras ser distribuidos manualmente (propagación) por el admin, garantizando un panel limpio y dirigido.
+4. **Sincronización de Notificaciones**: Las consultas de soporte marcan automáticamente las banderas `customer_has_unread` a `false` mediante privilegios de admin al acceder a los mensajes, asegurando que los globos de notificación desaparezcan de forma predecible.
+5. **Persistencia de Cupones**: Los datos de descuentos se guardan en la tabla `orders` en céntimos para histórico y facturación.
+6. **Cancelación y Reembolso Automatizado**: Flujo centralizado para pedidos `pending` o `paid` con restauración de stock y notificaciones Brevo.
 
 ## Arquitectura General
-- **Rutas públicas**: `src/pages/` (SSG/SSR). El catálogo principal se encuentra en `/catalogo` (todos los productos). Las categorías usan rutas anidadas bajo `/catalogo/` (ej: `/catalogo/calzado/botines`). La raíz `/` se mantiene como la landing page principal.
+- **Rutas públicas**: `src/pages/` (SSG/SSR).
 - **Panel de Admin**: `src/pages/admin/` (SSR Protegido).
-- **API Endpoints**: `src/pages/api/` para lógica de servidor (Checkout sessions, Inspección de cupones, Cancelación de pedidos).
-- **Librerías de Soporte**: `src/lib/` para lógica reutilizable (Sistema de cupones, Envío de emails, Supabase clients).
+- **API Endpoints**: `src/pages/api/` para lógica de servidor (Stripe, Cupones, Notificaciones).
+- **Librerías de Soporte**: `src/lib/` para lógica reutilizable (Sistema de cupones, Emails).
 
 ## Base de Datos (Resumen)
-- **`orders`**: Pedidos completados. Campos críticos: `total_amount`, `coupon_code`, `discount_amount`, `status`.
-- **`order_items`**: Líneas de detalle de cada pedido.
-- **`products`** & **`product_variants`**: Catálogo y tallas/stock.
-- **`cupones`**: Instancias de códigos de descuento. Campos: `codigo`, `usado`, `activo`, `regla_id`, `es_publico`.
-- **`reglas_cupones`**: Reglas lógicas que definen las condiciones. Tipos: `gasto_total`, `gasto_periodo`, `compra_minima`, `numero_compras`, `primera_compra`, `antiguedad`, `publico`.
-- **`cupon_usos`**: Registro histórico de cada vez que se aplica un cupón. Constraint `UNIQUE(cupon_id, order_id)`.
-- **`cupon_asignaciones`**: Vinculación de cupones específicos a perfiles de usuario.
+- **`orders`**: Pedidos. Campos: `total_amount`, `coupon_code`, `discount_amount`, `status`.
+- **`cupones`**: Instancias de códigos. Campos: `codigo`, `usado`, `activo`, `regla_id`, `es_publico` (Masivo).
+- **`reglas_cupones`**: Lógica de segmentación: `primera_compra`, `gasto_minimo`, `numero_compras`, `gasto_periodo`, `gasto_total`, `antiguedad`.
+- **`product_inquiries`**: Consultas de productos con tracker de leídos (`customer_has_unread`).
 
 ## Funcionalidades Implementadas
-- [x] Catálogo de productos con filtros y página dedicada de Ofertas.
-- [x] Carrito de compra persistente y Checkout multi-paso con Stripe.
-- [x] Sistema de Cupones Avanzado: Validación, aplicación dinámica en Stripe y emisión automática por reglas de fidelidad.
-- [x] Gestión de Pedidos: Historial, Tracking en tiempo real y Cancelación automatizada (reembolso + stock).
-- [x] Módulo de Facturación Pro: Perfiles fiscales y generación/envío de facturas PDF.
-- [x] Notificaciones: Sistema de notificaciones en DB y Email (Brevo) para pedidos, cupones y consultas de chat (bidireccional).
-- [x] Herramientas de Marketing: Sistema de Pop-ups configurables desde el panel.
-- [x] Panel de administración: Dashboard con KPIs en tiempo real y gestión de catálogo/cupones.
-- [x] Newsletter: Sistema de captación con pop-up, gestión de suscriptores y envío automático de cupones de bienvenida mediante Brevo.
-- [x] Gestión Post-Venta: Flujo completo de cancelación con restauración de stock y flujo informativo de devoluciones con modal dedicado.
-- [x] Hero Slider Premium: Implementación de slider dinámico con 5 escenas de alta resolución y animaciones de texto.
-- [x] Fidelización de Registro & Newsletter: Sistema configurable de cupones de bienvenida. El administrador puede activar/desactivar y ajustar el porcentaje de descuento desde el dashboard. Los cupones se asignan automáticamente al perfil del usuario para ser visibles en su sección personal.
-- [x] Gestión de Cupones Profesional: Sistema robusto con validación por RPC, soporte para cupones públicos, individuales y por reglas complejas (primera compra, antigüedad, gasto mínimo).
-- [x] Integración de Cloudinary: Sistema centralizado de gestión y optimización de imágenes para todo el catálogo.
+- [x] Sistema de Cupones 2.0: Cupones manuales, masivos, individuales y por reglas de fidelización complejas.
+- [x] Centro de Soporte Premium: Mensajería bidireccional con notificaciones en tiempo real y limpieza de alertas.
+- [x] Checkout multi-paso con Stripe y aplicación dinámica de descuentos.
+- [x] Gestión de Pedidos: Tracking, Facturación PDF y Cancelación automatizada.
+- [x] Marketing: Pop-ups configurables, Newsletter y cupones de bienvenida.
+- [x] Cloudinary: Optimización de imágenes en todo el catálogo.
 
 ## Pendientes (TODO)
-
-### P4: Crecimiento y Fidelización
 - [ ] Refactor Estético: Evolución a Dark Mode premium avanzado.
-
-### Técnico/Otros
-- [x] Integración de Cloudinary para la gestión y optimización de imágenes.
 - [ ] Tests de estrés de concurrencia en stock.
-- [ ] Bug: Visibilidad del texto en Hero Slider (tras refactorización a CSS nativo sigue fallando en algunos navegadores).
+- [ ] Bug: Visibilidad del texto en Hero Slider en algunos navegadores específicos.
 
 ## Convenciones y Reglas del Proyecto
-- **Nomenclatura**: Archivos en `kebab-case`, componentes en `PascalCase`.
-- **Seguridad**: Nunca exponer el `SERVICE_ROLE_KEY` en el cliente.
-- **Precios**: Siempre almacenados y manipulados en **céntimos** (integer) para evitar errores de redondeo de punto flotante.
-- **UI/Estética**: Evitar el uso de emojis en la interfaz de usuario para mantener una estética profesional y premium; usar iconos vectoriales (SVG) o tipografía de alta calidad en su lugar.
+- **Precios**: Siempre en **céntimos** (integer).
+- **Seguridad**: Lógica crítica en RPC o endpoints de servidor; nunca exponer `SERVICE_ROLE_KEY`.
+- **UI**: Sin emojis; usar SVGs premium.
 
 ## Última actualización
-2026-01-23: Migración total del sistema de cupones a una arquitectura basada en SQL/RPC para máxima seguridad y robustez. Implementación de cupones públicos (`es_publico`), nuevas reglas de fidelización (primera compra, antigüedad) y limpieza profunda de políticas RLS. Confirmada también integración de Cloudinary.
+2026-01-23: Finalización del Sistema de Cupones 2.0 con arquitectura Target/Behavior. Corrección de lógica de redención por céntimos y blindaje de seguridad RPC. Saneamiento del sistema de notificaciones de soporte y sincronización de cupones en el perfil de usuario.
 
 ## Esquema de Base de Datos y Políticas (Backup)
 

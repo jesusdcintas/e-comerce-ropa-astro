@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { supabase } from '../../../lib/supabase';
-import { finalizeCouponUse, processRuleAutomations } from '../../../lib/coupon-system';
+import { finalizeCouponUse } from '../../../lib/coupon-system';
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY || '');
 const webhookSecret = import.meta.env.STRIPE_WEBHOOK_SECRET;
