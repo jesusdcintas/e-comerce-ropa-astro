@@ -41,7 +41,7 @@ const userName =
 
 <header
   id="main-header"
-  class="sticky top-0 z-[9999] bg-white/90 backdrop-blur-xl border-b border-gray-100 transition-all duration-300"
+  class="sticky top-0 z-[9990] bg-white/90 backdrop-blur-xl border-b border-gray-100 transition-all duration-300"
 >
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16 lg:h-20">
@@ -57,7 +57,6 @@ const userName =
           ></span>
         </a>
 
-        <!-- Trigger Tienda PC -->
         <div class="relative group/tienda">
           <button
             type="button"
@@ -78,13 +77,11 @@ const userName =
             >
           </button>
 
-          <!-- Mega Menú Desktop Restaurado -->
           <div
-            class="nav-dropdown hidden absolute left-0 top-full mt-2 w-[900px] -ml-[100px] rounded-3xl bg-white shadow-2xl z-[10000] p-10 border border-gray-50 animate-slide-up"
+            class="nav-dropdown hidden absolute left-0 top-full mt-2 w-[900px] -ml-[100px] rounded-3xl bg-white shadow-2xl z-[10000] p-10 border border-gray-100 animate-slide-up"
             data-menu="tienda"
           >
             <div class="grid grid-cols-3 gap-12 text-left">
-              <!-- ROPA -->
               <div>
                 <p
                   class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
@@ -113,7 +110,6 @@ const userName =
                   }
                 </div>
               </div>
-              <!-- CALZADO -->
               <div>
                 <p
                   class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
@@ -152,7 +148,6 @@ const userName =
                   </p>
                 </div>
               </div>
-              <!-- COMPLEMENTOS -->
               <div>
                 <p
                   class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
@@ -264,11 +259,12 @@ const userName =
           </div>
         </div>
 
-        <div class="flex items-center gap-1 sm:gap-2">
+        <div class="flex items-center gap-0.5 sm:gap-2">
           <!-- Favoritos -->
           <a
             href="/favoritos"
             class="p-2 rounded-full hover:bg-slate-50 relative group transition-colors cursor-pointer"
+            title="Favoritos"
           >
             <svg
               class="w-5 h-5 text-slate-700 group-hover:text-red-500"
@@ -318,50 +314,36 @@ const userName =
                     <div class="space-y-1">
                       <a
                         href="/mi-cuenta"
-                        class="flex items-center px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
+                        class="flex items-center px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors font-medium"
                       >
                         Perfil
                       </a>
                       <a
                         href="/mensajes"
-                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
+                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors font-medium"
                       >
                         Mis Mensajes{" "}
                         <HeaderCounter client:load type="inquiry" />
                       </a>
                       <a
                         href="/mis-pedidos"
-                        class="flex items-center px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
+                        class="flex items-center px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors font-medium"
                       >
                         Pedidos
                       </a>
                       <a
                         href="/mis-cupones"
-                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
+                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors font-medium"
                       >
                         Mis Cupones{" "}
                         <HeaderCounter client:load type="coupon_notification" />
                       </a>
-
-                      {user?.app_metadata?.role === "admin" && (
-                        <div class="mt-4 pt-4 border-t border-gray-100">
-                          <a
-                            href="/admin"
-                            class="flex items-center px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-brand-gold hover:text-brand-black"
-                          >
-                            Admin Panel
-                          </a>
-                        </div>
-                      )}
-
-                      <div class="mt-2 pt-2 border-t border-gray-50 px-2">
-                        <button
-                          id="logout-button"
-                          class="w-full text-left px-4 py-3 text-sm text-red-500 font-bold hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                        >
-                          Cerrar Sesión
-                        </button>
-                      </div>
+                      <button
+                        id="logout-button"
+                        class="logout-action w-full text-left px-6 py-3 text-sm text-red-500 font-bold hover:bg-red-50 rounded-xl transition-colors cursor-pointer mt-2"
+                      >
+                        Cerrar Sesión
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -427,10 +409,13 @@ const userName =
       ><span class="text-[9px] font-bold uppercase tracking-widest">Tienda</span
       ></a
     >
+
+    <!-- Buscar Central -->
     <button
       id="mobile-search-trigger"
       class="flex flex-col items-center gap-1 -mt-8 relative active:scale-90 transition-transform"
-      ><div
+    >
+      <div
         class="w-14 h-14 bg-brand-black text-white rounded-full flex items-center justify-center shadow-xl border-4 border-white"
       >
         <svg
@@ -440,11 +425,13 @@ const userName =
           viewBox="0 0 24 24"
           stroke-width="2.5"
           ><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-      </div><span
+      </div>
+      <span
         class="text-[9px] font-black text-brand-black uppercase tracking-widest mt-1"
         >Buscar</span
-      ></button
-    >
+      >
+    </button>
+
     <a
       href="/ofertas"
       class="flex flex-col items-center gap-1 text-slate-400 active:scale-95 transition-transform"
@@ -460,10 +447,13 @@ const userName =
         >Ofertas</span
       ></a
     >
-    <a
-      href={user ? "/mi-cuenta" : "/login"}
-      class="flex flex-col items-center gap-1 text-slate-400 active:scale-95 transition-transform"
-      ><svg
+
+    <!-- Botón Cuenta Móvil (Abre Bottom Sheet) -->
+    <button
+      id="mobile-account-trigger"
+      class="flex flex-col items-center gap-1 text-slate-400 active:scale-95 transition-transform relative"
+    >
+      <svg
         class="w-6 h-6"
         fill="none"
         stroke="currentColor"
@@ -472,22 +462,222 @@ const userName =
         ><path
           d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
         ></path></svg
-      ><span class="text-[9px] font-bold uppercase tracking-widest"
-        >{user ? "Cuenta" : "Login"}</span
-      ></a
-    >
+      >
+      <span class="text-[9px] font-bold uppercase tracking-widest"
+        >{user ? "Mi Cuenta" : "Login"}</span
+      >
+      {user && <HeaderCounter client:load type="notification" />}
+    </button>
   </div>
 </nav>
+
+<!-- BOTTOM SHEET MÓVIL (CUENTA) -->
+<div
+  id="account-sheet-overlay"
+  class="fixed inset-0 z-[10001] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300"
+>
+</div>
+<div
+  id="account-sheet"
+  class="fixed bottom-0 left-0 right-0 z-[10002] bg-white rounded-t-[2.5rem] shadow-2xl transform translate-y-full transition-transform duration-500 ease-out px-8 pt-4 pb-12 lg:hidden"
+>
+  <!-- Tirador superior -->
+  <div class="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8"></div>
+
+  {
+    user ? (
+      <div class="space-y-8">
+        <div class="flex items-center gap-4 border-b border-gray-50 pb-6">
+          <div class="w-14 h-14 rounded-full bg-slate-100 border border-brand-gold flex items-center justify-center">
+            <span class="text-xl font-black text-slate-800 uppercase">
+              {userName.charAt(0)}
+            </span>
+          </div>
+          <div>
+            <p class="text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] mb-1 leading-none">
+              BIENVENIDO
+            </p>
+            <p class="text-xl font-black text-slate-900 truncate max-w-[200px]">
+              {userName}
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4">
+          <a
+            href="/mi-cuenta"
+            class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl group active:bg-slate-100 transition-all"
+          >
+            <span class="flex items-center gap-4 text-sm font-bold text-slate-700">
+              <svg
+                class="w-5 h-5 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>{" "}
+              Mi Información
+            </span>
+            <svg
+              class="w-4 h-4 text-slate-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+            >
+              <path d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+          <a
+            href="/mensajes"
+            class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl group active:bg-slate-100 transition-all"
+          >
+            <span class="flex items-center gap-4 text-sm font-bold text-slate-700">
+              <svg
+                class="w-5 h-5 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>{" "}
+              Mis Mensajes
+            </span>
+            <div class="flex items-center gap-2">
+              <HeaderCounter client:load type="inquiry" />
+              <svg
+                class="w-4 h-4 text-slate-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                stroke-width="2.5"
+              >
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </a>
+          <a
+            href="/mis-pedidos"
+            class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl group active:bg-slate-100 transition-all"
+          >
+            <span class="flex items-center gap-4 text-sm font-bold text-slate-700">
+              <svg
+                class="w-5 h-5 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>{" "}
+              Mis Pedidos
+            </span>
+            <svg
+              class="w-4 h-4 text-slate-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+            >
+              <path d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+          <a
+            href="/mis-cupones"
+            class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl group active:bg-slate-100 transition-all"
+          >
+            <span class="flex items-center gap-4 text-sm font-bold text-slate-700">
+              <svg
+                class="w-5 h-5 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>{" "}
+              Mis Cupones
+            </span>
+            <div class="flex items-center gap-2">
+              <HeaderCounter client:load type="coupon_notification" />
+              <svg
+                class="w-4 h-4 text-slate-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                stroke-width="2.5"
+              >
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </a>
+
+          {user?.app_metadata?.role === "admin" && (
+            <a
+              href="/admin"
+              class="flex items-center justify-between p-5 bg-brand-black text-brand-gold rounded-2xl mt-4"
+            >
+              <span class="text-xs font-black uppercase tracking-widest">
+                Panel Administración
+              </span>
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                stroke-width="2.5"
+              >
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          )}
+        </div>
+
+        <button class="logout-action w-full py-5 text-sm font-black text-red-500 bg-red-50/50 rounded-2xl border border-red-100 mt-6 active:scale-95 transition-all">
+          Cerrar Sesión
+        </button>
+      </div>
+    ) : (
+      <div class="text-center py-10">
+        <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg
+            class="w-10 h-10 text-slate-300"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <p class="text-xl font-black text-slate-900 mb-2">Inicia sesión</p>
+        <p class="text-sm text-slate-500 mb-8 max-w-[240px] mx-auto">
+          Accede a tus pedidos y cupones exclusivos desde tu perfil.
+        </p>
+        <a
+          href="/login"
+          class="block w-full py-5 bg-brand-black text-white rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
+        >
+          Ir al Login
+        </a>
+      </div>
+    )
+  }
+</div>
 
 <!-- BUSCADOR MÓVIL FULL-SCREEN -->
 <div
   id="mobile-search-overlay"
-  class="fixed inset-0 z-[10000] bg-white translate-y-full transition-transform duration-500 ease-in-out px-6 pt-10"
+  class="fixed inset-0 z-[10010] bg-white translate-y-full transition-transform duration-500 ease-in-out px-6 pt-10"
 >
   <div class="flex flex-col h-full max-w-2xl mx-auto">
     <div class="flex items-center justify-between mb-8">
-      <span class="text-xs font-black uppercase tracking-widest text-brand-gold"
-        >¿Qué buscas hoy?</span
+      <span
+        class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold"
+        >EXPLORAR CATÁLOGO</span
       >
       <button
         id="close-search"
@@ -502,44 +692,17 @@ const userName =
         >
       </button>
     </div>
-
-    <div class="relative mb-8">
-      <input
-        id="mobile-search-input"
-        type="text"
-        placeholder="Zapatillas, Polos, Camisas..."
-        class="w-full text-2xl font-serif font-black border-b-2 border-slate-100 focus:border-brand-gold bg-transparent py-4 focus:outline-none transition-colors"
-        autocomplete="off"
-      />
-    </div>
-
+    <input
+      id="mobile-search-input"
+      type="text"
+      placeholder="¿Qué buscas hoy?"
+      class="w-full text-3xl font-serif font-black border-b-2 border-slate-100 focus:border-brand-gold bg-transparent py-4 focus:outline-none transition-colors"
+      autocomplete="off"
+    />
     <div
       id="mobile-search-results-content"
-      class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-10"
+      class="flex-1 overflow-y-auto custom-scrollbar mt-6 space-y-4 pb-20"
     >
-      <!-- Tendencias -->
-      <div id="mobile-search-trends" class="space-y-6 pt-4">
-        <p
-          class="text-[10px] font-black uppercase tracking-widest text-slate-400"
-        >
-          Tendencias actuales
-        </p>
-        <div class="flex flex-wrap gap-2">
-          {
-            [
-              "Novedades",
-              "Best Sellers",
-              "Zapatillas",
-              "Sudaderas",
-              "Outlet",
-            ].map((tag) => (
-              <button class="px-5 py-2.5 bg-slate-50 rounded-full text-xs font-bold text-slate-600 hover:bg-brand-black hover:text-white transition-all uppercase tracking-tighter shadow-sm">
-                {tag}
-              </button>
-            ))
-          }
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -574,13 +737,6 @@ const userName =
   .safe-area-bottom {
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #e2e8f0;
-    border-radius: 10px;
-  }
 </style>
 
 <script>
@@ -588,23 +744,24 @@ const userName =
   import { isCartOpen } from "../../stores/cartStore";
 
   function handleHeader() {
-    // --- Referencias PC ---
+    // --- Referencias ---
     const pTrigger = document.getElementById("profile-trigger");
     const pDropdown = document.getElementById("profile-dropdown");
-    const pcInput = document.getElementById("search-input") as HTMLInputElement;
-    const pcResults = document.getElementById("search-results");
-    const pcContent = document.getElementById("search-results-content");
+    const navTriggers = document.querySelectorAll(".nav-trigger");
 
-    // --- Referencias Móvil ---
-    const mSearchTrigger = document.getElementById("mobile-search-trigger");
-    const mSearchOverlay = document.getElementById("mobile-search-overlay");
-    const mSearchClose = document.getElementById("close-search");
-    const mInput = document.getElementById(
+    // Bottom Sheet
+    const accTrigger = document.getElementById("mobile-account-trigger");
+    const accSheet = document.getElementById("account-sheet");
+    const accOverlay = document.getElementById("account-sheet-overlay");
+
+    // Search
+    const sTrigger = document.getElementById("mobile-search-trigger");
+    const sOverlay = document.getElementById("mobile-search-overlay");
+    const sClose = document.getElementById("close-search");
+    const sInput = document.getElementById(
       "mobile-search-input",
     ) as HTMLInputElement;
-    const mResultsContent = document.getElementById(
-      "mobile-search-results-content",
-    );
+    const sResults = document.getElementById("mobile-search-results-content");
 
     const formatPrice = (cents: number) => {
       return new Intl.NumberFormat("es-ES", {
@@ -620,77 +777,17 @@ const userName =
       pDropdown?.classList.add("hidden");
     };
 
-    // LÓGICA DE BÚSQUEDA (Común para PC y Móvil)
-    const performSearch = async (
-      query: string,
-      container: HTMLElement,
-      resultsDiv?: HTMLElement,
-    ) => {
-      if (!query || query.trim().length < 2) {
-        if (resultsDiv) resultsDiv.classList.add("hidden");
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `/api/search.json?q=${encodeURIComponent(query)}`,
-        );
-        const data = await response.json();
-
-        if (!data.success || !data.results || data.results.length === 0) {
-          container.innerHTML = `<div class="px-4 py-3 text-sm text-gray-500 text-center">No se encontraron productos</div>`;
-        } else {
-          container.innerHTML = data.results
-            .map(
-              (p: any) => `
-            <a href="/producto/${p.slug}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
-              <img src="${p.images?.[0] || ""}" class="w-12 h-12 object-cover rounded shadow-sm" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-bold text-gray-900 leading-tight truncate">${p.name}</p>
-                <p class="text-xs text-brand-gold mt-1 font-bold">${formatPrice(p.price)}</p>
-              </div>
-            </a>
-          `,
-            )
-            .join("");
-        }
-        if (resultsDiv) resultsDiv.classList.remove("hidden");
-      } catch (error) {
-        console.error("Search error:", error);
-      }
-    };
-
-    // Eventos Búsqueda PC
-    let pcTimeout: any;
-    pcInput?.addEventListener("input", () => {
-      clearTimeout(pcTimeout);
-      pcTimeout = setTimeout(
-        () => performSearch(pcInput.value, pcContent!, pcResults!),
-        300,
-      );
-    });
-
-    // Eventos Búsqueda Móvil
-    let mTimeout: any;
-    mInput?.addEventListener("input", () => {
-      clearTimeout(mTimeout);
-      mTimeout = setTimeout(
-        () => performSearch(mInput.value, mResultsContent!),
-        300,
-      );
-    });
-
-    // LÓGICA PC: Perfil y Menús
+    // LOGICA PC
     if (pTrigger) {
       pTrigger.onclick = (e) => {
         e.stopPropagation();
-        const isHidden = pDropdown?.classList.contains("hidden");
+        const isH = pDropdown?.classList.contains("hidden");
         closeAll();
-        if (isHidden) pDropdown?.classList.remove("hidden");
+        if (isH) pDropdown?.classList.remove("hidden");
       };
     }
 
-    document.querySelectorAll(".nav-trigger").forEach((t) => {
+    navTriggers.forEach((t) => {
       (t as HTMLElement).onclick = (e) => {
         e.stopPropagation();
         const key = t.getAttribute("data-trigger");
@@ -701,18 +798,75 @@ const userName =
       };
     });
 
-    // LÓGICA MÓVIL: Buscador Overlay
-    mSearchTrigger?.addEventListener("click", () => {
-      mSearchOverlay?.classList.remove("translate-y-full");
+    // LOGICA MÓVIL: Account Sheet
+    const openSheet = () => {
+      accSheet?.classList.remove("translate-y-full");
+      accOverlay?.classList.remove("hidden");
+      setTimeout(() => accOverlay?.classList.add("opacity-100"), 10);
       document.body.style.overflow = "hidden";
-      setTimeout(() => mInput?.focus(), 500);
+    };
+    const closeSheet = () => {
+      accSheet?.classList.add("translate-y-full");
+      accOverlay?.classList.remove("opacity-100");
+      setTimeout(() => accOverlay?.classList.add("hidden"), 300);
+      document.body.style.overflow = "";
+    };
+
+    accTrigger?.addEventListener("click", openSheet);
+    accOverlay?.addEventListener("click", closeSheet);
+
+    // LOGICA MÓVIL: Search
+    sTrigger?.addEventListener("click", () => {
+      sOverlay?.classList.remove("translate-y-full");
+      document.body.style.overflow = "hidden";
+      setTimeout(() => sInput?.focus(), 500);
     });
-    mSearchClose?.addEventListener("click", () => {
-      mSearchOverlay?.classList.add("translate-y-full");
+    sClose?.addEventListener("click", () => {
+      sOverlay?.classList.add("translate-y-full");
       document.body.style.overflow = "";
     });
 
-    // Cierre Global y Carrito
+    // Búsqueda en vivo (Motor PC/Móvil)
+    sInput?.addEventListener("input", async () => {
+      const query = sInput.value.trim();
+      if (query.length < 2) return;
+
+      const res = await fetch(
+        `/api/search.json?q=${encodeURIComponent(query)}`,
+      );
+      const data = await res.json();
+      if (data.success && sResults) {
+        sResults.innerHTML = data.results
+          .map(
+            (p: any) => `
+          <a href="/producto/${p.slug}" class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl active:bg-slate-100">
+            <img src="${p.images?.[0] || ""}" class="w-16 h-16 object-cover rounded-xl shadow-sm" />
+            <div>
+              <p class="text-sm font-black text-slate-900 leading-tight">${p.name}</p>
+              <p class="text-xs text-brand-gold font-bold mt-1">${formatPrice(p.price)}</p>
+            </div>
+          </a>
+        `,
+          )
+          .join("");
+      }
+    });
+
+    // Logout Común
+    document.querySelectorAll(".logout-action").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await supabase.auth.signOut();
+        document.cookie = "sb-access-token=; Path=/; Max-Age=0";
+        window.location.href = "/";
+      });
+    });
+
+    // Carrito
+    document
+      .getElementById("cart-button")
+      ?.addEventListener("click", () => isCartOpen.set(true));
+
+    // Cierre global PC
     window.onclick = (e) => {
       const target = e.target as Node;
       if (
@@ -721,31 +875,7 @@ const userName =
         !pTrigger?.contains(target)
       )
         pDropdown.classList.add("hidden");
-      if (
-        pcResults &&
-        !pcResults.contains(target) &&
-        !pcInput?.contains(target)
-      )
-        pcResults.classList.add("hidden");
-      document.querySelectorAll(".nav-dropdown").forEach((d) => {
-        const tr = document.querySelector(
-          `[data-trigger="${d.getAttribute("data-menu")}"]`,
-        );
-        if (!d.contains(target) && !tr?.contains(target))
-          d.classList.add("hidden");
-      });
     };
-
-    document
-      .getElementById("cart-button")
-      ?.addEventListener("click", () => isCartOpen.set(true));
-    document
-      .getElementById("logout-button")
-      ?.addEventListener("click", async () => {
-        await supabase.auth.signOut();
-        document.cookie = "sb-access-token=; Path=/; Max-Age=0";
-        window.location.href = "/";
-      });
   }
 
   document.addEventListener("DOMContentLoaded", handleHeader);
