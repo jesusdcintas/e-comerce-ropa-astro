@@ -361,7 +361,7 @@ const statusLabels: Record<string, string> = {
                   {/* Siempre disponible: Recibo de compra */}
                   <div class="flex flex-col items-center gap-3">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                      Ticket de Compra
+                      Factura Simplificada
                     </span>
                     <div class="flex flex-col items-center gap-2">
                       <button
@@ -388,15 +388,15 @@ const statusLabels: Record<string, string> = {
                         target="_blank"
                         class="text-[9px] font-black text-brand-gold hover:underline uppercase tracking-widest mt-1"
                       >
-                        Ver PDF Online →
+                        Ver PDF →
                       </a>
                     </div>
                   </div>
 
-                  {/* Bajo demanda: Factura Oficial */}
+                  {/* Bajo demanda: Factura */}
                   <div class="flex flex-col items-center gap-3">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                      Factura Oficial
+                      Factura
                     </span>
                     <div class="flex flex-col items-center gap-2">
                       {order.invoice_number ? (
@@ -425,7 +425,7 @@ const statusLabels: Record<string, string> = {
                             target="_blank"
                             class="text-[9px] font-black text-slate-900 hover:text-brand-gold hover:underline uppercase tracking-widest mt-1"
                           >
-                            Descargar Factura →
+                            Ver PDF →
                           </a>
                         </>
                       ) : (

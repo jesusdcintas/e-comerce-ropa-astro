@@ -61,7 +61,7 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
   doc.setTextColor(26, 26, 26);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("TICKET DE COMPRA", 105, 60, { align: "center" });
+  doc.text("FACTURA SIMPLIFICADA", 105, 60, { align: "center" });
 
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
