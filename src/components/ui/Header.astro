@@ -27,14 +27,14 @@ const userName =
   class="bg-brand-black text-white py-2 text-center overflow-hidden border-b border-white/5"
 >
   <div class="animate-marquee whitespace-nowrap inline-block">
-    <span class="text-[9px] font-bold uppercase tracking-[0.2em] mx-8"
+    <span class="text-[9px] font-bold uppercase tracking-[0.2em] mx-12"
       >Envío gratuito +50€</span
     >
-    <span class="text-[9px] font-bold uppercase tracking-[0.2em] mx-8"
+    <span class="text-[9px] font-bold uppercase tracking-[0.2em] mx-12"
       >Nueva Colección Otoño/Invierno 2026</span
     >
-    <span class="text-[9px] font-bold uppercase tracking-[0.2em] mx-8"
-      >Descuento 10% código: WELCOME10</span
+    <span class="text-[9px] font-bold uppercase tracking-[0.2em] mx-12"
+      >Descuento exclusivo 10% código: WELCOME10</span
     >
   </div>
 </div>
@@ -45,32 +45,11 @@ const userName =
 >
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16 lg:h-20">
-      <!-- Left: Mobile Hamburger (Only visible on mobile if not using bottom nav, but kept for secondary links) -->
-      <div class="flex lg:hidden flex-1">
-        <button
-          id="mobile-menu-trigger"
-          class="p-2 -ml-2 text-slate-700 hover:text-brand-gold transition-colors focus:outline-none"
-        >
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 6h16M4 12h16M4 18h16"></path>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Desktop Navigation -->
+      <!-- Navegación Escritorio (Izquierda) -->
       <nav class="hidden lg:flex items-center gap-8 flex-1">
         <a
           href="/"
-          class="text-xs font-bold uppercase tracking-widest text-slate-900 hover:text-brand-gold transition-colors relative group"
+          class="text-xs font-black uppercase tracking-widest text-slate-900 hover:text-brand-gold transition-colors relative group"
         >
           Inicio
           <span
@@ -78,15 +57,16 @@ const userName =
           ></span>
         </a>
 
+        <!-- Trigger Tienda PC -->
         <div class="relative group/tienda">
           <button
             type="button"
-            class="nav-trigger text-xs font-bold uppercase tracking-widest text-slate-900 hover:text-brand-gold transition-all flex items-center gap-1.5"
+            class="nav-trigger text-xs font-black uppercase tracking-widest text-slate-900 hover:text-brand-gold transition-all flex items-center gap-1.5 focus:outline-none cursor-pointer"
             data-trigger="tienda"
           >
             Tienda
             <svg
-              class="nav-arrow w-3 h-3 transition-transform"
+              class="nav-arrow w-3 h-3 transition-transform pointer-events-none"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -98,67 +78,142 @@ const userName =
             >
           </button>
 
+          <!-- Mega Menú Desktop Restaurado -->
           <div
-            class="nav-dropdown hidden absolute left-0 top-full mt-2 w-[800px] -ml-[120px] rounded-3xl bg-white shadow-2xl z-[10000] p-10 border border-gray-50 grid grid-cols-3 gap-12 animate-slide-up"
+            class="nav-dropdown hidden absolute left-0 top-full mt-2 w-[900px] -ml-[100px] rounded-3xl bg-white shadow-2xl z-[10000] p-10 border border-gray-50 animate-slide-up"
             data-menu="tienda"
           >
-            <div>
-              <p
-                class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
-              >
-                Ropa
-              </p>
-              <div class="space-y-3">
-                {
-                  ["Camisetas", "Polos", "Sudaderas", "Pantalones"].map(
-                    (item) => (
+            <div class="grid grid-cols-3 gap-12 text-left">
+              <!-- ROPA -->
+              <div>
+                <p
+                  class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
+                >
+                  Ropa
+                </p>
+                <div class="space-y-3">
+                  {
+                    [
+                      "Camisetas",
+                      "Polos",
+                      "Camisas",
+                      "Sudaderas",
+                      "Jerseys",
+                      "Chaquetas",
+                      "Abrigos",
+                      "Pantalones",
+                    ].map((item) => (
                       <a
                         href="/catalogo/ropa"
                         class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
                       >
                         {item}
                       </a>
-                    ),
-                  )
-                }
+                    ))
+                  }
+                </div>
               </div>
-            </div>
-            <div>
-              <p
-                class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
-              >
-                Calzado
-              </p>
-              <div class="space-y-3">
-                {
-                  ["Sneakers", "Zapatos vestir", "Botas"].map((item) => (
-                    <a
-                      href="/catalogo/calzado"
-                      class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+              <!-- CALZADO -->
+              <div>
+                <p
+                  class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
+                >
+                  Calzado
+                </p>
+                <div class="space-y-3">
+                  {
+                    [
+                      "Zapatillas",
+                      "Zapatos casual",
+                      "Zapatos vestir",
+                      "Botines",
+                      "Sandalias",
+                    ].map((item) => (
+                      <a
+                        href="/catalogo/calzado"
+                        class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                      >
+                        {item}
+                      </a>
+                    ))
+                  }
+                </div>
+                <div
+                  class="mt-10 p-5 rounded-2xl bg-slate-50 border border-slate-100"
+                >
+                  <p
+                    class="text-[10px] font-bold text-slate-900 uppercase tracking-widest mb-2 italic"
+                  >
+                    PRO-TIP
+                  </p>
+                  <p class="text-xs text-slate-500 leading-relaxed">
+                    Pruébate nuestro calzado en casa. Devoluciones gratuitas en
+                    30 días.
+                  </p>
+                </div>
+              </div>
+              <!-- COMPLEMENTOS -->
+              <div>
+                <p
+                  class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
+                >
+                  Complementos
+                </p>
+                <div class="space-y-3">
+                  {
+                    [
+                      "Gorras y gorros",
+                      "Bolsos y mochilas",
+                      "Cinturones",
+                      "Gafas",
+                      "Relojería",
+                    ].map((item) => (
+                      <a
+                        href="/catalogo/complementos"
+                        class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                      >
+                        {item}
+                      </a>
+                    ))
+                  }
+                </div>
+                <div class="mt-8">
+                  <a
+                    href="/catalogo"
+                    class="flex items-center justify-between p-4 rounded-xl bg-brand-black text-white hover:bg-brand-gold transition-all group/all"
+                  >
+                    <span
+                      class="text-[10px] font-bold uppercase tracking-widest"
+                      >Colección Completa</span
                     >
-                      {item}
-                    </a>
-                  ))
-                }
+                    <svg
+                      class="w-4 h-4 group-hover/all:translate-x-1 transition-transform"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      ><path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg
+                    >
+                  </a>
+                </div>
               </div>
-            </div>
-            <div>
-              <p
-                class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-6 border-b border-brand-gold/10 pb-2"
-              >
-                Ofertas
-              </p>
-              <a
-                href="/ofertas"
-                class="block text-sm text-red-500 font-bold hover:translate-x-1 transition-transform tracking-widest uppercase text-[10px]"
-                >Ver Todo el Outlet %</a
-              >
             </div>
           </div>
         </div>
+
+        <a
+          href="/ofertas"
+          class="text-xs font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors flex items-center gap-2 group"
+        >
+          Ofertas <span
+            class="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+        </a>
       </nav>
 
-      <!-- Center Logo -->
+      <!-- Logo Central -->
       <div class="flex-shrink-0 flex items-center justify-center">
         <a
           href="/"
@@ -170,12 +225,12 @@ const userName =
         </a>
       </div>
 
-      <!-- Right Actions -->
-      <div class="flex-1 flex items-center justify-end gap-2 lg:gap-5">
-        <!-- Search PC -->
+      <!-- Acciones Derecha -->
+      <div class="flex-1 flex items-center justify-end gap-1 sm:gap-4">
+        <!-- Buscador PC -->
         <div class="relative hidden lg:block">
           <div
-            class="flex items-center h-10 px-4 bg-slate-50 border border-slate-100 rounded-full w-48 lg:w-64 focus-within:bg-white transition-all"
+            class="flex items-center h-10 px-4 bg-slate-50 border border-slate-100 rounded-full w-44 lg:w-60 focus-within:bg-white transition-all shadow-sm"
           >
             <svg
               class="w-4 h-4 text-slate-400"
@@ -195,13 +250,25 @@ const userName =
               class="w-full ml-2 bg-transparent text-sm focus:outline-none"
             />
           </div>
+          <div
+            id="search-results"
+            class="hidden absolute top-full right-0 mt-4 w-[350px] bg-white rounded-2xl shadow-2xl border border-gray-100 z-[10002] overflow-hidden"
+          >
+            <div id="search-results-content" class="py-2"></div>
+            <div class="bg-slate-50 p-3 text-center border-t border-slate-100">
+              <span
+                class="text-[10px] text-slate-400 uppercase font-black tracking-widest"
+                >Presiona enter para ver más</span
+              >
+            </div>
+          </div>
         </div>
 
         <div class="flex items-center gap-1 sm:gap-2">
-          <!-- Favoritos (Always visible) -->
+          <!-- Favoritos -->
           <a
             href="/favoritos"
-            class="p-2 rounded-full hover:bg-slate-50 relative group transition-colors"
+            class="p-2 rounded-full hover:bg-slate-50 relative group transition-colors cursor-pointer"
           >
             <svg
               class="w-5 h-5 text-slate-700 group-hover:text-red-500"
@@ -218,60 +285,90 @@ const userName =
             <HeaderCounter client:load type="favorite" />
           </a>
 
-          <!-- Perfil (Solo visible en PC, en móvil va a la barra inferior) -->
-          <div class="relative hidden lg:block" id="profile-menu">
+          <!-- Perfil PC -->
+          <div class="relative hidden lg:block">
             {
               user ? (
-                <>
+                <div class="relative">
                   <button
                     id="profile-trigger"
-                    class="flex items-center focus:outline-none p-1 relative"
+                    class="flex items-center focus:outline-none p-1 relative z-[100] cursor-pointer"
                   >
-                    <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden hover:border-brand-gold transition-colors">
-                      <span class="text-xs font-bold text-slate-600 uppercase">
+                    <div class="w-8 h-8 rounded-full bg-slate-200/50 border border-slate-200 flex items-center justify-center hover:border-brand-gold transition-colors pointer-events-none shadow-sm">
+                      <span class="text-xs font-black text-slate-800 uppercase">
                         {userName.charAt(0)}
                       </span>
                     </div>
-                    <HeaderCounter client:load type="notification" />
+                    <div class="pointer-events-none">
+                      <HeaderCounter client:load type="notification" />
+                    </div>
                   </button>
                   <div
                     id="profile-dropdown"
-                    class="hidden absolute right-0 top-full mt-4 w-60 bg-white rounded-2xl shadow-2xl border border-slate-50 py-3 z-[10000] animate-slide-up"
+                    class="hidden absolute right-0 top-full mt-4 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 py-4 z-[10001] animate-slide-up"
                   >
-                    <div class="px-6 py-4 border-b border-slate-50">
-                      <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">
-                        Mi Cuenta
+                    <div class="px-6 py-4 border-b border-gray-50 mb-4">
+                      <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 leading-none">
+                        TU CUENTA
                       </p>
-                      <p class="text-sm font-bold text-slate-800 truncate">
+                      <p class="text-base font-bold text-slate-800 truncate">
                         {userName}
                       </p>
                     </div>
-                    <div class="py-2">
+                    <div class="space-y-1">
                       <a
                         href="/mi-cuenta"
-                        class="block px-6 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                        class="flex items-center px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
                       >
                         Perfil
                       </a>
                       <a
-                        href="/mis-pedidos"
-                        class="block px-6 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                        href="/mensajes"
+                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
                       >
-                        Mis Pedidos
+                        Mis Mensajes{" "}
+                        <HeaderCounter client:load type="inquiry" />
                       </a>
-                      <button
-                        id="logout-button"
-                        class="w-full text-left px-6 py-2 text-sm text-red-500 font-bold hover:bg-red-50"
+                      <a
+                        href="/mis-pedidos"
+                        class="flex items-center px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
                       >
-                        Cerrar Sesión
-                      </button>
+                        Pedidos
+                      </a>
+                      <a
+                        href="/mis-cupones"
+                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
+                      >
+                        Mis Cupones{" "}
+                        <HeaderCounter client:load type="coupon_notification" />
+                      </a>
+
+                      {user?.app_metadata?.role === "admin" && (
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                          <a
+                            href="/admin"
+                            class="flex items-center px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-brand-gold hover:text-brand-black"
+                          >
+                            Admin Panel
+                          </a>
+                        </div>
+                      )}
+
+                      <div class="mt-2 pt-2 border-t border-gray-50 px-2">
+                        <button
+                          id="logout-button"
+                          class="w-full text-left px-4 py-3 text-sm text-red-500 font-bold hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                        >
+                          Cerrar Sesión
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
                 <a
                   href="/login"
-                  class="px-4 py-2 bg-brand-black text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-brand-gold transition-all"
+                  class="px-4 py-2 bg-brand-black text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-brand-gold transition-all cursor-pointer"
                 >
                   Login
                 </a>
@@ -279,10 +376,10 @@ const userName =
             }
           </div>
 
-          <!-- Carrito (Always visible) -->
+          <!-- Carrito -->
           <button
             id="cart-button"
-            class="p-2 rounded-full bg-slate-50 hover:bg-brand-gold group transition-all relative"
+            class="p-2 rounded-full bg-slate-50 hover:bg-brand-gold group transition-all relative cursor-pointer focus:outline-none"
           >
             <svg
               class="w-6 h-6 text-slate-700 group-hover:text-white"
@@ -303,47 +400,38 @@ const userName =
   </div>
 </header>
 
-<!-- BARRA DE NAVEGACIÓN INFERIOR (ESTILO PREMIUM APP) -->
+<!-- BARRA MÓVIL INFERIOR -->
 <nav
-  class="fixed bottom-0 left-0 right-0 z-[9999] lg:hidden bg-white/80 backdrop-blur-xl border-t border-gray-100 px-6 py-3 safe-area-inset-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.05)]"
+  class="fixed bottom-0 left-0 right-0 z-[9999] lg:hidden bg-white/90 backdrop-blur-xl border-t border-gray-100 px-6 py-3 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] safe-area-bottom"
 >
-  <div class="flex items-center justify-between max-w-md mx-auto">
-    <!-- Inicio -->
-    <a href="/" class="flex flex-col items-center gap-1 text-slate-900 group">
-      <div class="p-1 rounded-xl group-active:scale-95 transition-transform">
-        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"
-          ><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path></svg
-        >
-      </div>
-      <span class="text-[9px] font-black uppercase tracking-widest">Inicio</span
-      >
-    </a>
-
-    <!-- Tienda -->
+  <div class="flex items-center justify-between max-w-lg mx-auto">
+    <a
+      href="/"
+      class="flex flex-col items-center gap-1 text-slate-900 active:scale-95 transition-transform"
+      ><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"
+        ><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path></svg
+      ><span class="text-[9px] font-black uppercase tracking-widest"
+        >Inicio</span
+      ></a
+    >
     <a
       href="/catalogo"
-      class="flex flex-col items-center gap-1 text-slate-400 hover:text-brand-gold transition-colors group"
+      class="flex flex-col items-center gap-1 text-slate-400 active:scale-95 transition-transform"
+      ><svg
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        stroke-width="2.5"
+        ><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg
+      ><span class="text-[9px] font-bold uppercase tracking-widest">Tienda</span
+      ></a
     >
-      <div class="p-1 rounded-xl group-active:scale-95 transition-transform">
-        <svg
-          class="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          ><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg
-        >
-      </div>
-      <span class="text-[9px] font-bold uppercase tracking-widest">Tienda</span>
-    </a>
-
-    <!-- Buscar (Especial) -->
     <button
       id="mobile-search-trigger"
-      class="flex flex-col items-center gap-1 -mt-8 relative group"
-    >
-      <div
-        class="w-14 h-14 bg-brand-black text-white rounded-full flex items-center justify-center shadow-xl shadow-brand-gold/20 border-4 border-white group-active:scale-90 transition-all"
+      class="flex flex-col items-center gap-1 -mt-8 relative active:scale-90 transition-transform"
+      ><div
+        class="w-14 h-14 bg-brand-black text-white rounded-full flex items-center justify-center shadow-xl border-4 border-white"
       >
         <svg
           class="w-6 h-6"
@@ -351,101 +439,86 @@ const userName =
           stroke="currentColor"
           viewBox="0 0 24 24"
           stroke-width="2.5"
-          ><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg
-        >
-      </div>
-      <span
+          ><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </div><span
         class="text-[9px] font-black text-brand-black uppercase tracking-widest mt-1"
         >Buscar</span
-      >
-    </button>
-
-    <!-- Ofertas -->
+      ></button
+    >
     <a
       href="/ofertas"
-      class="flex flex-col items-center gap-1 text-slate-400 hover:text-red-500 transition-colors group"
+      class="flex flex-col items-center gap-1 text-slate-400 active:scale-95 transition-transform"
+      ><svg
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        stroke-width="2.5"
+        ><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        ></path></svg
+      ><span class="text-[9px] font-bold uppercase tracking-widest"
+        >Ofertas</span
+      ></a
     >
-      <div class="p-1 rounded-xl group-active:scale-95 transition-transform">
-        <svg
-          class="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          ><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          ></path></svg
-        >
-      </div>
-      <span class="text-[9px] font-bold uppercase tracking-widest">Ofertas</span
-      >
-    </a>
-
-    <!-- Perfil -->
     <a
       href={user ? "/mi-cuenta" : "/login"}
-      class="flex flex-col items-center gap-1 text-slate-400 hover:text-brand-gold transition-colors group"
-    >
-      <div class="p-1 rounded-xl group-active:scale-95 transition-transform">
-        <svg
-          class="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          ><path
-            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-          ></path></svg
-        >
-      </div>
-      <span class="text-[9px] font-bold uppercase tracking-widest"
+      class="flex flex-col items-center gap-1 text-slate-400 active:scale-95 transition-transform"
+      ><svg
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        stroke-width="2.5"
+        ><path
+          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+        ></path></svg
+      ><span class="text-[9px] font-bold uppercase tracking-widest"
         >{user ? "Cuenta" : "Login"}</span
-      >
-    </a>
+      ></a
+    >
   </div>
 </nav>
 
-<!-- Superpositor de Búsqueda Móvil (Premium Fullscreen) -->
+<!-- BUSCADOR MÓVIL FULL-SCREEN -->
 <div
   id="mobile-search-overlay"
-  class="fixed inset-0 z-[10000] bg-white translate-y-full transition-transform duration-500 ease-in-out"
+  class="fixed inset-0 z-[10000] bg-white translate-y-full transition-transform duration-500 ease-in-out px-6 pt-10"
 >
-  <div class="p-6 flex flex-col h-full">
+  <div class="flex flex-col h-full max-w-2xl mx-auto">
     <div class="flex items-center justify-between mb-8">
       <span class="text-xs font-black uppercase tracking-widest text-brand-gold"
         >¿Qué buscas hoy?</span
       >
       <button
         id="close-search"
-        class="p-2 text-slate-400 hover:text-brand-black"
+        class="p-2 text-slate-400 hover:text-brand-black transition-colors"
       >
         <svg
           class="w-8 h-8"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
-          ><path d="M6 18L18 6M6 6l12 12" stroke-width="2"></path></svg
+          ><path d="M6 18L18 6M6 6l12 12" stroke-width="2.5"></path></svg
         >
       </button>
     </div>
 
-    <div class="relative mb-10">
+    <div class="relative mb-8">
       <input
         id="mobile-search-input"
         type="text"
         placeholder="Zapatillas, Polos, Camisas..."
         class="w-full text-2xl font-serif font-black border-b-2 border-slate-100 focus:border-brand-gold bg-transparent py-4 focus:outline-none transition-colors"
+        autocomplete="off"
       />
-      <div class="absolute right-0 top-1/2 -translate-y-1/2">
-        <div class="w-2 h-2 rounded-full bg-brand-gold animate-ping"></div>
-      </div>
     </div>
 
     <div
       id="mobile-search-results-content"
-      class="flex-1 overflow-y-auto custom-scrollbar space-y-4"
+      class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-10"
     >
-      <!-- Sugerencias rápidas -->
-      <div id="search-suggestions" class="space-y-6">
+      <!-- Tendencias -->
+      <div id="mobile-search-trends" class="space-y-6 pt-4">
         <p
           class="text-[10px] font-black uppercase tracking-widest text-slate-400"
         >
@@ -456,11 +529,11 @@ const userName =
             [
               "Novedades",
               "Best Sellers",
-              "Zapatillas de Piel",
-              "Sudaderas Oversize",
-              "Liquidación",
+              "Zapatillas",
+              "Sudaderas",
+              "Outlet",
             ].map((tag) => (
-              <button class="px-4 py-2 bg-slate-50 rounded-full text-sm font-bold text-slate-600 hover:bg-brand-black hover:text-white transition-all uppercase tracking-tighter">
+              <button class="px-5 py-2.5 bg-slate-50 rounded-full text-xs font-bold text-slate-600 hover:bg-brand-black hover:text-white transition-all uppercase tracking-tighter shadow-sm">
                 {tag}
               </button>
             ))
@@ -471,7 +544,6 @@ const userName =
   </div>
 </div>
 
-<!-- Estilos para Navegación Móvil -->
 <style>
   @keyframes marquee {
     0% {
@@ -487,17 +559,20 @@ const userName =
     animation: marquee 30s linear infinite;
   }
   .animate-slide-up {
-    animation: slideUp 0.3s ease-out;
+    animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
   @keyframes slideUp {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(12px);
     }
     to {
       opacity: 1;
       transform: translateY(0);
     }
+  }
+  .safe-area-bottom {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
@@ -506,104 +581,164 @@ const userName =
     background: #e2e8f0;
     border-radius: 10px;
   }
-
-  /* Ajuste de área segura para iPhone */
-  .safe-area-inset-bottom {
-    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  }
 </style>
 
-<!-- Script de Interacciones Múltiples -->
 <script>
   import { supabase } from "../../lib/supabase";
-  import { isCartOpen, clearCart } from "../../stores/cartStore";
-  import { clearFavorites } from "../../stores/favoriteStore";
+  import { isCartOpen } from "../../stores/cartStore";
 
-  function setupMobileExperience() {
-    const searchTrigger = document.getElementById("mobile-search-trigger");
-    const searchOverlay = document.getElementById("mobile-search-overlay");
-    const closeSearch = document.getElementById("close-search");
-    const searchInput = document.getElementById(
+  function handleHeader() {
+    // --- Referencias PC ---
+    const pTrigger = document.getElementById("profile-trigger");
+    const pDropdown = document.getElementById("profile-dropdown");
+    const pcInput = document.getElementById("search-input") as HTMLInputElement;
+    const pcResults = document.getElementById("search-results");
+    const pcContent = document.getElementById("search-results-content");
+
+    // --- Referencias Móvil ---
+    const mSearchTrigger = document.getElementById("mobile-search-trigger");
+    const mSearchOverlay = document.getElementById("mobile-search-overlay");
+    const mSearchClose = document.getElementById("close-search");
+    const mInput = document.getElementById(
       "mobile-search-input",
     ) as HTMLInputElement;
-    const resultsContainer = document.getElementById(
+    const mResultsContent = document.getElementById(
       "mobile-search-results-content",
     );
 
-    // Lógica del buscador full-screen
-    searchTrigger?.addEventListener("click", () => {
-      searchOverlay?.classList.remove("translate-y-full");
-      setTimeout(() => searchInput?.focus(), 300);
-      document.body.style.overflow = "hidden";
-    });
+    const formatPrice = (cents: number) => {
+      return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: "EUR",
+      }).format(cents / 100);
+    };
 
-    closeSearch?.addEventListener("click", () => {
-      searchOverlay?.classList.add("translate-y-full");
-      document.body.style.overflow = "";
-    });
+    const closeAll = () => {
+      document
+        .querySelectorAll(".nav-dropdown")
+        .forEach((d) => d.classList.add("hidden"));
+      pDropdown?.classList.add("hidden");
+    };
 
-    // Búsqueda en vivo (mismo motor que PC)
-    let searchTimeout: any;
-    searchInput?.addEventListener("input", async () => {
-      clearTimeout(searchTimeout);
-      const query = searchInput.value.trim();
-      if (query.length < 2) return;
+    // LÓGICA DE BÚSQUEDA (Común para PC y Móvil)
+    const performSearch = async (
+      query: string,
+      container: HTMLElement,
+      resultsDiv?: HTMLElement,
+    ) => {
+      if (!query || query.trim().length < 2) {
+        if (resultsDiv) resultsDiv.classList.add("hidden");
+        return;
+      }
 
-      searchTimeout = setTimeout(async () => {
-        const res = await fetch(
+      try {
+        const response = await fetch(
           `/api/search.json?q=${encodeURIComponent(query)}`,
         );
-        const data = await res.json();
-        if (data.success && data.results.length > 0 && resultsContainer) {
-          resultsContainer.innerHTML = data.results
+        const data = await response.json();
+
+        if (!data.success || !data.results || data.results.length === 0) {
+          container.innerHTML = `<div class="px-4 py-3 text-sm text-gray-500 text-center">No se encontraron productos</div>`;
+        } else {
+          container.innerHTML = data.results
             .map(
               (p: any) => `
-            <a href="/producto/${p.slug}" class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl hover:bg-white border border-transparent hover:border-slate-100 transition-all">
-              <img src="${p.images?.[0] || ""}" class="w-16 h-16 object-cover rounded-xl shadow-sm" />
-              <div>
-                <p class="text-sm font-black text-slate-900">${p.name}</p>
-                <p class="text-xs text-brand-gold font-bold">Ver Detalles →</p>
+            <a href="/producto/${p.slug}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+              <img src="${p.images?.[0] || ""}" class="w-12 h-12 object-cover rounded shadow-sm" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-gray-900 leading-tight truncate">${p.name}</p>
+                <p class="text-xs text-brand-gold mt-1 font-bold">${formatPrice(p.price)}</p>
               </div>
             </a>
           `,
             )
             .join("");
         }
-      }, 300);
+        if (resultsDiv) resultsDiv.classList.remove("hidden");
+      } catch (error) {
+        console.error("Search error:", error);
+      }
+    };
+
+    // Eventos Búsqueda PC
+    let pcTimeout: any;
+    pcInput?.addEventListener("input", () => {
+      clearTimeout(pcTimeout);
+      pcTimeout = setTimeout(
+        () => performSearch(pcInput.value, pcContent!, pcResults!),
+        300,
+      );
     });
 
-    // Menús Desktop y otros
-    const profileTrigger = document.getElementById("profile-trigger");
-    const profileDropdown = document.getElementById("profile-dropdown");
-    const cartButton = document.getElementById("cart-button");
-
-    profileTrigger?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      profileDropdown?.classList.toggle("hidden");
+    // Eventos Búsqueda Móvil
+    let mTimeout: any;
+    mInput?.addEventListener("input", () => {
+      clearTimeout(mTimeout);
+      mTimeout = setTimeout(
+        () => performSearch(mInput.value, mResultsContent!),
+        300,
+      );
     });
 
-    document.querySelectorAll(".nav-trigger").forEach((trig) => {
-      trig.addEventListener("click", (e) => {
+    // LÓGICA PC: Perfil y Menús
+    if (pTrigger) {
+      pTrigger.onclick = (e) => {
         e.stopPropagation();
-        const key = trig.getAttribute("data-trigger");
-        const mm = document.querySelector(`[data-menu="${key}"]`);
-        document
-          .querySelectorAll(".nav-dropdown")
-          .forEach((d) => d.classList.add("hidden"));
-        mm?.classList.remove("hidden");
+        const isHidden = pDropdown?.classList.contains("hidden");
+        closeAll();
+        if (isHidden) pDropdown?.classList.remove("hidden");
+      };
+    }
+
+    document.querySelectorAll(".nav-trigger").forEach((t) => {
+      (t as HTMLElement).onclick = (e) => {
+        e.stopPropagation();
+        const key = t.getAttribute("data-trigger");
+        const menu = document.querySelector(`[data-menu="${key}"]`);
+        const wasOpen = !menu?.classList.contains("hidden");
+        closeAll();
+        if (!wasOpen) menu?.classList.remove("hidden");
+      };
+    });
+
+    // LÓGICA MÓVIL: Buscador Overlay
+    mSearchTrigger?.addEventListener("click", () => {
+      mSearchOverlay?.classList.remove("translate-y-full");
+      document.body.style.overflow = "hidden";
+      setTimeout(() => mInput?.focus(), 500);
+    });
+    mSearchClose?.addEventListener("click", () => {
+      mSearchOverlay?.classList.add("translate-y-full");
+      document.body.style.overflow = "";
+    });
+
+    // Cierre Global y Carrito
+    window.onclick = (e) => {
+      const target = e.target as Node;
+      if (
+        pDropdown &&
+        !pDropdown.contains(target) &&
+        !pTrigger?.contains(target)
+      )
+        pDropdown.classList.add("hidden");
+      if (
+        pcResults &&
+        !pcResults.contains(target) &&
+        !pcInput?.contains(target)
+      )
+        pcResults.classList.add("hidden");
+      document.querySelectorAll(".nav-dropdown").forEach((d) => {
+        const tr = document.querySelector(
+          `[data-trigger="${d.getAttribute("data-menu")}"]`,
+        );
+        if (!d.contains(target) && !tr?.contains(target))
+          d.classList.add("hidden");
       });
-    });
+    };
 
-    document.addEventListener("click", () => {
-      profileDropdown?.classList.add("hidden");
-      document
-        .querySelectorAll(".nav-dropdown")
-        .forEach((d) => d.classList.add("hidden"));
-    });
-
-    cartButton?.addEventListener("click", () => isCartOpen.set(true));
-
-    // Logout
+    document
+      .getElementById("cart-button")
+      ?.addEventListener("click", () => isCartOpen.set(true));
     document
       .getElementById("logout-button")
       ?.addEventListener("click", async () => {
@@ -613,7 +748,7 @@ const userName =
       });
   }
 
-  document.addEventListener("DOMContentLoaded", setupMobileExperience);
-  document.addEventListener("astro:after-swap", setupMobileExperience);
-  if (document.readyState !== "loading") setupMobileExperience();
+  document.addEventListener("DOMContentLoaded", handleHeader);
+  document.addEventListener("astro:after-swap", handleHeader);
+  if (document.readyState !== "loading") handleHeader();
 </script>
