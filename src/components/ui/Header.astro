@@ -100,25 +100,46 @@ const isAccount =
                   Ropa
                 </p>
                 <div class="space-y-3">
-                  {
-                    [
-                      "Camisetas",
-                      "Polos",
-                      "Camisas",
-                      "Sudaderas",
-                      "Jerseys",
-                      "Chaquetas",
-                      "Abrigos",
-                      "Pantalones",
-                    ].map((item) => (
-                      <a
-                        href="/catalogo/ropa"
-                        class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
-                      >
-                        {item}
-                      </a>
-                    ))
-                  }
+                  <a
+                    href="/catalogo/ropa/camisetas"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Camisetas</a
+                  >
+                  <a
+                    href="/catalogo/ropa/polos"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Polos</a
+                  >
+                  <a
+                    href="/catalogo/ropa/camisas"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Camisas</a
+                  >
+                  <a
+                    href="/catalogo/ropa/sudaderas"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Sudaderas</a
+                  >
+                  <a
+                    href="/catalogo/ropa/jerseys"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Jerseys</a
+                  >
+                  <a
+                    href="/catalogo/ropa/chaquetas"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Chaquetas</a
+                  >
+                  <a
+                    href="/catalogo/ropa/abrigos"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Abrigos</a
+                  >
+                  <a
+                    href="/catalogo/ropa/pantalones"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Pantalones</a
+                  >
                 </div>
               </div>
               <div>
@@ -128,22 +149,31 @@ const isAccount =
                   Calzado
                 </p>
                 <div class="space-y-3">
-                  {
-                    [
-                      "Zapatillas",
-                      "Zapatos casual",
-                      "Zapatos vestir",
-                      "Botines",
-                      "Sandalias",
-                    ].map((item) => (
-                      <a
-                        href="/catalogo/calzado"
-                        class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
-                      >
-                        {item}
-                      </a>
-                    ))
-                  }
+                  <a
+                    href="/catalogo/calzado/zapatillas"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Zapatillas</a
+                  >
+                  <a
+                    href="/catalogo/calzado/zapatos-casual"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Zapatos casual</a
+                  >
+                  <a
+                    href="/catalogo/calzado/zapatos-de-vestir"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Zapatos vestir</a
+                  >
+                  <a
+                    href="/catalogo/calzado/botines"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Botines</a
+                  >
+                  <a
+                    href="/catalogo/calzado/sandalias"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Sandalias</a
+                  >
                 </div>
                 <div
                   class="mt-10 p-5 rounded-2xl bg-slate-50 border border-slate-100"
@@ -166,22 +196,31 @@ const isAccount =
                   Complementos
                 </p>
                 <div class="space-y-3">
-                  {
-                    [
-                      "Gorras y gorros",
-                      "Bolsos y mochilas",
-                      "Cinturones",
-                      "Gafas",
-                      "Relojería",
-                    ].map((item) => (
-                      <a
-                        href="/catalogo/complementos"
-                        class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
-                      >
-                        {item}
-                      </a>
-                    ))
-                  }
+                  <a
+                    href="/catalogo/complementos/cabeza"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Gorras y gorros</a
+                  >
+                  <a
+                    href="/catalogo/complementos/bolsos-y-transporte"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Bolsos y mochilas</a
+                  >
+                  <a
+                    href="/catalogo/complementos/cinturones"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Cinturones</a
+                  >
+                  <a
+                    href="/catalogo/complementos/gafas-de-sol"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Gafas</a
+                  >
+                  <a
+                    href="/catalogo/complementos/joyeria-y-relojeria"
+                    class="block text-sm text-slate-500 hover:text-brand-black transition-colors"
+                    >Relojería</a
+                  >
                 </div>
                 <div class="mt-8">
                   <a
@@ -335,7 +374,7 @@ const isAccount =
                       </a>
                       <a
                         href="/mensajes"
-                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
+                        class="relative flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
                       >
                         Mis Mensajes{" "}
                         <HeaderCounter client:load type="inquiry" />
@@ -348,7 +387,7 @@ const isAccount =
                       </a>
                       <a
                         href="/mis-cupones"
-                        class="flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
+                        class="relative flex items-center justify-between px-6 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-black transition-colors font-medium"
                       >
                         Mis Cupones{" "}
                         <HeaderCounter client:load type="coupon_notification" />
@@ -915,7 +954,10 @@ const isAccount =
     document.querySelectorAll(".logout-action").forEach((btn) => {
       btn.addEventListener("click", async () => {
         await supabase.auth.signOut();
-        document.cookie = "sb-access-token=; Path=/; Max-Age=0";
+        import("../../stores/cartStore").then((m) => m.clearCart());
+        import("../../stores/favoriteStore").then((m) => m.clearFavorites());
+        document.cookie = "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
+        document.cookie = "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
         window.location.href = "/";
       });
     });

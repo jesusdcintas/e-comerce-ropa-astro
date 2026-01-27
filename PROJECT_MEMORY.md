@@ -37,20 +37,43 @@
 - **`product_inquiries`**: Consultas de productos con tracker de leídos (`customer_has_unread`).
 
 ## Funcionalidades Implementadas
-- [x] Sistema de Cupones 2.0: Cupones manuales, masivos, individuales y por reglas de fidelización complejas.
-- [x]- Sistema de **Soporte/Mensajería** bidireccional Cliente-Admin.
-- Panel Admin avanzado con gráficos de rendimiento (Chart.js) y gestión de inventario.
-- **Descarga de Documentación**: Generación y visualización dinámica de Tickets y Facturas PDF en cliente y admin.
-- [x] Checkout multi-paso con Stripe y aplicación dinámica de descuentos.
-- [x] Gestión de Pedidos: Tracking, Facturación PDF y Cancelación automatizada.
-- [x] Marketing: Pop-ups configurables, Newsletter y cupones de bienvenida.
-- [x] Cloudinary: Optimización de imágenes en todo el catálogo.
+- [x] **Arquitectura Astro 5.0 Híbrida**: Generación estática para catálogo/productos y SSR para checkout, mi cuenta y admin.
+- [x] **Panel Admin Avanzado (Dashboard Ejecutivo)**: 
+  - [x] KPI Cards con ingresos semanales, mensuales, semestrales y anuales.
+  - [x] Gráfico visual dinámico (Chart.js) de tendencia de ventas diarias.
+  - [x] Estadísticas de inventario (Total unidades, stock bajo, agotados).
+- [x] **Buscador en Vivo (Live Search)**: 
+  - [x] Barra con debounce en Header PC y pantalla completa en móvil.
+  - [x] Despliegue visual de resultados con imágenes y precios sin recara de página.
+- [x] **Sistema de Cupones 2.0**: Cupones manuales, masivos, individuales y por reglas de fidelización (compras mínimas, gasto total, etc.).
+- [x] **Marketing & Conversión**:
+  - [x] Pop-ups configurables (Newsletter/Descuento) con interruptor de visibilidad.
+  - [x] Newsletter funcional con suscripción y registro en base de datos.
+- [x] **Gestión de Pedidos & Post-Venta**:
+  - [x] Historial de pedidos con estados (Pendiente, Pagado, Enviado, Entregado, Cancelado).
+  - [x] Botón de **Cancelación automática** habilitado en estado "Pagado".
+  - [x] Lógica de restauración de stock y reembolso Stripe en cancelación.
+  - [x] Facturación dinámica: Generación de Tickets y Facturas PDF (jspdf).
+- [x] **Perfil de Usuario**: 
+  - [x] Gestión de información personal, datos fiscales y direcciones.
+  - [x] **Cambio de contraseña funcional** (Autenticado).
+- [x] **UX Móvil Premium**:
+  - [x] Bottom Tab Bar con estados activos y diseño "app-like".
+  - [x] Navegación de cuenta mediante Bottom Sheet deslizable.
 
 ## Pendientes (TODO)
-- [ ] Refactor Estético: Evolución a Dark Mode premium avanzado.
-- [ ] Tests de estrés de concurrencia en stock.
-- [ ] Bug: Visibilidad del texto en Hero Slider en algunos navegadores específicos.
-- [x] Funcionalidad: Permitir descarga/visualización de facturas PDF directamente desde el panel de Cliente y Admin (incorporado con endpoint `/api/orders/download-pdf`).
+- [ ] **Ajuste Estético Carruseles**: Centrar correctamente las fotos de los productos en los carruseles de Novedades y Ofertas.
+- [ ] **Recomendador de Talla**: Botón "¿Cuál es mi talla?" con modal pidiendo Altura/Peso y lógica algorítmica simple.
+
+- [ ] **Facturas de Abono**: Generación de factura negativa y lógica de abono automático en devoluciones tras entrega.
+- [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
+- [ ] **Lógica de Interruptor en Home**: Vincular el estado de `flash_offers_enabled` de la tabla `settings` para mostrar/ocultar el carrusel de ofertas en la Home.
+- [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
+- [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
+- [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
+
+- [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
+
 
 ## Convenciones y Reglas del Proyecto
 - **Precios**: Siempre en **céntimos** (integer).

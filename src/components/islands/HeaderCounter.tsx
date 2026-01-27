@@ -22,16 +22,34 @@ export default function HeaderCounter({ type, dark }: Props) {
 
     useEffect(() => {
         setMounted(true);
-        if (type === 'favorite') {
-            fetchFavoriteCount();
-        } else if (type === 'inquiry') {
-            fetchUnreadInquiries();
-        } else if (type === 'notification') {
-            fetchAllUnreadNotifications();
-        } else if (type === 'coupon_notification') {
-            fetchUnreadCouponNotifications();
-        }
+        refreshData();
+
+        // Suscripción Real-Time para Notificaciones
+        const channel = supabase
+            .channel('db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+                fetchAllUnreadNotifications();
+                fetchUnreadCouponNotifications();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites' }, () => {
+                fetchFavoriteCount();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'product_inquiries' }, () => {
+                fetchUnreadInquiries();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
+
+    const refreshData = () => {
+        if (type === 'favorite') fetchFavoriteCount();
+        else if (type === 'inquiry') fetchUnreadInquiries();
+        else if (type === 'notification') fetchAllUnreadNotifications();
+        else if (type === 'coupon_notification') fetchUnreadCouponNotifications();
+    };
 
     useEffect(() => {
         const currentCount = type === 'cart'
@@ -163,7 +181,7 @@ export default function HeaderCounter({ type, dark }: Props) {
         const count = type === 'notification' ? unreadNotifications : unreadCouponNotifications;
         if (count === 0) return null;
         return (
-            <span className={`absolute -top-1 -right-1 bg-red-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'}`}>
+            <span className={`absolute -top-1 -right-1 bg-red-600 text-white text-[9px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-black border-2 border-white transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'} z-[200]`}>
                 {count}
             </span>
         );
