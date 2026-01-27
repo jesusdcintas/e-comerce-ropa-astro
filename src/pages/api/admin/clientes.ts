@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 export const GET: APIRoute = async ({ cookies }) => {
   const accessToken = cookies.get("sb-access-token")?.value;
-  
+
   if (!accessToken) {
     return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
   }
@@ -15,8 +15,9 @@ export const GET: APIRoute = async ({ cookies }) => {
   );
 
   const { data: { user } } = await supabase.auth.getUser(accessToken);
-  
-  if (!user || user.app_metadata?.role !== 'admin') {
+  const role = user?.app_metadata?.role || user?.user_metadata?.role;
+
+  if (!user || role !== 'admin') {
     return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 403 });
   }
 

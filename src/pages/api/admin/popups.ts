@@ -13,7 +13,8 @@ export const GET: APIRoute = async ({ cookies }) => {
         if (!accessToken) return new Response(null, { status: 401 });
 
         const { data: { user } } = await supabase.auth.getUser(accessToken);
-        if (!user || user.app_metadata?.role !== 'admin') return new Response(null, { status: 403 });
+        const role = user?.app_metadata?.role || user?.user_metadata?.role;
+        if (!user || role !== 'admin') return new Response(null, { status: 403 });
 
         const { data, error } = await supabaseAdmin
             .from('popups')
@@ -33,7 +34,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         if (!accessToken) return new Response(null, { status: 401 });
 
         const { data: { user } } = await supabase.auth.getUser(accessToken);
-        if (!user || user.app_metadata?.role !== 'admin') return new Response(null, { status: 403 });
+        const role = user?.app_metadata?.role || user?.user_metadata?.role;
+        if (!user || role !== 'admin') return new Response(null, { status: 403 });
 
         const { action, id, data } = await request.json();
 

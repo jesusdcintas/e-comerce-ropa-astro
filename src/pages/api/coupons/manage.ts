@@ -18,7 +18,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         // Verificar que el usuario sea realmente un admin usando el cliente normal
         const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
-        if (authError || !user || user.app_metadata?.role !== 'admin') {
+
+        const role = user?.app_metadata?.role || user?.user_metadata?.role;
+
+        if (authError || !user || role !== 'admin') {
+            console.error('[AUTH ERROR] Access denied for user:', user?.id, 'Role found:', role);
             return new Response(JSON.stringify({ error: 'Prohibido: Solo administradores' }), { status: 403 });
         }
 
