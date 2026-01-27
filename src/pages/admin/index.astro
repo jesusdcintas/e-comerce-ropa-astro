@@ -111,16 +111,28 @@ const { count: ordersCount } = await supabase
     .from("orders")
     .select("*", { count: "exact", head: true });
 
-// 3. Stock y Variantes
-const { data: variantsData } = await supabase
+// 3. Stock y Variantes - Agrupado por producto para KPIs reales
+const { data: variantsRaw } = await supabase
     .from("product_variants")
-    .select("stock");
+    .select("product_id, stock");
+
+const productsStockMap: Record<
+    number,
+    { low: boolean; out: boolean; total: number }
+> = {};
+variantsRaw?.forEach((v) => {
+    if (!productsStockMap[v.product_id]) {
+        productsStockMap[v.product_id] = { low: false, out: false, total: 0 };
+    }
+    productsStockMap[v.product_id].total += v.stock;
+    if (v.stock === 0) productsStockMap[v.product_id].out = true;
+    if (v.stock > 0 && v.stock < 3) productsStockMap[v.product_id].low = true;
+});
 
 const stockStats = {
-    totalUnits: variantsData?.reduce((acc, v) => acc + v.stock, 0) || 0,
-    lowStock:
-        variantsData?.filter((v) => v.stock < 3 && v.stock > 0).length || 0,
-    outOfStock: variantsData?.filter((v) => v.stock === 0).length || 0,
+    totalUnits: variantsRaw?.reduce((acc, v) => acc + v.stock, 0) || 0,
+    lowStock: Object.values(productsStockMap).filter((p) => p.low).length,
+    outOfStock: Object.values(productsStockMap).filter((p) => p.out).length,
 };
 
 // 4. Catálogo de Productos
@@ -444,7 +456,7 @@ const statusText: Record<string, string> = {
                         >
                             <span
                                 class="text-[10px] font-black text-orange-600/60 uppercase tracking-widest group-hover:text-white/70 transition-colors"
-                                >Bajo (&lt;3)</span
+                                >PRODUCTOS BAJO STOCK</span
                             >
                             <div class="flex items-end justify-between mt-1">
                                 <span
@@ -474,7 +486,7 @@ const statusText: Record<string, string> = {
                         >
                             <span
                                 class="text-[10px] font-black text-red-600/60 uppercase tracking-widest group-hover:text-white/70 transition-colors"
-                                >Agotados</span
+                                >PRODUCTOS AGOTADOS</span
                             >
                             <div class="flex items-end justify-between mt-1">
                                 <span

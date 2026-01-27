@@ -28,14 +28,18 @@ if (stockFilter === "low") {
     title = "Productos Agotados";
 }
 
-if (categorySlug) {
-    // Buscar la categoría actual
-    currentCategory = allCategories?.find((cat) => cat.slug === categorySlug);
+// Obtener datos base según filtros
+let query = supabase
+    .from("products")
+    .select(
+        "*, categories:categories(name, slug), product_variants(size, stock)",
+    )
+    .order(sortBy, { ascending: isAsc });
 
+if (categorySlug) {
+    currentCategory = allCategories?.find((cat) => cat.slug === categorySlug);
     if (currentCategory) {
         title = currentCategory.name;
-
-        // Función para obtener todos los IDs de subcategorías de forma recursiva (todos los niveles)
         const getRecursiveCategoryIds = (
             parentId: number,
             cats: any[],
@@ -49,80 +53,42 @@ if (categorySlug) {
             }
             return allIds;
         };
-
-        const allDescendantIds = getRecursiveCategoryIds(
+        const targetCategoryIds = [
             currentCategory.id,
-            allCategories || [],
-        );
-        const targetCategoryIds = [currentCategory.id, ...allDescendantIds];
-
-        // Obtener productos de la categoría y todas sus descendientes
-        let query = supabase
-            .from("products")
-            .select(
-                "*, categories:categories(name, slug), product_variants(stock)",
-            )
-            .in("category_id", targetCategoryIds)
-            .order(sortBy, { ascending: isAsc });
-
-        if (stockFilter === "low") {
-            query = query
-                .select(
-                    "*, categories:categories(name, slug), product_variants!inner(stock)",
-                )
-                .lt("product_variants.stock", 3)
-                .gt("product_variants.stock", 0);
-        } else if (stockFilter === "out") {
-            query = query
-                .select(
-                    "*, categories:categories(name, slug), product_variants!inner(stock)",
-                )
-                .eq("product_variants.stock", 0);
-        }
-
-        const { data: catProducts } = await query;
-        products =
-            catProducts?.map((p) => ({
-                ...p,
-                stock:
-                    (p.product_variants as any[])?.reduce(
-                        (acc, v) => acc + (v.stock || 0),
-                        0,
-                    ) || 0,
-            })) || [];
+            ...getRecursiveCategoryIds(currentCategory.id, allCategories || []),
+        ];
+        query = query.in("category_id", targetCategoryIds);
     }
-} else {
-    // Obtener todos los productos con filtro de stock opcional
-    let query = supabase
-        .from("products")
-        .select("*, categories:categories(name, slug), product_variants(stock)")
-        .order(sortBy, { ascending: isAsc });
+}
 
-    if (stockFilter === "low") {
-        query = query
-            .select(
-                "*, categories:categories(name, slug), product_variants!inner(stock)",
-            )
-            .lt("product_variants.stock", 3)
-            .gt("product_variants.stock", 0);
-    } else if (stockFilter === "out") {
-        query = query
-            .select(
-                "*, categories:categories(name, slug), product_variants!inner(stock)",
-            )
-            .eq("product_variants.stock", 0);
-    }
+const { data: rawProducts } = await query;
 
-    const { data: allProducts } = await query;
-    products =
-        allProducts?.map((p) => ({
-            ...p,
-            stock:
-                (p.product_variants as any[])?.reduce(
-                    (acc, v) => acc + (v.stock || 0),
-                    0,
-                ) || 0,
-        })) || [];
+// Procesamiento en JS para detección precisa de tallas con stock crítico
+products = (rawProducts || []).map((p) => {
+    const variants = (p.product_variants as any[]) || [];
+    const totalStock = variants.reduce((acc, v) => acc + (v.stock || 0), 0);
+
+    // Identificar tallas críticas para este producto
+    const lowStockSizes = variants
+        .filter((v) => v.stock > 0 && v.stock < 3)
+        .map((v) => v.size);
+    const outOfStockSizes = variants
+        .filter((v) => v.stock === 0)
+        .map((v) => v.size);
+
+    return {
+        ...p,
+        totalStock,
+        lowStockSizes,
+        outOfStockSizes,
+    };
+});
+
+// Aplicar filtros de stock sobre la lista procesada
+if (stockFilter === "low") {
+    products = products.filter((p) => p.lowStockSizes.length > 0);
+} else if (stockFilter === "out") {
+    products = products.filter((p) => p.outOfStockSizes.length > 0);
 }
 
 const formatPrice = (cents: number) => (cents / 100).toFixed(2);
@@ -410,26 +376,43 @@ function getSortIcon(column: string) {
                                             </div>
                                         </td>
                                         <td class="px-6 py-5">
-                                            <div class="flex flex-col gap-1">
+                                            <div class="flex flex-col gap-1.5">
                                                 <span
                                                     class={`w-fit px-3 py-1 text-[10px] font-black uppercase rounded-full border ${
-                                                        product.stock >= 10
+                                                        product.totalStock >= 10
                                                             ? "bg-green-50 text-green-600 border-green-100"
-                                                            : product.stock >= 3
+                                                            : product.totalStock >=
+                                                                3
                                                               ? "bg-orange-50 text-orange-600 border-orange-100"
                                                               : "bg-red-50 text-red-600 border-red-100"
                                                     }`}
                                                 >
-                                                    {product.stock > 0
-                                                        ? `${product.stock} Unidades`
+                                                    {product.totalStock > 0
+                                                        ? `${product.totalStock} Unidades`
                                                         : "Sin Stock"}
                                                 </span>
-                                                {product.stock < 3 &&
-                                                    product.stock > 0 && (
-                                                        <span class="text-[9px] font-bold text-red-500 italic ml-1 animate-pulse">
-                                                            ¡Crítico! Reponer ya
+
+                                                {/* Detalle de tallas críticas */}
+                                                <div class="flex flex-wrap gap-1">
+                                                    {product.outOfStockSizes
+                                                        .length > 0 && (
+                                                        <span class="text-[8px] font-black uppercase px-1.5 py-0.5 bg-red-500 text-white rounded">
+                                                            Agotado:{" "}
+                                                            {product.outOfStockSizes.join(
+                                                                ", ",
+                                                            )}
                                                         </span>
                                                     )}
+                                                    {product.lowStockSizes
+                                                        .length > 0 && (
+                                                        <span class="text-[8px] font-black uppercase px-1.5 py-0.5 bg-orange-500 text-white rounded">
+                                                            Bajo:{" "}
+                                                            {product.lowStockSizes.join(
+                                                                ", ",
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="px-8 py-5 text-right action-cell">

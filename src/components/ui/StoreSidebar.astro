@@ -47,13 +47,7 @@ const categoriesTree: CategoryWithSubs[] = await Promise.all(
                 allCategories?.filter((c) => c.parent_id === cat.id) || [];
             subs = level2
                 .map((child) => {
-                    let name = child.name;
-                    if (child.slug === "cabeza") name = "Gorras y gorros";
-                    if (child.slug === "bolsos-y-transporte")
-                        name = "Bolsos y mochilas";
-                    if (child.slug === "joyeria-y-relojeria")
-                        name = "Joyería y relojes";
-                    return { id: child.id, name, slug: child.slug };
+                    return { id: child.id, name: child.name, slug: child.slug };
                 })
                 .filter((c) => c.slug !== "cinturones-y-gafas");
 
@@ -207,7 +201,7 @@ const categoriesTree: CategoryWithSubs[] = await Promise.all(
     {
         showBanner && (
             <div class="relative overflow-hidden group hidden lg:block">
-                <div class="absolute inset-0 bg-slate-900 rounded-3xl transition-transform duration-500 group-hover:scale-[1.02]"></div>
+                <div class="absolute inset-0 bg-slate-900 rounded-3xl transition-transform duration-500 group-hover:scale-[1.02]" />
                 <div class="relative p-8 text-white">
                     <h4 class="text-xl font-serif font-bold mb-3">
                         ¿Necesitas ayuda?

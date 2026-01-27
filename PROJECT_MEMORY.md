@@ -74,13 +74,20 @@
 
 ## Pendientes (TODO)
 
+- [ ] **Sistema de Seguimiento de Envíos (AfterShip)**:
+  - [ ] **DB Update**: Añadir campos `tracking_number` y `carrier_name` a la tabla `orders`.
+  - [ ] **Admin UI**: Implementar popup de captura de tracking al cambiar estado a "ENVIADO".
+  - [ ] **Integración External**: Configurar AfterShip (Sandbox mode) para sincronización de estados real.
+  - [ ] **Branded Tracking Page**: Creación de la página de seguimiento personalizada con estética premium.
+- [ ] **Notificaciones Proactivas (Email)**:
+  - [ ] Flujo de correos automáticos para cada cambio de estado (Pagado, Enviado con tracking, Entregado, Cancelado).
+  - [ ] Inclusión de botón de seguimiento dinámico en el email de envío.
 - [ ] **Facturas de Abono**: Generación de factura negativa y lógica de abono automático en devoluciones tras entrega.
 - [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
 - [ ] **Lógica de Interruptor en Home**: Vincular el estado de `flash_offers_enabled` de la tabla `settings` para mostrar/ocultar el carrusel de ofertas en la Home.
 - [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
-
 - [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
 - [ ] **Compras sin iniciar sesión**: Permitir a los usuarios realizar pedidos sin tener una cuenta creada.
 
