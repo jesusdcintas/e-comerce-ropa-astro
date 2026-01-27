@@ -117,12 +117,7 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                                 const level2 = categories.filter(cat => cat.parent_id === category.id);
 
                                 // Mapeamos a lo que el usuario quiere
-                                subcategories = level2.map(l2 => {
-                                    if (l2.slug === 'cabeza') return { ...l2, name: 'Gorras y gorros' };
-                                    if (l2.slug === 'bolsos-y-transporte') return { ...l2, name: 'Bolsos y mochilas' };
-                                    if (l2.slug === 'joyeria-y-relojeria') return { ...l2, name: 'Joyería y relojes' };
-                                    return l2;
-                                }).filter(cat => cat.slug !== 'cinturones-y-gafas');
+                                subcategories = level2.filter(cat => cat.slug !== 'cinturones-y-gafas');
 
                                 // Añadimos Cinturones y Gafas por separado (eran nietos)
                                 const cinturonesGafas = categories.find(c => c.slug === 'cinturones-y-gafas');

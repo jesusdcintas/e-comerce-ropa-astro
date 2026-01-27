@@ -14,7 +14,7 @@ export default function SizeRecommender({ categorySlug }: Props) {
     // Categorías que son de talla única
     const oneSizeKeywords = [
         'anillos', 'gorras', 'gafas', 'relojes', 'joyeria', 'relojeria',
-        'accesorios', 'gafas-de-sol', 'complementos-cabeza', 'bolsos-y-transporte',
+        'accesorios', 'gafas-de-sol', 'gorros-gorras-y-sombreros', 'bolsos-y-transporte',
         'mochilas', 'bolsos', 'pulseras', 'collares', 'pendientes', 'gorros',
         'bufandas', 'guantes', 'carteras', 'corbatas', 'pañuelos', 'sombreros'
     ];
