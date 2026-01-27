@@ -37,9 +37,26 @@ export async function validateCoupon(
     const result = data?.[0]; // El RPC devuelve una tabla, tomamos la primera fila
 
     if (!result || !result.is_valid) {
+        let userMessage = result?.reason || 'Este código no es válido';
+
+        // Mapeo de errores técnicos a mensajes amigables
+        if (userMessage.toLowerCase().includes('regla')) {
+            if (userMessage.toLowerCase().includes('gasto')) {
+                userMessage = 'Este cupón requiere un gasto mínimo que aún no has alcanzado.';
+            } else if (userMessage.toLowerCase().includes('primera compra')) {
+                userMessage = 'Este cupón es exclusivo para nuevos clientes registrados.';
+            } else {
+                userMessage = 'No tienes este cupón asignado o no cumples los requisitos para usarlo.';
+            }
+        } else if (userMessage.toLowerCase().includes('no asignado')) {
+            userMessage = 'Este cupón no está asignado a tu cuenta.';
+        } else if (userMessage.toLowerCase().includes('agotado') || userMessage.toLowerCase().includes('usado')) {
+            userMessage = 'Este cupón ya ha sido utilizado o ha caducado.';
+        }
+
         return {
             valid: false,
-            message: result?.reason || 'Cupón no válido'
+            message: userMessage
         };
     }
 

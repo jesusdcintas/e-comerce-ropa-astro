@@ -248,7 +248,7 @@ await supabaseAuth
                                                 {coupon.codigo}
                                             </span>
                                             <button
-                                                onclick={`navigator.clipboard.writeText('${coupon.codigo}'); alert('¡Código copiado con éxito! Úsalo en el checkout.');`}
+                                                onclick={`navigator.clipboard.writeText('${coupon.codigo}'); window.showToast('¡Código copiado con éxito! Úsalo en el checkout.', 'success');`}
                                                 class="bg-slate-800 text-white p-2 rounded-xl hover:bg-brand-gold transition-all shadow-md shadow-slate-200"
                                                 title="Copiar código"
                                             >
@@ -322,4 +322,8 @@ await supabaseAuth
             </a>
         </div>
     </div>
+    <script>
+        import { addToast } from "../stores/toastStore";
+        (window as any).showToast = addToast;
+    </script>
 </BaseLayout>

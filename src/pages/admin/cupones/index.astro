@@ -571,6 +571,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
     </div>
 
     <script>
+        import { addToast } from "../../../stores/toastStore";
         // 1. Ejecutar Automatización (Manual Trigger)
         // 1. Propagación de Cupón a Segmento
         document.querySelectorAll(".propagate-coupon-btn").forEach((btn) => {
@@ -599,13 +600,13 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     });
                     const data = await res.json();
                     if (data.success) {
-                        alert(data.message);
+                        addToast(data.message);
                         location.reload();
                     } else {
-                        alert("Error: " + data.error);
+                        addToast("Error: " + data.error);
                     }
                 } catch (e) {
-                    alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 } finally {
                     btn.innerHTML = originalHTML;
                     btn.removeAttribute("disabled");
@@ -674,9 +675,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 });
                 const result = await res.json();
                 if (result.success) window.location.reload();
-                else window.alert("Error: " + result.error);
+                else addToast("Error: " + result.error, "error");
             } catch (err) {
-                window.alert("Error de conexión");
+                addToast("Error de conexión", "error");
             }
         });
 
@@ -705,9 +706,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     });
                     const result = await res.json();
                     if (result.success) window.location.reload();
-                    else window.alert("Error: " + result.error);
+                    else addToast("Error: " + result.error, "error");
                 } catch (e) {
-                    window.alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 }
             });
         });
@@ -732,9 +733,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     });
                     const result = await res.json();
                     if (result.success) window.location.reload();
-                    else window.alert("Error: " + result.error);
+                    else addToast("Error: " + result.error, "error");
                 } catch (e) {
-                    window.alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 }
             });
         });
@@ -760,9 +761,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     });
                     const result = await res.json();
                     if (result.success) window.location.reload();
-                    else window.alert("Error: " + result.error);
+                    else addToast("Error: " + result.error, "error");
                 } catch (e) {
-                    window.alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 }
             });
         });
@@ -832,9 +833,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 });
                 const result = await res.json();
                 if (result.success) window.location.reload();
-                else window.alert("Error: " + result.error);
+                else addToast("Error: " + result.error, "error");
             } catch (err) {
-                window.alert("Error de conexión");
+                addToast("Error de conexión", "error");
             }
         });
 
@@ -863,9 +864,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     });
                     const result = await res.json();
                     if (result.success) window.location.reload();
-                    else window.alert("Error: " + result.error);
+                    else addToast("Error: " + result.error, "error");
                 } catch (e) {
-                    window.alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 }
             });
         });
@@ -893,9 +894,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 });
                 const result = await res.json();
                 if (result.success) window.location.reload();
-                else window.alert("Error: " + result.error);
+                else addToast("Error: " + result.error, "error");
             } catch (e) {
-                window.alert("Error de conexión");
+                addToast("Error de conexión", "error");
             }
         });
 
@@ -921,11 +922,11 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     });
                     const result = await res.json();
                     if (!result.success) {
-                        window.alert("Error al asignar regla: " + result.error);
+                        addToast("Error al asignar regla: " + result.error);
                         window.location.reload();
                     }
                 } catch (err) {
-                    window.alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 }
             });
         });
@@ -953,9 +954,10 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                         }),
                     });
                     const result = await res.json();
-                    if (!result.success) alert("Error: " + result.error);
+                    if (!result.success)
+                        addToast("Error: " + result.error, "error");
                 } catch (e) {
-                    alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 }
             });
         });
@@ -967,7 +969,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 const id = btn.getAttribute("data-id");
 
                 if (!id) {
-                    alert(
+                    addToast(
                         "Esta regla aún no existe en la base de datos. Se creará automáticamente cuando el primer usuario la active o use.",
                     );
                     return;
@@ -989,9 +991,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     });
                     const result = await res.json();
                     if (result.success) location.reload();
-                    else alert("Error: " + result.error);
+                    else addToast("Error: " + result.error, "error");
                 } catch (e) {
-                    alert("Error de conexión");
+                    addToast("Error de conexión", "error");
                 }
             });
         });
@@ -1090,7 +1092,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 if (valorLabel)
                     valorLabel.innerText =
                         tipo === "compra_minima"
-                            ? "Gasto Mínimo (€)"
+                            ? "Gasto min. pedido nuevo (€)"
                             : "Nº de Pedidos";
             }
         };
@@ -1151,9 +1153,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 });
                 const result = await res.json();
                 if (result.success) location.reload();
-                else alert("Error: " + result.error);
+                else addToast("Error: " + result.error, "error");
             } catch (err) {
-                alert("Error de conexión");
+                addToast("Error de conexión", "error");
             }
         });
 
@@ -1246,10 +1248,10 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                     hiddenSelectInModal.selectedOptions,
                 ).map((o) => o.value);
                 if (cliente_ids.length === 0)
-                    return alert("Selecciona al menos un cliente");
+                    return addToast("Selecciona al menos un cliente");
             } else if (mode === "segment") {
                 regla_id = formData.get("regla_id");
-                if (!regla_id) return alert("Selecciona una regla");
+                if (!regla_id) return addToast("Selecciona una regla");
             }
 
             const validez = parseInt(formData.get("validez") as string);
@@ -1279,9 +1281,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 });
                 const result = await res.json();
                 if (result.success) location.reload();
-                else alert("Error: " + result.error);
+                else addToast("Error: " + result.error, "error");
             } catch (err) {
-                alert("Error de conexión");
+                addToast("Error de conexión", "error");
             }
         });
 
@@ -1361,7 +1363,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 if (valorLabel)
                     valorLabel.innerText =
                         tipo === "compra_minima"
-                            ? "Gasto Mínimo (€)"
+                            ? "Gasto min. pedido nuevo (€)"
                             : "Nº de Pedidos";
             }
         };
@@ -1403,9 +1405,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 });
                 const result = await res.json();
                 if (result.success) location.reload();
-                else alert("Error: " + result.error);
+                else addToast("Error: " + result.error, "error");
             } catch (err) {
-                alert("Error de conexión");
+                addToast("Error de conexión", "error");
             }
         });
     </script>
@@ -1728,7 +1730,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                 class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-gold/20 transition-all"
                             >
                                 <option value="compra_minima"
-                                    >Gasto Mínimo en Pedido</option
+                                    >Gasto mínimo en pedido nuevo</option
                                 >
                                 <option value="primera_compra"
                                     >Primera Compra (Nuevos)</option
@@ -1851,7 +1853,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                 class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-brand-gold/20 outline-none text-sm font-bold text-slate-700 transition-all"
                             >
                                 <option value="compra_minima"
-                                    >Gasto Mínimo en Pedido</option
+                                    >Gasto mínimo en pedido nuevo</option
                                 >
                                 <option value="primera_compra"
                                     >Primera Compra</option
