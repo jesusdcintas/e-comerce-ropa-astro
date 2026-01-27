@@ -409,23 +409,6 @@ const variantsBySize =
                                         </div>
                                     </label>
 
-                                    <div class="px-2">
-                                        <label
-                                            for="new_arrival_ends_at"
-                                            class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 block mb-2"
-                                            >Caducidad de novedad (opcional)</label
-                                        >
-                                        <input
-                                            type="datetime-local"
-                                            name="new_arrival_ends_at"
-                                            id="new_arrival_ends_at"
-                                            value={formatDateForInput(
-                                                product.new_arrival_ends_at,
-                                            )}
-                                            class="w-full bg-slate-50 border-2 border-transparent focus:bg-white focus:ring-4 focus:ring-brand-gold/5 focus:border-brand-gold/20 rounded-2xl py-3 px-5 text-xs text-slate-700 font-bold transition-all appearance-none cursor-pointer"
-                                        />
-                                    </div>
-
                                     <label
                                         class="flex items-center gap-5 p-5 bg-slate-50/50 rounded-3xl cursor-pointer hover:bg-slate-50 transition-all border-2 border-transparent focus-within:border-brand-gold/10"
                                     >
@@ -987,8 +970,6 @@ const variantsBySize =
                     category_id: catId,
                     images: images,
                     is_new_arrival: formData.get("is_new_arrival") === "on",
-                    new_arrival_ends_at:
-                        formData.get("new_arrival_ends_at") || null,
                     is_offer: formData.get("is_offer") === "on",
                     discount_percentage:
                         parseInt(

@@ -52,7 +52,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const { error: updateProductError } = await supabase
             .from('products')
             .update({ stock: totalStock })
-            .eq('id', productId);
+            .eq('id', productId)
+            .select('id');
 
         if (updateProductError) throw updateProductError;
 

@@ -65,10 +65,14 @@
 - [x] **UX Móvil Premium**:
   - [x] Bottom Tab Bar con estados activos y diseño "app-like".
   - [x] Navegación de cuenta mediante Bottom Sheet deslizable.
+- [x] **Inteligencia de Producto**:
+  - [x] **Recomendador de Talla**: Algoritmo que sugiere tallas basadas en Altura/Peso para Ropa, Pantalones, Cinturones y Calzado.
+  - [x] **Detección de Talla Única**: Lógica automática para accesorios (gorras, relojes, gafas) que simplifica la interacción del usuario.
+- [x] **Gestión de Stock Avanzada**:
+  - [x] **Restock Rápido**: Modales de actualización instantánea desde el catálogo de admin y fichas de producto.
+  - [x] **API de Inventario Robusta**: Sincronización atómica de stock total y protección contra inconsistencias de esquema en Supabase.
 
 ## Pendientes (TODO)
-- [ ] **Ajuste Estético Carruseles**: Centrar correctamente las fotos de los productos en los carruseles de Novedades y Ofertas.
-- [x] **Recomendador de Talla**: Botón "¿Cuál es mi talla?" con modal pidiendo Altura/Peso y lógica algorítmica simple.
 
 - [ ] **Facturas de Abono**: Generación de factura negativa y lógica de abono automático en devoluciones tras entrega.
 - [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
@@ -107,7 +111,7 @@
 - **UI**: Sin emojis; usar SVGs premium.
 
 ## Última actualización
-2026-01-27: Implementación de Controles Globales de Marketing (Ofertas, Novedades, Pop-ups), Modo Mantenimiento selectivo y refinamiento de visualización de descuentos en carrito y checkout.
+2026-01-27: Implementación del Recomendador de Tallas inteligente (incluyendo lógica de Talla Única), Sistema de Restock Rápido para Admin y endurecimiento de la API de inventario frente a errores de caché de esquema.
 
 ## Versiones Estables (Checkpoints)
 - **Commit 07f5e19 (26/01/2026)**: Versión Premium Mobile & Desktop.

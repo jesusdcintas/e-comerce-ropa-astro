@@ -235,9 +235,6 @@ function formatPrice(cents: number) {
                                         Precio
                                     </th>
                                     <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
-                                        Fin Novedad
-                                    </th>
-                                    <th class="px-6 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
                                         Añadido
                                     </th>
                                     <th class="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
@@ -313,27 +310,6 @@ function formatPrice(cents: number) {
                                         </td>
                                         <td class="px-6 py-6 text-right font-bold text-slate-800">
                                             {formatPrice(product.price)}
-                                        </td>
-                                        <td class="px-6 py-6 text-right text-xs font-medium">
-                                            {product.new_arrival_ends_at ? (
-                                                <span
-                                                    class={
-                                                        new Date(
-                                                            product.new_arrival_ends_at,
-                                                        ) < new Date()
-                                                            ? "text-red-500"
-                                                            : "text-brand-gold"
-                                                    }
-                                                >
-                                                    {new Date(
-                                                        product.new_arrival_ends_at,
-                                                    ).toLocaleDateString()}
-                                                </span>
-                                            ) : (
-                                                <span class="text-slate-300">
-                                                    -
-                                                </span>
-                                            )}
                                         </td>
                                         <td class="px-6 py-6 text-right text-xs text-slate-400 font-medium">
                                             {new Date(
@@ -423,7 +399,8 @@ function formatPrice(cents: number) {
                     >
                         Programar <span
                             class="text-brand-gold italic font-serif"
-                            >Novedad</span>
+                            >Novedad</span
+                        >
                     </h3>
                     <p class="text-slate-400 text-sm font-medium">
                         Selecciona hasta cuándo quieres que estos productos se

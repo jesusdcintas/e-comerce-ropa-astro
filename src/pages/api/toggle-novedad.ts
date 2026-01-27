@@ -34,8 +34,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const { error } = await supabase
             .from('products')
             .update({
-                is_new_arrival: isNewArrival,
-                new_arrival_ends_at: endsAt || null
+                is_new_arrival: isNewArrival
             })
             .in('id', productIds);
 

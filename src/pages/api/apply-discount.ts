@@ -45,7 +45,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         discount_ends_at: endsAt || null,
         is_offer: isOffer || false
       })
-      .in('id', productIds);
+      .in('id', productIds)
+      .select('id');
 
     if (error) {
       console.error('Error al aplicar descuento:', error);
