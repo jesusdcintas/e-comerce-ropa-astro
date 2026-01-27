@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import AddToCartButton from "../../components/islands/AddToCartButton";
 import FavoriteButton from "../../components/islands/FavoriteButton";
 import ProductInquiryForm from "../../components/islands/ProductInquiryForm";
+import SizeRecommender from "../../components/islands/SizeRecommender";
 import StoreSidebar from "../../components/ui/StoreSidebar.astro";
 import SupportBanner from "../../components/ui/SupportBanner.astro";
 
@@ -227,6 +228,14 @@ const finalPrice = hasActiveDiscount
                                 {
                                     stockInfo.available ? (
                                         <>
+                                            <div class="flex justify-end">
+                                                <SizeRecommender
+                                                    client:load
+                                                    categorySlug={
+                                                        product.categories.slug
+                                                    }
+                                                />
+                                            </div>
                                             <AddToCartButton
                                                 client:load
                                                 productId={product.id.toString()}

@@ -49,6 +49,11 @@
 - [x] **Marketing & Conversión**:
   - [x] Pop-ups configurables (Newsletter/Descuento) con interruptor de visibilidad.
   - [x] Newsletter funcional con suscripción y registro en base de datos.
+  - [x] **Controles Globales**: Interruptores maestros para Ofertas, Novedades y Pop-ups desde el Dashboard.
+  - [x] **Modo Mantenimiento**: Bloqueo global de la tienda para clientes mientras se mantiene el acceso para administradores.
+- [x] **Visualización Premium**:
+  - [x] Precios originales tachados en carrito y checkout para resaltar el ahorro.
+  - [x] Gestión de ofertas en lote (Bulk removal) desde el panel de administración.
 - [x] **Gestión de Pedidos & Post-Venta**:
   - [x] Historial de pedidos con estados (Pendiente, Pagado, Enviado, Entregado, Cancelado).
   - [x] Botón de **Cancelación automática** habilitado en estado "Pagado".
@@ -63,7 +68,7 @@
 
 ## Pendientes (TODO)
 - [ ] **Ajuste Estético Carruseles**: Centrar correctamente las fotos de los productos en los carruseles de Novedades y Ofertas.
-- [ ] **Recomendador de Talla**: Botón "¿Cuál es mi talla?" con modal pidiendo Altura/Peso y lógica algorítmica simple.
+- [x] **Recomendador de Talla**: Botón "¿Cuál es mi talla?" con modal pidiendo Altura/Peso y lógica algorítmica simple.
 
 - [ ] **Facturas de Abono**: Generación de factura negativa y lógica de abono automático en devoluciones tras entrega.
 - [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
@@ -73,6 +78,7 @@
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
 
 - [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
+- [ ] **Compras sin iniciar sesión**: Permitir a los usuarios realizar pedidos sin tener una cuenta creada.
 
 
 ## Sistema de Cupones 2.0 (Reglas del Negocio)
@@ -101,7 +107,7 @@
 - **UI**: Sin emojis; usar SVGs premium.
 
 ## Última actualización
-2026-01-26: Optimización de scripts de despliegue para Coolify (puerto 4321, script start). Sincronización de variables de entorno y limpieza de advertencias en el proceso de build. Finalización del Sistema de Cupones 2.0.
+2026-01-27: Implementación de Controles Globales de Marketing (Ofertas, Novedades, Pop-ups), Modo Mantenimiento selectivo y refinamiento de visualización de descuentos en carrito y checkout.
 
 ## Versiones Estables (Checkpoints)
 - **Commit 07f5e19 (26/01/2026)**: Versión Premium Mobile & Desktop.

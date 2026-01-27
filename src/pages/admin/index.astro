@@ -203,7 +203,7 @@ const statusText: Record<string, string> = {
                             >
                             </div>
                             <span
-                                class="ml-3 text-xs font-black uppercase tracking-widest text-slate-700"
+                                class="ml-3 text-xs font-black uppercase tracking-widest text-slate-700 whitespace-nowrap"
                                 >Ofertas</span
                             >
                         </label>
@@ -223,7 +223,7 @@ const statusText: Record<string, string> = {
                             >
                             </div>
                             <span
-                                class="ml-3 text-xs font-black uppercase tracking-widest text-slate-700"
+                                class="ml-3 text-xs font-black uppercase tracking-widest text-slate-700 whitespace-nowrap"
                                 >Novedades</span
                             >
                         </label>
@@ -243,8 +243,30 @@ const statusText: Record<string, string> = {
                             >
                             </div>
                             <span
-                                class="ml-3 text-xs font-black uppercase tracking-widest text-slate-700"
+                                class="ml-3 text-xs font-black uppercase tracking-widest text-slate-700 whitespace-nowrap"
                                 >Pop-ups</span
+                            >
+                        </label>
+                    </div>
+                    <!-- Modo Mantenimiento -->
+                    <div
+                        class="flex items-center gap-4 pl-8 border-l border-slate-100"
+                    >
+                        <label
+                            class="relative inline-flex items-center cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                id="toggle-maintenance"
+                                class="sr-only peer"
+                            />
+                            <div
+                                class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"
+                            >
+                            </div>
+                            <span
+                                class="ml-3 text-xs font-black uppercase tracking-widest text-orange-600 font-bold whitespace-nowrap"
+                                >Mantenimiento</span
                             >
                         </label>
                     </div>
@@ -826,8 +848,17 @@ const statusText: Record<string, string> = {
                 const popupsToggle = document.getElementById(
                     "toggle-popups",
                 ) as HTMLInputElement;
+                const maintenanceToggle = document.getElementById(
+                    "toggle-maintenance",
+                ) as HTMLInputElement;
 
-                if (!offersToggle || !newToggle || !popupsToggle) return;
+                if (
+                    !offersToggle ||
+                    !newToggle ||
+                    !popupsToggle ||
+                    !maintenanceToggle
+                )
+                    return;
 
                 // Cargar estados iniciales
                 try {
@@ -841,6 +872,8 @@ const statusText: Record<string, string> = {
                         offersToggle.checked = config.offers_enabled;
                         newToggle.checked = config.novedades_enabled;
                         popupsToggle.checked = config.popups_enabled;
+                        maintenanceToggle.checked =
+                            config.maintenance_mode || false;
                     }
                 } catch (err) {
                     console.error("Error cargando config global:", err);
@@ -887,6 +920,9 @@ const statusText: Record<string, string> = {
                 );
                 popupsToggle.addEventListener("change", () =>
                     handleToggle("popups_enabled", popupsToggle.checked),
+                );
+                maintenanceToggle.addEventListener("change", () =>
+                    handleToggle("maintenance_mode", maintenanceToggle.checked),
                 );
             }
 

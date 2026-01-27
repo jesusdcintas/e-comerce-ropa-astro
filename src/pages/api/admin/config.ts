@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             if (error && error.code === 'PGRST116') {
                 const { data: newData, error: createError } = await supabase
                     .from('site_config')
-                    .insert([{ id: 1, offers_enabled: true, novedades_enabled: true, popups_enabled: true }])
+                    .insert([{ id: 1, offers_enabled: true, novedades_enabled: true, popups_enabled: true, maintenance_mode: false }])
                     .select()
                     .single();
 
