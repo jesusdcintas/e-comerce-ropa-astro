@@ -423,7 +423,10 @@ const { data: reglas } = await supabase
                                 class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none"
                             >
                                 <option value="compra_minima"
-                                    >Gasto Mínimo (Carrito)</option
+                                    >Gasto Mínimo (Carrito actual)</option
+                                >
+                                <option value="gasto_total"
+                                    >Gasto Total Histórico (€)</option
                                 >
                                 <option value="primera_compra"
                                     >Primera Compra (Bienvenida)</option
@@ -788,7 +791,8 @@ const { data: reglas } = await supabase
                             tipo_regla: tipo,
                             monto_minimo:
                                 tipo === "compra_minima" ||
-                                tipo === "gasto_periodo"
+                                tipo === "gasto_periodo" ||
+                                tipo === "gasto_total"
                                     ? Math.max(1, valor * 100)
                                     : 1,
                             numero_minimo: 0,
