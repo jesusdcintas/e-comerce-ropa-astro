@@ -31,6 +31,15 @@ const { data: ofertas } = await supabase
 function formatPrice(cents: number) {
   return `${(cents / 100).toFixed(2)}€`;
 }
+
+// Obtener configuración global
+const { data: globalConfig } = await supabase
+  .from("site_config")
+  .select("*")
+  .single();
+
+const showNovedades = globalConfig?.novedades_enabled !== false;
+const showOffers = globalConfig?.offers_enabled !== false;
 ---
 
 <BaseLayout title="Catálogo - FashionStore">
@@ -283,15 +292,19 @@ function formatPrice(cents: number) {
   </section>
 
   <!-- Carrusel de Novedades (Spotlight) -->
-  <ProductCarousel
-    id="novedades"
-    products={novedades || []}
-    title="Nuevas Tendencias"
-    subtitle="Últimas"
-    accentTitle="Novedades"
-    iconColor="text-brand-gold"
-    bgColor="bg-slate-50"
-  />
+  {
+    showNovedades && (
+      <ProductCarousel
+        id="novedades"
+        products={novedades || []}
+        title="Nuevas Tendencias"
+        subtitle="Últimas"
+        accentTitle="Novedades"
+        iconColor="text-brand-gold"
+        bgColor="bg-slate-50"
+      />
+    )
+  }
 
   <!-- Categorías Principales -->
   <section class="max-w-7xl mx-auto px-4 py-16">
@@ -430,14 +443,18 @@ function formatPrice(cents: number) {
   </section>
 
   <!-- Carrusel de Ofertas -->
-  <ProductCarousel
-    id="offers"
-    products={ofertas || []}
-    title="Ofertas Flash"
-    subtitle="Oportunidades"
-    accentTitle="Únicas"
-    iconColor="text-red-600"
-  />
+  {
+    showOffers && (
+      <ProductCarousel
+        id="offers"
+        products={ofertas || []}
+        title="Ofertas Flash"
+        subtitle="Oportunidades"
+        accentTitle="Únicas"
+        iconColor="text-red-600"
+      />
+    )
+  }
 
   <!-- Banner Promocional -->
   <section class="max-w-7xl mx-auto px-4 py-16">

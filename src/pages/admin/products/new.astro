@@ -26,7 +26,8 @@ const getSizeSystem = (catId: number) => {
             if (current.slug === "ropa") return "ropa-superior";
             return "accesorios";
         }
-        current = allCategories.find((c) => c.id === current.parent_id);
+        const parentId = current.parent_id;
+        current = allCategories.find((c) => c.id === parentId);
     }
     return "accesorios";
 };
@@ -108,269 +109,319 @@ const beltSizes = ["85", "90", "95", "100", "105", "110", "115", "120"];
 
         <form id="product-form" class="space-y-10 pb-20">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                <!-- Columna Izquierda: Detalles Básicos -->
-                <div class="lg:col-span-2 space-y-8">
-                    <section
-                        class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8 relative overflow-hidden"
+                <div class="lg:col-span-2">
+                    <div
+                        class="bg-white p-10 md:p-14 rounded-[3.5rem] shadow-sm border border-slate-100 space-y-16 relative overflow-hidden"
                     >
-                        <div class="flex items-center gap-4 mb-2">
-                            <div
-                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400"
-                            >
-                                <svg
-                                    class="w-5 h-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
+                        <!-- SECCIÓN 1: IDENTIDAD Y VALOR -->
+                        <div class="space-y-10">
+                            <div class="flex items-center gap-5">
+                                <div
+                                    class="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-brand-gold transition-colors"
                                 >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    ></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800">
-                                Información General
-                            </h3>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-2 col-span-2">
-                                <label
-                                    for="name"
-                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
-                                    >Nombre Comercial</label
-                                >
-                                <input
-                                    type="text"
-                                    name="name"
-                                    id="name"
-                                    required
-                                    class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all"
-                                    placeholder="Ej: Chaqueta de Cuero Premium 'Midnight'"
-                                />
-                            </div>
-
-                            <div class="space-y-2">
-                                <label
-                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
-                                    >Categoría</label
-                                >
-                                <div class="relative">
-                                    <CategorySelect
-                                        client:load
-                                        categories={categories}
-                                    />
+                                    <svg
+                                        class="w-7 h-7"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3
+                                        class="text-2xl font-black text-slate-800 tracking-tight"
+                                    >
+                                        Información General
+                                    </h3>
+                                    <p
+                                        class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1"
+                                    >
+                                        Detalles básicos del producto
+                                    </p>
                                 </div>
                             </div>
 
-                            <div class="space-y-2">
-                                <label
-                                    for="price"
-                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
-                                    >Precio de Venta (€)</label
-                                >
-                                <div class="relative">
-                                    <span
-                                        class="absolute left-6 top-1/2 -translate-y-1/2 font-bold text-slate-400"
-                                        >€</span
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div class="space-y-3 col-span-2">
+                                    <label
+                                        for="name"
+                                        class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1"
+                                        >Nombre del Producto</label
                                     >
                                     <input
-                                        type="number"
-                                        name="price"
-                                        id="price"
+                                        type="text"
+                                        name="name"
+                                        id="name"
                                         required
-                                        min="0"
-                                        step="0.01"
-                                        class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 pl-10 pr-6 text-slate-700 font-bold transition-all"
-                                        placeholder="0.00"
+                                        class="w-full bg-slate-50 border-2 border-transparent focus:bg-white focus:ring-4 focus:ring-brand-gold/5 focus:border-brand-gold/20 rounded-2xl py-5 px-7 text-slate-700 font-bold text-lg transition-all placeholder:text-slate-300"
+                                        placeholder="Ej: Camisa Slim Fit 'Onyx'"
                                     />
+                                </div>
+
+                                <div class="space-y-3">
+                                    <label
+                                        class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1"
+                                        >Categoría</label
+                                    >
+                                    <div class="relative">
+                                        <CategorySelect
+                                            client:load
+                                            categories={categories}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <label
+                                        for="price"
+                                        class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1"
+                                        >Precio (€)</label
+                                    >
+                                    <div class="relative group">
+                                        <span
+                                            class="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-400 group-focus-within:text-brand-gold transition-colors"
+                                            >€</span
+                                        >
+                                        <input
+                                            type="number"
+                                            name="price"
+                                            id="price"
+                                            required
+                                            min="0"
+                                            step="0.01"
+                                            class="w-full bg-slate-50 border-2 border-transparent focus:bg-white focus:ring-4 focus:ring-brand-gold/5 focus:border-brand-gold/20 rounded-2xl py-5 pl-12 pr-7 text-slate-800 font-black text-xl transition-all"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3 col-span-2">
+                                    <label
+                                        for="description"
+                                        class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1"
+                                        >Descripción</label
+                                    >
+                                    <textarea
+                                        id="description"
+                                        name="description"
+                                        rows="5"
+                                        class="w-full bg-slate-50 border-2 border-transparent focus:bg-white focus:ring-4 focus:ring-brand-gold/5 focus:border-brand-gold/20 rounded-[2rem] py-5 px-7 text-slate-600 font-medium transition-all resize-none leading-relaxed placeholder:text-slate-300"
+                                        placeholder="Materiales, corte, inspiración..."
+                                    ></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 2: GALERÍA VISUAL (Movida aquí) -->
+                        <div class="space-y-10">
+                            <div class="flex items-center gap-5">
+                                <div
+                                    class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-400"
+                                >
+                                    <svg
+                                        class="w-7 h-7"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3
+                                        class="text-2xl font-black text-slate-800 tracking-tight"
+                                    >
+                                        Galería
+                                    </h3>
+                                    <p
+                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1"
+                                    >
+                                        Imagen principal y perspectivas de
+                                        detalle
+                                    </p>
                                 </div>
                             </div>
 
-                            <div class="space-y-2 col-span-2">
-                                <label
-                                    for="description"
-                                    class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
-                                    >Descripción Narrativa</label
-                                >
-                                <textarea
-                                    id="description"
-                                    name="description"
-                                    rows="4"
-                                    class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-3xl py-4 px-6 text-slate-700 font-medium transition-all resize-none"
-                                    placeholder="Describe los materiales, el ajuste y la historia de este producto..."
-                                ></textarea>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section
-                        class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8"
-                    >
-                        <div class="flex items-center gap-4 mb-2">
                             <div
-                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400"
+                                class="bg-slate-50/50 p-8 rounded-[3rem] border-2 border-dashed border-slate-200 hover:border-brand-gold/30 transition-colors"
                             >
-                                <svg
-                                    class="w-5 h-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    ></path>
-                                </svg>
+                                <MultiImageUploader client:load maxImages={5} />
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800">
-                                Ajustes de Promoción
-                            </h3>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="space-y-6">
+                        <!-- DIVISOR ELEGANTE -->
+                        <div class="relative py-4">
+                            <div class="absolute inset-0 flex items-center">
+                                <span class="w-full h-px bg-slate-100"></span>
+                            </div>
+                            <div class="relative flex justify-center">
+                                <span
+                                    class="bg-white px-6 text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]"
+                                    >Marketing</span
+                                >
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 3: ESTRATEGIA DE VENTAS (Traducciones aplicadas) -->
+                        <div class="space-y-10">
+                            <div class="flex items-center gap-5">
+                                <div
+                                    class="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-400"
+                                >
+                                    <svg
+                                        class="w-7 h-7"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
+                                        ></path>
+                                    </svg>
+                                </div>
                                 <div>
+                                    <h3
+                                        class="text-2xl font-black text-slate-800 tracking-tight"
+                                    >
+                                        Marketing
+                                    </h3>
+                                    <p
+                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1"
+                                    >
+                                        Visibilidad en el escaparate digital
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <div class="space-y-6">
                                     <label
-                                        class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all group border-2 border-transparent focus-within:border-brand-gold/20"
+                                        class="flex items-center gap-5 p-5 bg-slate-50/50 rounded-3xl cursor-pointer hover:bg-slate-50 transition-all border-2 border-transparent focus-within:border-brand-gold/10"
                                     >
                                         <div class="relative flex items-center">
                                             <input
                                                 type="checkbox"
                                                 name="is_new_arrival"
-                                                class="peer h-6 w-11 appearance-none rounded-full bg-slate-200 transition-colors checked:bg-brand-gold cursor-pointer"
+                                                class="peer h-7 w-12 appearance-none rounded-full bg-slate-200 transition-colors checked:bg-brand-gold cursor-pointer"
                                             />
                                             <span
-                                                class="absolute left-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-sm"
+                                                class="absolute left-1.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-md"
                                             ></span>
                                         </div>
                                         <div>
                                             <p
-                                                class="text-sm font-bold text-slate-800"
+                                                class="text-sm font-black text-slate-800"
                                             >
-                                                Sección: Novedades
+                                                Novedad
                                             </p>
                                             <p
-                                                class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"
+                                                class="text-[9px] text-slate-400 font-bold uppercase tracking-widest"
                                             >
-                                                Aparecerá en el inicio
+                                                Posicionar en novedades
                                             </p>
                                         </div>
                                     </label>
-                                    <div class="mt-3 px-2">
+
+                                    <div class="px-2">
                                         <label
                                             for="new_arrival_ends_at"
-                                            class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1"
-                                            >Fecha Límite Novedad (opcional)</label
+                                            class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 block mb-2"
+                                            >Caducidad de novedad (opcional)</label
                                         >
                                         <input
                                             type="datetime-local"
                                             name="new_arrival_ends_at"
                                             id="new_arrival_ends_at"
-                                            class="w-full mt-1 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-xl py-2 px-4 text-xs text-slate-700 transition-all"
+                                            class="w-full bg-slate-50 border-2 border-transparent focus:bg-white focus:ring-4 focus:ring-brand-gold/5 focus:border-brand-gold/20 rounded-2xl py-3 px-5 text-xs text-slate-700 font-bold transition-all appearance-none cursor-pointer"
                                         />
                                     </div>
-                                </div>
 
-                                <label
-                                    class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all group border-2 border-transparent focus-within:border-brand-gold/20"
-                                >
-                                    <div class="relative flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            name="is_offer"
-                                            class="peer h-6 w-11 appearance-none rounded-full bg-slate-200 transition-colors checked:bg-brand-gold cursor-pointer"
-                                        />
-                                        <span
-                                            class="absolute left-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-sm"
-                                        ></span>
-                                    </div>
-                                    <div>
-                                        <p
-                                            class="text-sm font-bold text-slate-800"
-                                        >
-                                            Carrusel: Ofertas
-                                        </p>
-                                        <p
-                                            class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"
-                                        >
-                                            Destacado en Inicio
-                                        </p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div class="space-y-4">
-                                <div class="space-y-2">
                                     <label
-                                        for="discount_percentage"
-                                        class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
-                                        >Porcentaje Descuento (%)</label
+                                        class="flex items-center gap-5 p-5 bg-slate-50/50 rounded-3xl cursor-pointer hover:bg-slate-50 transition-all border-2 border-transparent focus-within:border-brand-gold/10"
                                     >
-                                    <input
-                                        type="number"
-                                        name="discount_percentage"
-                                        id="discount_percentage"
-                                        min="0"
-                                        max="100"
-                                        class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all"
-                                        placeholder="Ej: 20"
-                                    />
+                                        <div class="relative flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                name="is_offer"
+                                                class="peer h-7 w-12 appearance-none rounded-full bg-slate-200 transition-colors checked:bg-red-500 cursor-pointer"
+                                            />
+                                            <span
+                                                class="absolute left-1.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5 shadow-md"
+                                            ></span>
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="text-sm font-black text-slate-800"
+                                            >
+                                                Activar Oferta
+                                            </p>
+                                            <p
+                                                class="text-[9px] text-slate-400 font-bold uppercase tracking-widest"
+                                            >
+                                                Destacar en Carrusel Inicio
+                                            </p>
+                                        </div>
+                                    </label>
                                 </div>
-                                <div class="space-y-2">
-                                    <label
-                                        for="discount_ends_at"
-                                        class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1"
-                                        >Fecha Fin Descuento</label
-                                    >
-                                    <input
-                                        type="datetime-local"
-                                        name="discount_ends_at"
-                                        id="discount_ends_at"
-                                        class="w-full bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold rounded-2xl py-4 px-6 text-slate-700 font-medium transition-all"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </section>
 
-                    <section
-                        class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8"
-                    >
-                        <div class="flex items-center gap-4 mb-2">
-                            <div
-                                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400"
-                            >
-                                <svg
-                                    class="w-5 h-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
+                                <div
+                                    class="bg-slate-50/30 p-8 rounded-[2.5rem] border border-slate-100 space-y-6"
                                 >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                    ></path>
-                                </svg>
+                                    <div class="space-y-4">
+                                        <div class="space-y-3">
+                                            <label
+                                                for="discount_percentage"
+                                                class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1"
+                                                >Porcentaje de descuento (%)</label
+                                            >
+                                            <div class="relative group">
+                                                <input
+                                                    type="number"
+                                                    name="discount_percentage"
+                                                    id="discount_percentage"
+                                                    min="0"
+                                                    max="100"
+                                                    class="w-full bg-white border-2 border-slate-100 focus:border-red-500/20 focus:ring-4 focus:ring-red-500/5 rounded-2xl py-5 px-8 text-red-600 font-black text-2xl transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    placeholder="0"
+                                                />
+                                                <span
+                                                    class="absolute right-8 top-1/2 -translate-y-1/2 font-black text-red-200 group-focus-within:text-red-500 transition-colors pointer-events-none text-xl"
+                                                    >%</span
+                                                >
+                                            </div>
+                                        </div>
+                                        <div class="space-y-3">
+                                            <label
+                                                for="discount_ends_at"
+                                                class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1"
+                                                >Fin de la Promoción</label
+                                            >
+                                            <input
+                                                type="datetime-local"
+                                                name="discount_ends_at"
+                                                id="discount_ends_at"
+                                                class="w-full bg-white border-2 border-slate-100 focus:border-red-500/20 focus:ring-4 focus:ring-red-500/5 rounded-2xl py-4 px-6 text-xs text-slate-700 font-bold transition-all cursor-pointer"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800">
-                                Galería Visual
-                            </h3>
                         </div>
-
-                        <div
-                            class="bg-slate-50 p-8 rounded-3xl border-2 border-dashed border-slate-200"
-                        >
-                            <MultiImageUploader client:load maxImages={5} />
-                        </div>
-                    </section>
+                    </div>
                 </div>
 
                 <!-- Columna Derecha: Inventario y Tallas -->
@@ -577,195 +628,217 @@ const beltSizes = ["85", "90", "95", "100", "105", "110", "115", "120"];
             </div>
         </form>
     </div>
-</AdminLayout>
 
-<script is:inline>
-    window.__currentSizeSystem = null;
-    window.addEventListener("categoryChanged", (event) => {
-        const sys = event.detail.sizeSystem;
-        window.__currentSizeSystem = sys;
-        [
-            "variants-ropa-superior",
-            "variants-pantalones-eu",
-            "variants-calzado",
-            "variants-cinturones",
-            "variants-accesorios",
-            "variants-placeholder",
-        ].forEach((id) => {
-            const el = document.getElementById(id);
-            if (el) el.classList.add("hidden");
+    <script is:inline>
+        window.__currentSizeSystem = null;
+        window.addEventListener("categoryChanged", (event) => {
+            const sys = event.detail.sizeSystem;
+            window.__currentSizeSystem = sys;
+            [
+                "variants-ropa-superior",
+                "variants-pantalones-eu",
+                "variants-calzado",
+                "variants-cinturones",
+                "variants-accesorios",
+                "variants-placeholder",
+            ].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add("hidden");
+            });
+            if (!sys) {
+                document
+                    .getElementById("variants-placeholder")
+                    .classList.remove("hidden");
+            } else {
+                const target = document.getElementById(`variants-${sys}`);
+                if (target) target.classList.remove("hidden");
+            }
         });
-        if (!sys) {
-            document
-                .getElementById("variants-placeholder")
-                .classList.remove("hidden");
-        } else {
-            const target = document.getElementById(`variants-${sys}`);
-            if (target) target.classList.remove("hidden");
-        }
-    });
-</script>
+    </script>
 
-<script>
-    import { supabase } from "../../../lib/supabase";
+    <script>
+        import { supabase } from "../../../lib/supabase";
 
-    const form = document.getElementById("product-form") as HTMLFormElement;
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById("submit-btn") as HTMLButtonElement;
-        btn.disabled = true;
-        btn.textContent = "Guardando...";
+        const form = document.getElementById("product-form") as HTMLFormElement;
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById(
+                "submit-btn",
+            ) as HTMLButtonElement;
+            btn.disabled = true;
+            btn.textContent = "Guardando...";
 
-        try {
-            const formData = new FormData(form);
-            const sys = (window as any).__currentSizeSystem || "accesorios";
-            const variants: { size: string; stock: number }[] = [];
-            let totalStock = 0;
+            try {
+                const formData = new FormData(form);
+                const sys = (window as any).__currentSizeSystem || "accesorios";
+                const variants: { size: string; stock: number }[] = [];
+                let totalStock = 0;
 
-            if (sys === "ropa-superior") {
-                ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL"].forEach(
-                    (size) => {
-                        const val = formData.get(`stock_superior_${size}`);
+                if (sys === "ropa-superior") {
+                    ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL"].forEach(
+                        (size) => {
+                            const val = formData.get(`stock_superior_${size}`);
+                            const stock = parseInt((val as string) || "0");
+                            if (stock > 0) {
+                                variants.push({ size, stock });
+                                totalStock += stock;
+                            }
+                        },
+                    );
+                } else if (sys === "pantalones-eu") {
+                    [
+                        "36",
+                        "38",
+                        "40",
+                        "42",
+                        "44",
+                        "46",
+                        "48",
+                        "50",
+                        "52",
+                        "54",
+                    ].forEach((size) => {
+                        const val = formData.get(`stock_pantalones_${size}`);
                         const stock = parseInt((val as string) || "0");
                         if (stock > 0) {
                             variants.push({ size, stock });
                             totalStock += stock;
                         }
-                    },
-                );
-            } else if (sys === "pantalones-eu") {
-                [
-                    "36",
-                    "38",
-                    "40",
-                    "42",
-                    "44",
-                    "46",
-                    "48",
-                    "50",
-                    "52",
-                    "54",
-                ].forEach((size) => {
-                    const val = formData.get(`stock_pantalones_${size}`);
-                    const stock = parseInt((val as string) || "0");
-                    if (stock > 0) {
-                        variants.push({ size, stock });
-                        totalStock += stock;
-                    }
-                });
-            } else if (sys === "calzado") {
-                [
-                    "38",
-                    "38.5",
-                    "39",
-                    "39.5",
-                    "40",
-                    "40.5",
-                    "41",
-                    "41.5",
-                    "42",
-                    "42.5",
-                    "43",
-                    "43.5",
-                    "44",
-                    "44.5",
-                    "45",
-                    "46",
-                    "47",
-                    "48",
-                ].forEach((size) => {
-                    const val = formData.get(`stock_calzado_${size}`);
-                    const stock = parseInt((val as string) || "0");
-                    if (stock > 0) {
-                        variants.push({ size, stock });
-                        totalStock += stock;
-                    }
-                });
-            } else if (sys === "cinturones") {
-                ["85", "90", "95", "100", "105", "110", "115", "120"].forEach(
-                    (size) => {
+                    });
+                } else if (sys === "calzado") {
+                    [
+                        "38",
+                        "38.5",
+                        "39",
+                        "39.5",
+                        "40",
+                        "40.5",
+                        "41",
+                        "41.5",
+                        "42",
+                        "42.5",
+                        "43",
+                        "43.5",
+                        "44",
+                        "44.5",
+                        "45",
+                        "46",
+                        "47",
+                        "48",
+                    ].forEach((size) => {
+                        const val = formData.get(`stock_calzado_${size}`);
+                        const stock = parseInt((val as string) || "0");
+                        if (stock > 0) {
+                            variants.push({ size, stock });
+                            totalStock += stock;
+                        }
+                    });
+                } else if (sys === "cinturones") {
+                    [
+                        "85",
+                        "90",
+                        "95",
+                        "100",
+                        "105",
+                        "110",
+                        "115",
+                        "120",
+                    ].forEach((size) => {
                         const val = formData.get(`stock_cinturones_${size}`);
                         const stock = parseInt((val as string) || "0");
                         if (stock > 0) {
                             variants.push({ size, stock });
                             totalStock += stock;
                         }
-                    },
-                );
-            } else {
-                const stock = parseInt(
-                    (formData.get("stock_onesize") as string) || "0",
-                );
-                if (stock > 0) {
-                    variants.push({ size: "ONE SIZE", stock });
-                    totalStock = stock;
+                    });
+                } else {
+                    const stock = parseInt(
+                        (formData.get("stock_onesize") as string) || "0",
+                    );
+                    if (stock > 0) {
+                        variants.push({ size: "ONE SIZE", stock });
+                        totalStock = stock;
+                    }
                 }
+
+                if (totalStock === 0)
+                    throw new Error(
+                        "Debes indicar stock para al menos una variante.",
+                    );
+
+                const catId = parseInt(formData.get("category_id") as string);
+                const price = Math.round(
+                    parseFloat(formData.get("price") as string) * 100,
+                );
+                const images = JSON.parse(
+                    (formData.get("images_json") as string) || "[]",
+                );
+
+                const name = formData.get("name") as string;
+                const slug =
+                    name
+                        .toLowerCase()
+                        .replace(/ /g, "-")
+                        .replace(/[^\w-]+/g, "") +
+                    "-" +
+                    Date.now().toString().slice(-4);
+
+                const { data: prodData, error: prodError } = await supabase
+                    .from("products")
+                    .insert({
+                        name,
+                        slug,
+                        description: formData.get("description"),
+                        price,
+                        stock: totalStock,
+                        category_id: catId,
+                        images: images,
+                        is_new_arrival: formData.get("is_new_arrival") === "on",
+                        new_arrival_ends_at:
+                            formData.get("new_arrival_ends_at") || null,
+                        is_offer: formData.get("is_offer") === "on",
+                        discount_percentage:
+                            parseInt(
+                                formData.get("discount_percentage") as string,
+                            ) || 0,
+                        discount_ends_at:
+                            formData.get("discount_ends_at") || null,
+                    })
+                    .select()
+                    .single();
+
+                if (prodError) throw prodError;
+
+                const { error: varError } = await supabase
+                    .from("product_variants")
+                    .insert(
+                        variants.map((v) => ({
+                            product_id: prodData.id,
+                            size: v.size,
+                            stock: v.stock,
+                        })),
+                    );
+                if (varError) throw varError;
+
+                // @ts-ignore
+                window.showCustomModal({
+                    title: "Éxito",
+                    message: "Producto publicado con éxito",
+                    type: "info",
+                });
+                setTimeout(() => {
+                    window.location.href = "/admin/products";
+                }, 1500);
+            } catch (error: any) {
+                // @ts-ignore
+                window.showCustomModal({
+                    title: "Error de Publicación",
+                    message: "Error: " + error.message,
+                    type: "alert",
+                });
+                btn.disabled = false;
+                btn.textContent = "Publicar";
             }
-
-            if (totalStock === 0)
-                throw new Error(
-                    "Debes indicar stock para al menos una variante.",
-                );
-
-            const catId = parseInt(formData.get("category_id") as string);
-            const price = Math.round(
-                parseFloat(formData.get("price") as string) * 100,
-            );
-            const images = JSON.parse(
-                (formData.get("images_json") as string) || "[]",
-            );
-
-            const name = formData.get("name") as string;
-            const slug =
-                name
-                    .toLowerCase()
-                    .replace(/ /g, "-")
-                    .replace(/[^\w-]+/g, "") +
-                "-" +
-                Date.now().toString().slice(-4);
-
-            const { data: prodData, error: prodError } = await supabase
-                .from("products")
-                .insert({
-                    name,
-                    slug,
-                    description: formData.get("description"),
-                    price,
-                    stock: totalStock,
-                    category_id: catId,
-                    images: images,
-                    is_new_arrival: formData.get("is_new_arrival") === "on",
-                    new_arrival_ends_at:
-                        formData.get("new_arrival_ends_at") || null,
-                    is_offer: formData.get("is_offer") === "on",
-                    discount_percentage:
-                        parseInt(
-                            formData.get("discount_percentage") as string,
-                        ) || 0,
-                    discount_ends_at: formData.get("discount_ends_at") || null,
-                })
-                .select()
-                .single();
-
-            if (prodError) throw prodError;
-
-            const { error: varError } = await supabase
-                .from("product_variants")
-                .insert(
-                    variants.map((v) => ({
-                        product_id: prodData.id,
-                        size: v.size,
-                        stock: v.stock,
-                    })),
-                );
-            if (varError) throw varError;
-
-            alert("Producto publicado con éxito");
-            window.location.href = "/admin";
-        } catch (error: any) {
-            alert("Error: " + error.message);
-            btn.disabled = false;
-            btn.textContent = "Publicar";
-        }
-    });
-</script>
+        });
+    </script>
+</AdminLayout>

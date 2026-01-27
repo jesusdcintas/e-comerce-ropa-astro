@@ -572,6 +572,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
 
     <script>
         import { addToast } from "../../../stores/toastStore";
+        import { showModal } from "../../../stores/modalStore";
         // 1. Ejecutar Automatización (Manual Trigger)
         // 1. Propagación de Cupón a Segmento
         document.querySelectorAll(".propagate-coupon-btn").forEach((btn) => {
@@ -581,36 +582,37 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
 
                 if (!couponId || !ruleId) return;
 
-                if (
-                    !confirm(
+                showModal({
+                    title: "Distribuir Cupón",
+                    message:
                         "¿Quieres enviar y notificar este cupón a todos los clientes que cumplen esta regla ahora?",
-                    )
-                )
-                    return;
+                    type: "confirm",
+                    onConfirm: async () => {
+                        const originalHTML = btn.innerHTML;
+                        btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                        btn.setAttribute("disabled", "true");
 
-                const originalHTML = btn.innerHTML;
-                btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-                btn.setAttribute("disabled", "true");
-
-                try {
-                    const res = await fetch("/api/coupons/auto", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ couponId, ruleId }),
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        addToast(data.message);
-                        location.reload();
-                    } else {
-                        addToast("Error: " + data.error);
-                    }
-                } catch (e) {
-                    addToast("Error de conexión", "error");
-                } finally {
-                    btn.innerHTML = originalHTML;
-                    btn.removeAttribute("disabled");
-                }
+                        try {
+                            const res = await fetch("/api/coupons/auto", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ couponId, ruleId }),
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                                addToast(data.message);
+                                location.reload();
+                            } else {
+                                addToast("Error: " + data.error, "error");
+                            }
+                        } catch (e) {
+                            addToast("Error de conexión", "error");
+                        } finally {
+                            btn.innerHTML = originalHTML;
+                            btn.removeAttribute("disabled");
+                        }
+                    },
+                });
             });
         });
 
@@ -657,28 +659,28 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
 
             if (selectedIds.length === 0) return;
 
-            if (
-                !window.confirm(
-                    `¿Estás seguro de que quieres eliminar ${selectedIds.length} cupones seleccionados?`,
-                )
-            )
-                return;
-
-            try {
-                const res = await fetch("/api/coupons/manage", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "delete-multiple",
-                        data: { ids: selectedIds },
-                    }),
-                });
-                const result = await res.json();
-                if (result.success) window.location.reload();
-                else addToast("Error: " + result.error, "error");
-            } catch (err) {
-                addToast("Error de conexión", "error");
-            }
+            showModal({
+                title: "Eliminar Cupones",
+                message: `¿Estás seguro de que quieres eliminar ${selectedIds.length} cupones seleccionados?`,
+                type: "delete",
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch("/api/coupons/manage", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                action: "delete-multiple",
+                                data: { ids: selectedIds },
+                            }),
+                        });
+                        const result = await res.json();
+                        if (result.success) window.location.reload();
+                        else addToast("Error: " + result.error, "error");
+                    } catch (err) {
+                        addToast("Error de conexión", "error");
+                    }
+                },
+            });
         });
 
         // 3. Eliminar Cupón
@@ -687,29 +689,29 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 e.preventDefault();
                 e.stopPropagation();
                 const id = btn.getAttribute("data-id");
-                if (
-                    !id ||
-                    !window.confirm(
+                showModal({
+                    title: "Eliminar Cupón",
+                    message:
                         "¿Estás seguro de que quieres eliminar este cupón?",
-                    )
-                )
-                    return;
-
-                try {
-                    const res = await fetch("/api/coupons/manage", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            action: "delete-coupon",
-                            data: { id },
-                        }),
-                    });
-                    const result = await res.json();
-                    if (result.success) window.location.reload();
-                    else addToast("Error: " + result.error, "error");
-                } catch (e) {
-                    addToast("Error de conexión", "error");
-                }
+                    type: "delete",
+                    onConfirm: async () => {
+                        try {
+                            const res = await fetch("/api/coupons/manage", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    action: "delete-coupon",
+                                    data: { id },
+                                }),
+                            });
+                            const result = await res.json();
+                            if (result.success) window.location.reload();
+                            else addToast("Error: " + result.error, "error");
+                        } catch (e) {
+                            addToast("Error de conexión", "error");
+                        }
+                    },
+                });
             });
         });
 
@@ -815,28 +817,28 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
 
             if (selectedIds.length === 0) return;
 
-            if (
-                !window.confirm(
-                    `¿Estás seguro de que quieres eliminar ${selectedIds.length} reglas seleccionadas? Los cupones asociados se desvincularán.`,
-                )
-            )
-                return;
-
-            try {
-                const res = await fetch("/api/coupons/manage", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "delete-multiple-rules",
-                        data: { ids: selectedIds },
-                    }),
-                });
-                const result = await res.json();
-                if (result.success) window.location.reload();
-                else addToast("Error: " + result.error, "error");
-            } catch (err) {
-                addToast("Error de conexión", "error");
-            }
+            showModal({
+                title: "Eliminar Reglas",
+                message: `¿Estás seguro de que quieres eliminar ${selectedIds.length} reglas seleccionadas? Los cupones asociados se desvincularán.`,
+                type: "delete",
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch("/api/coupons/manage", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                action: "delete-multiple-rules",
+                                data: { ids: selectedIds },
+                            }),
+                        });
+                        const result = await res.json();
+                        if (result.success) window.location.reload();
+                        else addToast("Error: " + result.error, "error");
+                    } catch (err) {
+                        addToast("Error de conexión", "error");
+                    }
+                },
+            });
         });
 
         // 5. Eliminar Regla
@@ -845,29 +847,29 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 e.preventDefault();
                 e.stopPropagation();
                 const id = btn.getAttribute("data-id");
-                if (
-                    !id ||
-                    !window.confirm(
+                showModal({
+                    title: "Eliminar Regla",
+                    message:
                         "¿Estás seguro de que quieres eliminar esta regla? Los cupones ya creados seguirán funcionando pero se desvincularán.",
-                    )
-                )
-                    return;
-
-                try {
-                    const res = await fetch("/api/coupons/manage", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            action: "delete-rule",
-                            data: { id },
-                        }),
-                    });
-                    const result = await res.json();
-                    if (result.success) window.location.reload();
-                    else addToast("Error: " + result.error, "error");
-                } catch (e) {
-                    addToast("Error de conexión", "error");
-                }
+                    type: "delete",
+                    onConfirm: async () => {
+                        try {
+                            const res = await fetch("/api/coupons/manage", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    action: "delete-rule",
+                                    data: { id },
+                                }),
+                            });
+                            const result = await res.json();
+                            if (result.success) window.location.reload();
+                            else addToast("Error: " + result.error, "error");
+                        } catch (e) {
+                            addToast("Error de conexión", "error");
+                        }
+                    },
+                });
             });
         });
 
@@ -876,28 +878,29 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
         purgeBtn?.addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (
-                !window.confirm(
+            showModal({
+                title: "PURGA TOTAL",
+                message:
                     "ATENCIÓN: Esto borrará ABSOLUTAMENTE TODOS los cupones y su historial (usos y notificaciones). ¿Estás seguro?",
-                )
-            )
-                return;
-
-            try {
-                const res = await fetch("/api/coupons/manage", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "purge-all",
-                        data: {},
-                    }),
-                });
-                const result = await res.json();
-                if (result.success) window.location.reload();
-                else addToast("Error: " + result.error, "error");
-            } catch (e) {
-                addToast("Error de conexión", "error");
-            }
+                type: "delete",
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch("/api/coupons/manage", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                action: "purge-all",
+                                data: {},
+                            }),
+                        });
+                        const result = await res.json();
+                        if (result.success) window.location.reload();
+                        else addToast("Error: " + result.error, "error");
+                    } catch (e) {
+                        addToast("Error de conexión", "error");
+                    }
+                },
+            });
         });
 
         // 6. Asignar Regla a Cupón Existente

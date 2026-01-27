@@ -59,6 +59,16 @@ const stockInfo = getStockLabel(product.stock);
 // Variantes disponibles y agotadas
 const availableVariants = variants?.filter((v) => v.stock > 0) || [];
 const unavailableVariants = variants?.filter((v) => v.stock === 0) || [];
+
+// Lógica de Descuentos
+const hasActiveDiscount =
+    product.discount_percentage > 0 &&
+    (!product.discount_ends_at ||
+        new Date(product.discount_ends_at) > new Date());
+
+const finalPrice = hasActiveDiscount
+    ? Math.round(product.price * (1 - product.discount_percentage / 100))
+    : product.price;
 ---
 
 <BaseLayout title={`${product.name} - FashionStore`}>
@@ -178,11 +188,33 @@ const unavailableVariants = variants?.filter((v) => v.stock === 0) || [];
                             </div>
 
                             <div class="flex items-center gap-6">
-                                <span class="text-3xl font-bold text-slate-900"
-                                    >{formatPrice(product.price)}</span
-                                >
+                                {
+                                    hasActiveDiscount ? (
+                                        <div class="flex flex-col">
+                                            <span class="text-sm text-slate-400 line-through font-medium">
+                                                {formatPrice(product.price)}
+                                            </span>
+                                            <div class="flex items-center gap-3">
+                                                <span class="text-4xl font-black text-red-600">
+                                                    {formatPrice(finalPrice)}
+                                                </span>
+                                                <span class="bg-red-600 text-white px-3 py-1 text-[10px] font-black rounded-lg uppercase tracking-widest">
+                                                    -
+                                                    {
+                                                        product.discount_percentage
+                                                    }
+                                                    %
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <span class="text-4xl font-black text-slate-900">
+                                            {formatPrice(product.price)}
+                                        </span>
+                                    )
+                                }
                                 <span
-                                    class={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${stockInfo.class}`}
+                                    class={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${stockInfo.class}`}
                                 >
                                     {stockInfo.label}
                                 </span>
@@ -199,7 +231,12 @@ const unavailableVariants = variants?.filter((v) => v.stock === 0) || [];
                                                 client:load
                                                 productId={product.id.toString()}
                                                 productName={product.name}
-                                                productPrice={product.price}
+                                                productPrice={finalPrice}
+                                                originalPrice={
+                                                    hasActiveDiscount
+                                                        ? product.price
+                                                        : undefined
+                                                }
                                                 productImage={
                                                     product.images?.[0] || ""
                                                 }

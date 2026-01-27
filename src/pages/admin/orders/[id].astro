@@ -348,36 +348,51 @@ const statusText: Record<string, string> = {
             const newStatus = e.target.value;
             const orderId = statusSelect.dataset.orderId;
 
-            if (
-                !confirm(
-                    `¿Estás seguro de cambiar el estado a "${newStatus.toUpperCase()}"?`,
-                )
-            ) {
-                window.location.reload();
-                return;
-            }
+            window.showCustomModal({
+                title: "Cambiar Estado",
+                message: `¿Estás seguro de cambiar el estado a "${newStatus.toUpperCase()}"?`,
+                type: "confirm",
+                onConfirm: async () => {
+                    statusSelect.disabled = true;
+                    statusSelect.style.opacity = "0.5";
 
-            statusSelect.disabled = true;
-            statusSelect.style.opacity = "0.5";
+                    try {
+                        const res = await fetch(
+                            "/api/admin/orders/update-status",
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    id: orderId,
+                                    status: newStatus,
+                                }),
+                            },
+                        );
 
-            try {
-                const res = await fetch("/api/admin/orders/update-status", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: orderId, status: newStatus }),
-                });
-
-                if (res.ok) {
+                        if (res.ok) {
+                            window.location.reload();
+                        } else {
+                            const err = await res.json();
+                            window.showCustomModal({
+                                title: "Error de Actualización",
+                                message: "Error: " + err.error,
+                                type: "alert",
+                            });
+                            window.location.reload();
+                        }
+                    } catch (err) {
+                        window.showCustomModal({
+                            title: "Error de Conexión",
+                            message: "No se pudo conectar con el servidor.",
+                            type: "alert",
+                        });
+                        window.location.reload();
+                    }
+                },
+                onCancel: () => {
                     window.location.reload();
-                } else {
-                    const err = await res.json();
-                    alert("Error: " + err.error);
-                    window.location.reload();
-                }
-            } catch (err) {
-                alert("Error de conexión");
-                window.location.reload();
-            }
+                },
+            });
         });
     </script>
 </AdminLayout>

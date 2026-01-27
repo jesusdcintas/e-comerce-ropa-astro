@@ -2,6 +2,8 @@
 import "../styles/global.css";
 import AdminSidebar from "../components/islands/AdminSidebar";
 import { supabase } from "../lib/supabase";
+import ToastContainer from "../components/ui/ToastContainer";
+import GlobalModal from "../components/functional/GlobalModal";
 
 interface Props {
     title: string;
@@ -220,6 +222,10 @@ const { count: pendingCount } = await supabase
                 </div>
             </main>
         </div>
+
+        <!-- Notificaciones y Diálogos Globales -->
+        <ToastContainer client:load />
+        <GlobalModal client:load />
 
         <script>
             import { supabase } from "../lib/supabase";

@@ -698,30 +698,42 @@ const billingInfo = {
   // Responder a consulta (Cliente)
   // @ts-ignore
   window.replyToInquiry = async (id: number) => {
-    const response = prompt("¿Qué quieres decirle al equipo de soporte?");
-    if (!response) return;
+    // @ts-ignore
+    window.showCustomModal({
+      title: "Responder Consulta",
+      message: "¿Qué quieres decirle al equipo de soporte?",
+      type: "prompt",
+      onConfirm: async (response: string | undefined) => {
+        if (!response) return;
 
-    try {
-      const { error: msgError } = await supabase
-        .from("inquiry_messages")
-        .insert({
-          inquiry_id: id,
-          sender_role: "customer",
-          message: response,
-        });
+        try {
+          const { error: msgError } = await supabase
+            .from("inquiry_messages")
+            .insert({
+              inquiry_id: id,
+              sender_role: "customer",
+              message: response,
+            });
 
-      if (msgError) throw msgError;
+          if (msgError) throw msgError;
 
-      // Volver a poner en pendiente para que el admin lo vea
-      await supabase
-        .from("product_inquiries")
-        .update({ status: "pending" })
-        .eq("id", id);
+          // Volver a poner en pendiente para que el admin lo vea
+          await supabase
+            .from("product_inquiries")
+            .update({ status: "pending" })
+            .eq("id", id);
 
-      location.reload();
-    } catch (error: any) {
-      alert("Error al enviar el mensaje: " + error.message);
-    }
+          location.reload();
+        } catch (error: any) {
+          // @ts-ignore
+          window.showCustomModal({
+            title: "Error de Envío",
+            message: "Error al enviar el mensaje: " + error.message,
+            type: "alert",
+          });
+        }
+      },
+    });
   };
 
   // Cerrar Sesión

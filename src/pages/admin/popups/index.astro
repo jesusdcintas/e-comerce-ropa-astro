@@ -316,22 +316,38 @@ const statusText = (activa: boolean, inicio: string, fin: string | null) => {
                 });
                 if (res.ok) window.location.reload();
             } catch (err) {
-                alert("Error al actualizar");
+                window.showCustomModal({
+                    title: "Error de Actualización",
+                    message: "No se pudo actualizar el estado del pop-up.",
+                    type: "alert",
+                });
             }
         }
 
         async function deletePopup(id) {
-            if (!confirm("¿Seguro que quieres eliminar este pop-up?")) return;
-            try {
-                const res = await fetch("/api/admin/popups", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "delete", id }),
-                });
-                if (res.ok) window.location.reload();
-            } catch (err) {
-                alert("Error al eliminar");
-            }
+            window.showCustomModal({
+                title: "Eliminar Pop-up",
+                message:
+                    "¿Seguro que quieres eliminar este pop-up? Esta acción no se puede deshacer.",
+                type: "delete",
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch("/api/admin/popups", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "delete", id }),
+                        });
+                        if (res.ok) window.location.reload();
+                    } catch (err) {
+                        window.showCustomModal({
+                            title: "Error de Eliminación",
+                            message:
+                                "Hubo un error al intentar eliminar el pop-up.",
+                            type: "alert",
+                        });
+                    }
+                },
+            });
         }
     </script>
 </AdminLayout>

@@ -144,7 +144,16 @@ export default function CartFlyout() {
                                                                     <h3>
                                                                         <a href="#">{item.name}</a>
                                                                     </h3>
-                                                                    <p className="ml-4">{(item.price / 100).toFixed(2)}€</p>
+                                                                    <div className="flex flex-col items-end">
+                                                                        {item.originalPrice && item.originalPrice > item.price && (
+                                                                            <span className="text-xs text-gray-400 line-through">
+                                                                                {(item.originalPrice / 100).toFixed(2)}€
+                                                                            </span>
+                                                                        )}
+                                                                        <p className={`${item.originalPrice && item.originalPrice > item.price ? 'text-red-600 font-bold' : ''}`}>
+                                                                            {(item.price / 100).toFixed(2)}€
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
                                                                 <p className="mt-1 text-sm text-gray-500">Talla: {item.size}</p>
                                                             </div>

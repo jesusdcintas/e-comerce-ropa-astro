@@ -659,13 +659,27 @@ function getSortIcon(column: string) {
             const result = await response.json();
 
             if (result.success) {
-                alert(result.message);
-                window.location.reload();
+                window.showCustomModal({
+                    title: "Oferta Aplicada",
+                    message: result.message,
+                    type: "info",
+                });
+                // Pequeño delay para que el usuario vea el modal
+                setTimeout(() => window.location.reload(), 1500);
             } else {
-                alert("Error: " + result.error);
+                window.showCustomModal({
+                    title: "Error",
+                    message: "Error: " + result.error,
+                    type: "alert",
+                });
             }
         } catch (error) {
-            alert("Error al aplicar el descuento");
+            window.showCustomModal({
+                title: "Error de Aplicación",
+                message:
+                    "Hubo un problema al intentar aplicar el descuento masivo.",
+                type: "alert",
+            });
             console.error(error);
         }
     });

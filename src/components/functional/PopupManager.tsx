@@ -44,6 +44,22 @@ const PopupManager: React.FC = () => {
                 sessionStorage.removeItem('just_logged_in');
             }
 
+            // 0. Comprobar configuración global
+            try {
+                const configRes = await fetch('/api/admin/config', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'get' })
+                });
+                const config = await configRes.json();
+                if (config && config.popups_enabled === false) {
+                    console.log("🚫 Pop-ups desactivados globalmente por el administrador.");
+                    return;
+                }
+            } catch (err) {
+                console.error("Error comprobando config global de popups:", err);
+                // Si falla la config global, seguimos por defecto (o podrías decidir bloquear)
+            }
+
             const now = new Date().toISOString();
             console.log("🔍 Buscando pop-ups activos para:", now);
 

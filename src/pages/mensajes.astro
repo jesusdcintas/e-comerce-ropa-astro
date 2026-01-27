@@ -253,7 +253,12 @@ await supabaseAdmin
 
             location.reload();
         } catch (error: any) {
-            alert("Error al enviar el mensaje: " + error.message);
+            // @ts-ignore
+            window.showCustomModal({
+                title: "Error de Envío",
+                message: "Error al enviar el mensaje: " + error.message,
+                type: "alert"
+            });
             submitBtn.disabled = false;
             submitBtn.textContent = 'Enviar Mensaje';
         }

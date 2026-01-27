@@ -13,6 +13,7 @@ interface Props {
     productId: string;
     productName: string;
     productPrice: number;
+    originalPrice?: number;
     productImage: string;
     variants: Variant[];
     compact?: boolean;
@@ -22,6 +23,7 @@ export default function AddToCartButton({
     productId,
     productName,
     productPrice,
+    originalPrice,
     productImage,
     variants,
     compact = false
@@ -59,31 +61,37 @@ export default function AddToCartButton({
         }
 
         if (!selectedVariant) {
-            alert('Por favor selecciona una talla');
+            addToast('Por favor selecciona una talla', 'info');
             return;
         }
 
         setIsAnimating(true);
 
-        const result = await addCartItem({
-            id: productId,
-            name: productName,
-            price: productPrice,
-            image: productImage,
-            size: selectedVariant.size,
-            variantId: selectedVariant.id
-        });
+        try {
+            const result = await addCartItem({
+                id: productId,
+                name: productName,
+                price: productPrice,
+                originalPrice: originalPrice,
+                image: productImage,
+                size: selectedVariant.size,
+                variantId: selectedVariant.id
+            });
 
-        if (result.success) {
-            addToast(`${productName} añadido a la cesta (reserva por 20 min)`, 'success');
-        } else {
-            addToast(result.error || 'Error al añadir al carrito', 'error');
-            if (result.available !== undefined) {
-                addToast(`Solo quedan ${result.available} unidades disponibles`, 'error');
+            if (result.success) {
+                addToast(`${productName} añadido a la cesta (reserva por 20 min)`, 'success');
+            } else {
+                addToast(result.error || 'Error al añadir al carrito', 'error');
+                if (result.available !== undefined) {
+                    addToast(`Solo quedan ${result.available} unidades disponibles`, 'error');
+                }
             }
+        } catch (error) {
+            console.error('Error al añadir al carrito:', error);
+            addToast('Error al añadir al carrito', 'error');
+        } finally {
+            setTimeout(() => setIsAnimating(false), 500);
         }
-
-        setTimeout(() => setIsAnimating(false), 500);
     };
 
     return (

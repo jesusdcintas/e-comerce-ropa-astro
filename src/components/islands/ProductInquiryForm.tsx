@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { addToast } from '../../stores/toastStore';
 
 interface Props {
     productId: string;
@@ -32,7 +33,7 @@ export default function ProductInquiryForm({ productId, productName }: Props) {
         e.preventDefault();
 
         if (isAdmin) {
-            alert('Vista de administrador: No puedes enviar mensajes');
+            addToast('Vista de administrador: No puedes enviar mensajes', 'info');
             return;
         }
 

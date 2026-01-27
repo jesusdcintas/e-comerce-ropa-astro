@@ -82,7 +82,7 @@ export default function FavoriteButton({
             }
         } catch (error) {
             console.error('Error al gestionar favorito:', error);
-            alert('Error al actualizar favoritos');
+            addToast('Error al actualizar favoritos', 'error');
         } finally {
             setIsLoading(false);
         }

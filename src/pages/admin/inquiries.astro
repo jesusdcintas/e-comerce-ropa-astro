@@ -502,23 +502,33 @@ const statusColors = {
 
     // @ts-ignore
     window.markResolved = async (id: number) => {
-        if (!confirm("¿Estás seguro de marcar esta consulta como resuelta?"))
-            return;
+        // @ts-ignore
+        window.showCustomModal({
+            title: "Confirmar resolución",
+            message: "¿Estás seguro de marcar esta consulta como resuelta?",
+            type: "confirm",
+            onConfirm: async () => {
+                try {
+                    const { error } = await supabase
+                        .from("product_inquiries")
+                        .update({
+                            status: "closed",
+                            customer_has_unread: true, // Notificar al cliente que se ha cerrado
+                        })
+                        .eq("id", id);
 
-        try {
-            const { error } = await supabase
-                .from("product_inquiries")
-                .update({
-                    status: "closed",
-                    customer_has_unread: true, // Notificar al cliente que se ha cerrado
-                })
-                .eq("id", id);
-
-            if (error) throw error;
-            location.reload();
-        } catch (error: any) {
-            alert("Error: " + error.message);
-        }
+                    if (error) throw error;
+                    location.reload();
+                } catch (error: any) {
+                    // @ts-ignore
+                    window.showCustomModal({
+                        title: "Error",
+                        message: "Error: " + error.message,
+                        type: "alert",
+                    });
+                }
+            },
+        });
     };
 
     function closeModal() {
@@ -594,7 +604,12 @@ const statusColors = {
 
                 location.reload();
             } catch (error: any) {
-                alert("Error al guardar la respuesta: " + error.message);
+                // @ts-ignore
+                window.showCustomModal({
+                    title: "Error de Guardado",
+                    message: "Error al guardar la respuesta: " + error.message,
+                    type: "alert",
+                });
                 submitBtn.disabled = false;
                 submitBtn.textContent = "Enviar Respuesta";
             }

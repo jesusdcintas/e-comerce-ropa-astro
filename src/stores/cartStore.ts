@@ -4,7 +4,8 @@ import { atom, map } from 'nanostores';
 export interface CartItem {
     id: string;
     name: string;
-    price: number; // En céntimos siempre
+    price: number; // En céntimos siempre (precio final)
+    originalPrice?: number; // Precio original antes de descuentos (opcional)
     image: string;
     quantity: number;
     size: string;
@@ -34,7 +35,7 @@ const initialCart = typeof window !== 'undefined'
             if (!item.expiresAt) return true;
             return new Date(item.expiresAt).getTime() > now;
         });
-        return Object.fromEntries(filtered);
+        return Object.fromEntries(filtered) as Record<string, CartItem>;
     })()
     : {};
 

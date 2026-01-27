@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { addToast } from '../../stores/toastStore';
 
 interface Props {
     buttonText?: string;
@@ -39,7 +40,7 @@ export default function GeneralInquiryForm({ buttonText = "Enviar Mensaje Direct
         e.preventDefault();
 
         if (isAdmin) {
-            alert('Vista de administrador: No puedes enviar mensajes');
+            addToast('Vista de administrador: No puedes enviar mensajes', 'info');
             return;
         }
 

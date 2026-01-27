@@ -251,7 +251,16 @@ export default function CheckoutFlow({
                                 <h4 className="font-medium text-gray-900 text-sm">{item.name}</h4>
                                 <p className="text-gray-500 text-xs">Talla: {item.size} | Cant: {item.quantity}</p>
                             </div>
-                            <p className="font-bold text-gray-900 text-sm">{(item.price * item.quantity / 100).toFixed(2)}€</p>
+                            <div className="text-right">
+                                {item.originalPrice && item.originalPrice > item.price && (
+                                    <p className="text-[10px] text-gray-400 line-through">
+                                        {(item.originalPrice * item.quantity / 100).toFixed(2)}€
+                                    </p>
+                                )}
+                                <p className={`font-bold text-sm ${item.originalPrice && item.originalPrice > item.price ? 'text-red-600' : 'text-gray-900'}`}>
+                                    {(item.price * item.quantity / 100).toFixed(2)}€
+                                </p>
+                            </div>
                         </div>
                     ))}
                 </div>

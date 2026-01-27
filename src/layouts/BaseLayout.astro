@@ -4,6 +4,7 @@ import CartFlyout from "../components/functional/CartFlyout";
 import Header from "../components/ui/Header.astro";
 import ToastContainer from "../components/ui/ToastContainer";
 import PopupManager from "../components/functional/PopupManager";
+import GlobalModal from "../components/functional/GlobalModal";
 
 interface Props {
     title: string;
@@ -78,5 +79,8 @@ const {
 
         <!-- Sistema de Pop-ups (Marketing) -->
         {showPopup && <PopupManager client:load />}
+
+        <!-- Diálogos y Confirms Globales -->
+        <GlobalModal client:load />
     </body>
 </html>

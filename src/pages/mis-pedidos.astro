@@ -730,6 +730,9 @@ const statusLabels: Record<string, string> = {
 </div>
 
 <script>
+  import { addToast } from "../stores/toastStore";
+  import { showModal } from "../stores/modalStore";
+
   // Lógica para el Modal de Factura
   const modal = document.getElementById("invoice-modal");
   const closeModalBtn = document.getElementById("close-modal");
@@ -856,10 +859,10 @@ const statusLabels: Record<string, string> = {
 
       if (!response.ok) throw new Error("Error al procesar la factura");
 
-      alert("¡Factura generada y enviada a tu email!");
-      window.location.reload();
+      addToast("¡Factura generada y enviada a tu email!", "success");
+      setTimeout(() => window.location.reload(), 2000);
     } catch (err) {
-      alert("Hubo un error al procesar tu solicitud.");
+      addToast("Hubo un error al procesar tu solicitud.", "error");
       submitBtn.disabled = false;
       submitBtn.innerText = "Generar y Enviar Factura";
     }
@@ -942,28 +945,35 @@ const statusLabels: Record<string, string> = {
       const btn = e.currentTarget as HTMLButtonElement;
       const orderId = btn.dataset.orderId;
 
-      if (!confirm("¿Estás seguro de cancelar este pedido?")) return;
+      showModal({
+        title: "Cancelar Pedido",
+        message:
+          "¿Estás seguro de cancelar este pedido? Esta acción no se puede deshacer.",
+        type: "confirm",
+        onConfirm: async () => {
+          try {
+            btn.disabled = true;
+            btn.innerText = "Cancelando...";
 
-      try {
-        btn.disabled = true;
-        btn.innerText = "Cancelando...";
+            const response = await fetch("/api/orders/cancel", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orderId }),
+            });
 
-        const response = await fetch("/api/orders/cancel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Error al cancelar");
-        }
-        window.location.reload();
-      } catch (err: any) {
-        alert(err.message || "Error al cancelar");
-        btn.disabled = false;
-        btn.innerText = "Cancelar Pedido";
-      }
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || "Error al cancelar");
+            }
+            addToast("Pedido cancelado correctamente", "success");
+            setTimeout(() => window.location.reload(), 1500);
+          } catch (err: any) {
+            addToast(err.message || "Error al cancelar", "error");
+            btn.disabled = false;
+            btn.innerText = "Cancelar Pedido";
+          }
+        },
+      });
     });
   });
 </script>
