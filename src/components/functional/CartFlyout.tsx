@@ -15,7 +15,7 @@ export default function CartFlyout() {
 
     // Calcular tiempo restante
     useEffect(() => {
-        if (!$cartExpiresAt) {
+        if (!$cartExpiresAt || items.length === 0) {
             setTimeRemaining('');
             return;
         }
@@ -28,8 +28,16 @@ export default function CartFlyout() {
             if (diff <= 0) {
                 setTimeRemaining('¡Tiempo agotado!');
                 setIsExpired(true);
-                // Limpiar carrito cuando expire
-                window.location.reload();
+
+                // IMPORTANTE: Limpiar el store ANTES de intentar cualquier acción
+                // Esto evitará el bucle infinito de refrescos
+                import("../../stores/cartStore").then(m => {
+                    m.clearCart();
+                    // Solo recargar si realmente hay items que limpiar
+                    if (items.length > 0) {
+                        window.location.reload();
+                    }
+                });
                 return;
             }
 
@@ -43,7 +51,7 @@ export default function CartFlyout() {
         const interval = setInterval(updateTimer, 1000);
 
         return () => clearInterval(interval);
-    }, [$cartExpiresAt]);
+    }, [$cartExpiresAt, items.length]);
 
     // Prevenir scroll del body cuando está abierto
     useEffect(() => {

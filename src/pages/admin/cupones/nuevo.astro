@@ -422,9 +422,6 @@ const { data: reglas } = await supabase
                                 name="tipo_regla"
                                 class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none"
                             >
-                                <option value="numero_compras"
-                                    >Nº de Compras Pagadas</option
-                                >
                                 <option value="compra_minima"
                                     >Gasto Mínimo (Carrito)</option
                                 >
@@ -794,10 +791,7 @@ const { data: reglas } = await supabase
                                 tipo === "gasto_periodo"
                                     ? Math.max(1, valor * 100)
                                     : 1,
-                            numero_minimo:
-                                tipo === "numero_compras"
-                                    ? Math.max(1, valor)
-                                    : 0,
+                            numero_minimo: 0,
                             periodo_dias: periodo,
                             descuento_porcentaje: parseInt(
                                 formData.get("descuento") as string,

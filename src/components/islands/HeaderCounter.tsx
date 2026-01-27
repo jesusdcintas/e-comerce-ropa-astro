@@ -9,189 +9,106 @@ interface Props {
     dark?: boolean;
 }
 
+// Variables globales para compartir entre instancias
+let sharedUserId: string | null = null;
+let sharedUserEmail: string | null = null;
+let isSessionLoading = false;
+
+async function getSharedSession() {
+    if (sharedUserId) return { id: sharedUserId, email: sharedUserEmail };
+    if (isSessionLoading) return null;
+
+    isSessionLoading = true;
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+        sharedUserId = data.session.user.id;
+        sharedUserEmail = data.session.user.email || null;
+    }
+    isSessionLoading = false;
+    return { id: sharedUserId, email: sharedUserEmail };
+}
+
 export default function HeaderCounter({ type, dark }: Props) {
     const $cartItems = useStore(cartItems);
     const $favoriteCount = useStore(favoriteCount);
-    const [unreadInquiries, setUnreadInquiries] = useState(0);
-    const [unreadNotifications, setUnreadNotifications] = useState(0);
-    const [unreadCouponNotifications, setUnreadCouponNotifications] = useState(0);
+    const [localCount, setLocalCount] = useState(0);
     const [mounted, setMounted] = useState(false);
-
     const [isAnimating, setIsAnimating] = useState(false);
     const prevCount = useRef(0);
 
+    const fetchData = async () => {
+        const session = await getSharedSession();
+        if (!session?.id && type !== 'cart') return;
+
+        try {
+            if (type === 'favorite' && session?.id) {
+                const { count: c } = await supabase.from('favorites').select('*', { count: 'exact', head: true }).eq('user_id', session.id);
+                if (c !== null) setFavoriteCount(c);
+            } else if (type === 'inquiry' && session?.email) {
+                if (window.location.pathname === '/mensajes') return;
+                const { count: c } = await supabase.from('product_inquiries').select('*', { count: 'exact', head: true }).eq('customer_email', session.email).eq('customer_has_unread', true);
+                if (c !== null) setLocalCount(c);
+            } else if (type === 'notification' && session?.id) {
+                const { count: c } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', session.id).eq('is_read', false);
+                if (c !== null) setLocalCount(c);
+            } else if (type === 'coupon_notification' && session?.id) {
+                const { count: c } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', session.id).eq('type', 'coupon').eq('is_read', false);
+                if (c !== null) setLocalCount(c);
+            }
+        } catch (e) { /* ignore */ }
+    };
+
     useEffect(() => {
         setMounted(true);
-        refreshData();
+        fetchData();
 
-        // Suscripción Real-Time para Notificaciones
-        const channel = supabase
-            .channel('db-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
-                fetchAllUnreadNotifications();
-                fetchUnreadCouponNotifications();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites' }, () => {
-                fetchFavoriteCount();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'product_inquiries' }, () => {
-                fetchUnreadInquiries();
-            })
+        let timer: any;
+        const debouncedRefresh = () => {
+            clearTimeout(timer);
+            timer = setTimeout(fetchData, 4000); // 4 segundos de cooldown
+        };
+
+        const channel = supabase.channel(`sync-v3-${type}`)
+            .on('postgres_changes', { event: '*', schema: 'public' }, debouncedRefresh)
             .subscribe();
 
         return () => {
+            clearTimeout(timer);
             supabase.removeChannel(channel);
         };
-    }, []);
-
-    const refreshData = () => {
-        if (type === 'favorite') fetchFavoriteCount();
-        else if (type === 'inquiry') fetchUnreadInquiries();
-        else if (type === 'notification') fetchAllUnreadNotifications();
-        else if (type === 'coupon_notification') fetchUnreadCouponNotifications();
-    };
+    }, [type]);
 
     useEffect(() => {
-        const currentCount = type === 'cart'
-            ? Object.values($cartItems).reduce((acc, item) => acc + item.quantity, 0)
-            : type === 'favorite'
-                ? $favoriteCount
-                : type === 'notification'
-                    ? unreadNotifications
-                    : type === 'coupon_notification'
-                        ? unreadCouponNotifications
-                        : unreadInquiries;
+        const c = type === 'cart' ? Object.values($cartItems).reduce((acc, i) => acc + i.quantity, 0) :
+            type === 'favorite' ? $favoriteCount : localCount;
 
-        if (currentCount > prevCount.current) {
+        if (c > prevCount.current) {
             setIsAnimating(true);
             setTimeout(() => setIsAnimating(false), 300);
         }
-        prevCount.current = currentCount;
-    }, [$cartItems, $favoriteCount, unreadInquiries, unreadNotifications, unreadCouponNotifications, type]);
-
-    const fetchFavoriteCount = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { count, error } = await supabase
-                    .from('favorites')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id);
-
-                if (!error && count !== null) {
-                    setFavoriteCount(count);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching favorite count:', error);
-        }
-    };
-
-    const fetchUnreadInquiries = async () => {
-        if (typeof window !== 'undefined' && window.location.pathname === '/mensajes') {
-            setUnreadInquiries(0);
-            return;
-        }
-
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user?.email) {
-                const { count, error } = await supabase
-                    .from('product_inquiries')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('customer_email', user.email)
-                    .eq('customer_has_unread', true);
-
-                if (!error && count !== null) {
-                    setUnreadInquiries(count);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching unread inquiries:', error);
-        }
-    };
-
-    const fetchAllUnreadNotifications = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { count, error } = await supabase
-                    .from('notifications')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id)
-                    .eq('is_read', false);
-
-                if (!error && count !== null) {
-                    setUnreadNotifications(count);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching unread notifications:', error);
-        }
-    };
-
-    const fetchUnreadCouponNotifications = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { count, error } = await supabase
-                    .from('notifications')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id)
-                    .eq('type', 'coupon')
-                    .eq('is_read', false);
-
-                if (!error && count !== null) {
-                    setUnreadCouponNotifications(count);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching unread coupon notifications:', error);
-        }
-    };
+        prevCount.current = c;
+    }, [$cartItems, $favoriteCount, localCount]);
 
     if (!mounted) return null;
 
-    if (type === 'badge') {
-        return (
-            <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-        );
-    }
+    const displayCount = type === 'cart' ? Object.values($cartItems).reduce((acc, i) => acc + i.quantity, 0) :
+        type === 'favorite' ? $favoriteCount : localCount;
 
-    if (type === 'cart') {
-        const totalItems = Object.values($cartItems).reduce((acc, item) => acc + item.quantity, 0);
-        if (totalItems === 0) return null;
-        return (
-            <span className={`absolute -top-1 -right-1 ${dark ? 'bg-slate-900 border-white' : 'bg-gray-900 border-white'} text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'}`}>
-                {totalItems}
-            </span>
-        );
-    }
+    if (displayCount === 0 && type !== 'badge') return null;
+    if (type === 'badge') return <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>;
 
-    if (type === 'inquiry') {
-        if (unreadInquiries === 0) return null;
-        return (
-            <span className={`absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'}`}>
-                {unreadInquiries}
-            </span>
-        );
-    }
+    const styles = {
+        cart: `${dark ? 'bg-slate-900 border-white' : 'bg-black border-white'}`,
+        favorite: 'bg-brand-gold border-white',
+        inquiry: 'bg-orange-500 border-white',
+        notification: 'bg-red-600 border-white',
+        coupon_notification: 'bg-red-600 border-white',
+        badge: ''
+    };
 
-    if (type === 'notification' || type === 'coupon_notification') {
-        const count = type === 'notification' ? unreadNotifications : unreadCouponNotifications;
-        if (count === 0) return null;
-        return (
-            <span className={`absolute -top-1 -right-1 bg-red-600 text-white text-[9px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-black border-2 border-white transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'} z-[200]`}>
-                {count}
-            </span>
-        );
-    }
-
-    // Favorite
-    if ($favoriteCount === 0) return null;
     return (
-        <span className={`absolute -top-1 -right-1 bg-brand-gold text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white transition-transform duration-300 ${isAnimating ? 'scale-150' : 'scale-100'}`}>
-            {$favoriteCount}
+        <span className={`absolute -top-1 -right-1 ${styles[type]} text-white text-[9px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center font-black border-2 transition-all duration-300 ${isAnimating ? 'scale-125' : 'scale-100'} z-50`}>
+            {displayCount}
         </span>
     );
 }

@@ -15,7 +15,7 @@ export interface CartItem {
 // Generar o recuperar ID de sesión único
 function getSessionId(): string {
     if (typeof window === 'undefined') return '';
-    
+
     let sessionId = localStorage.getItem('cart_session_id');
     if (!sessionId) {
         sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -26,7 +26,16 @@ function getSessionId(): string {
 
 // Cargar estado inicial desde localStorage si estamos en el navegador
 const initialCart = typeof window !== 'undefined'
-    ? JSON.parse(localStorage.getItem('cart') || '{}')
+    ? (() => {
+        const raw = JSON.parse(localStorage.getItem('cart') || '{}');
+        const now = new Date().getTime();
+        // Filtrar items expirados en la carga inicial
+        const filtered = Object.entries(raw).filter(([_, item]: [string, any]) => {
+            if (!item.expiresAt) return true;
+            return new Date(item.expiresAt).getTime() > now;
+        });
+        return Object.fromEntries(filtered);
+    })()
     : {};
 
 // Mapa para items individuales para acceso rápido y atomicidad
@@ -42,12 +51,12 @@ export const cartExpiresAt = atom<Date | null>(null);
 if (typeof window !== 'undefined') {
     cartItems.subscribe((items) => {
         localStorage.setItem('cart', JSON.stringify(items));
-        
+
         // Actualizar el tiempo de expiración más próximo
         const expirations = Object.values(items)
             .map(item => item.expiresAt ? new Date(item.expiresAt) : null)
             .filter(date => date !== null) as Date[];
-        
+
         if (expirations.length > 0) {
             const earliest = new Date(Math.min(...expirations.map(d => d.getTime())));
             cartExpiresAt.set(earliest);
@@ -92,8 +101,8 @@ export async function addCartItem(item: Omit<CartItem, 'quantity'>) {
         }
 
         // Actualizar carrito con el tiempo de expiración
-        cartItems.setKey(key, { 
-            ...item, 
+        cartItems.setKey(key, {
+            ...item,
             quantity: newQuantity,
             expiresAt: result.expires_at
         });
@@ -114,10 +123,10 @@ export async function addCartItem(item: Omit<CartItem, 'quantity'>) {
 export async function removeCartItem(productId: string, size: string) {
     const key = `${productId}-${size}`;
     const item = cartItems.get()[key];
-    
+
     if (item?.variantId) {
         const sessionId = getSessionId();
-        
+
         try {
             // Liberar reserva en el servidor
             await fetch('/api/release-reservation', {
@@ -132,7 +141,7 @@ export async function removeCartItem(productId: string, size: string) {
             console.error('Error al liberar reserva:', error);
         }
     }
-    
+
     const newItems = { ...cartItems.get() };
     delete newItems[key];
     cartItems.set(newItems);
@@ -149,12 +158,12 @@ export async function updateCartItemQuantity(productId: string, size: string, qu
 
     const key = `${productId}-${size}`;
     const existingEntry = cartItems.get()[key];
-    
+
     if (!existingEntry) return;
 
     if (existingEntry.variantId) {
         const sessionId = getSessionId();
-        
+
         try {
             // Actualizar reserva en el servidor
             const response = await fetch('/api/reserve-stock', {
@@ -176,8 +185,8 @@ export async function updateCartItemQuantity(productId: string, size: string, qu
                 return;
             }
 
-            cartItems.setKey(key, { 
-                ...existingEntry, 
+            cartItems.setKey(key, {
+                ...existingEntry,
                 quantity,
                 expiresAt: result.expires_at
             });

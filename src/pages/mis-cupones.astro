@@ -45,41 +45,96 @@ const supabaseAdmin = createClient(
     import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-// 2. Obtener cupones (usamos Admin para asegurar que los vemos todos independientemente de RLS local)
-// Solo mostramos:
-// - Cupones públicos SIN regla (General / Todos)
+// 2. Obtener cupones
+// Mostramos:
+// - Cupones públicos (TODOS)
 // - Cupones asignados directamente (cliente_id)
-// - Cupones distribuidos específicamente (assignedIds)
-let orFilter = `and(es_publico.eq.true,regla_id.is.null),cliente_id.eq.${user.id}`;
+// - Cupones en cupon_asignaciones
+let orFilter = `es_publico.eq.true,cliente_id.eq.${user.id}`;
 if (assignedIds.length > 0) {
     orFilter += `,id.in.(${assignedIds.join(",")})`;
 }
 
 const { data: coupons, error: fetchError } = await supabaseAdmin
     .from("cupones")
-    .select("*, reglas_cupones!cupones_regla_id_fkey(nombre, descripcion)")
+    .select("*, reglas_cupones!cupones_regla_id_fkey(*)")
     .or(orFilter)
     .eq("activo", true)
     .eq("usado", false);
 
 if (fetchError) {
     console.error("[DEBUG Mis Cupones] Fetch Error:", fetchError);
-} else {
-    console.log(
-        "[DEBUG Mis Cupones] Found:",
-        coupons?.length,
-        "for user:",
-        user.id,
-    );
 }
 
-// 3. Filtrar por expiración localmente
-const now = new Date();
-const availableCoupons =
-    coupons?.filter((c) => {
-        if (!c.fecha_expiracion) return true;
-        return new Date(c.fecha_expiracion) >= now;
-    }) || [];
+// 3. Filtrado Dinámico de Reglas (Regla 2 y 4)
+// Evaluamos si el usuario cumple la regla en este momento
+const validCoupons = [];
+
+if (coupons) {
+    // Obtener estadísticas del usuario para validación
+    const { data: orders } = await supabaseAdmin
+        .from("orders")
+        .select("total_amount, created_at")
+        .eq("user_id", user.id)
+        .in("status", ["paid", "shipped", "delivered"]);
+
+    const totalSpent =
+        orders?.reduce((acc, o) => acc + (o.total_amount || 0), 0) || 0;
+    const orderCount = orders?.length || 0;
+    const now = new Date();
+
+    for (const c of coupons) {
+        // Filtro de expiración
+        if (c.fecha_expiracion && new Date(c.fecha_expiracion) < now) continue;
+
+        // Si no tiene regla, es válido (público general o privado directo)
+        if (!c.regla_id) {
+            validCoupons.push(c);
+            continue;
+        }
+
+        const regla = c.reglas_cupones;
+        if (!regla || !regla.activa) continue;
+
+        let satisfies = false;
+
+        if (regla.tipo_regla === "gasto_total") {
+            satisfies = totalSpent >= (regla.monto_minimo || 0);
+        } else if (regla.tipo_regla === "gasto_periodo") {
+            const dateLimit = new Date();
+            dateLimit.setDate(dateLimit.getDate() - (regla.periodo_dias || 30));
+            const spentInPeriod =
+                orders
+                    ?.filter((o) => new Date(o.created_at) > dateLimit)
+                    .reduce((acc, o) => acc + (o.total_amount || 0), 0) || 0;
+            satisfies = spentInPeriod >= (regla.monto_minimo || 0);
+        } else if (regla.tipo_regla === "primera_compra") {
+            satisfies = orderCount === 0;
+        } else if (regla.tipo_regla === "antiguedad") {
+            const { data: profile } = await supabaseAdmin
+                .from("profiles")
+                .select("created_at")
+                .eq("id", user.id)
+                .single();
+            if (profile) {
+                const regDate = new Date(profile.created_at);
+                const daysDiff =
+                    (now.getTime() - regDate.getTime()) / (1000 * 3600 * 24);
+                satisfies = daysDiff >= (regla.periodo_dias || 0);
+            }
+        } else if (regla.tipo_regla === "compra_minima") {
+            // Esta regla se valida en el checkout (es sobre el carrito actual),
+            // pero para mostrarla en el perfil la damos por válida como "disponible"
+            satisfies = true;
+        }
+
+        if (satisfies) {
+            validCoupons.push(c);
+        }
+    }
+}
+
+const availableCoupons = validCoupons;
 
 // 4. Marcar notificaciones de cupones como leídas automáticamente
 await supabaseAuth

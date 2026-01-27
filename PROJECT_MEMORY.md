@@ -75,6 +75,26 @@
 - [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
 
 
+## Sistema de Cupones 2.0 (Reglas del Negocio)
+
+1.  **Creación**: 
+    *   Todos los cupones y códigos son generados exclusivamente por el **Administrador**.
+    *   Los clientes no tienen permisos para crear ni modificar cupones.
+2.  **Tipos de Cupones**:
+    *   **Cupones públicos sin reglas**: Visibles para todos en su perfil. Límite de 1 uso por cliente.
+    *   **Cupones públicos con regla**: Solo aparecen en el perfil y son canjeables si el cliente cumple una regla específica (ej. Gasto > 500€). Si deja de cumplir la regla, el cupón desaparece y deja de ser usable.
+    *   **Cupones privados**: Asignados manualmente a clientes específicos (incidencias/fidelización). Solo existen para esos clientes.
+3.  **Reglas (Lógica de Servidor)**:
+    *   Cada cupón puede tener **una sola regla**.
+    *   Tipos soportados: Gasto mínimo en pedido, Gasto histórico total, Antigüedad de la cuenta y Primera compra.
+4.  **Asignación y Notificación**:
+    *   Al cumplir una regla, el cupón aparece en el perfil del cliente y se le envía una notificación por email.
+5.  **Uso de Cupones**:
+    *   **Un solo cupón por pedido**. No son acumulables ni combinables.
+    *   El uso de un cupón no afecta a la disponibilidad de los demás cupones que tenga el cliente.
+6.  **Validación Doble**: 
+    *   El sistema valida las condiciones en dos momentos: al mostrarlo en el perfil (asignación) y obligatoriamente en el proceso de pago (Server-side RPC).
+
 ## Convenciones y Reglas del Proyecto
 - **Precios**: Siempre en **céntimos** (integer).
 - **Seguridad**: Lógica crítica en RPC o endpoints de servidor; nunca exponer `SERVICE_ROLE_KEY`.

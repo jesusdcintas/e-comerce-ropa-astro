@@ -100,21 +100,11 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
                 .from('orders')
                 .select('user_id')
                 .gte('total_amount', regra.monto_minimo)
-                .eq('status', 'paid');
+                .in('status', ['paid', 'shipped', 'delivered']);
             eligibleUserIds = [...new Set(orders?.map(o => o.user_id).filter(Boolean) as string[])];
-        } else if (regra.tipo_regla === 'numero_compras') {
-            const { data: stats } = await supabaseAdmin
-                .from('orders')
-                .select('user_id')
-                .eq('status', 'paid');
-            const countMap: Record<string, number> = {};
-            stats?.forEach(o => { if (o.user_id) countMap[o.user_id] = (countMap[o.user_id] || 0) + 1; });
-            eligibleUserIds = Object.entries(countMap)
-                .filter(([_, count]) => count >= (regra.numero_minimo || 0))
-                .map(([id]) => id);
         } else if (regra.tipo_regla === 'gasto_periodo' || regra.tipo_regla === 'gasto_total') {
             const isPeriod = regra.tipo_regla === 'gasto_periodo';
-            let query = supabaseAdmin.from('orders').select('user_id, total_amount').eq('status', 'paid');
+            let query = supabaseAdmin.from('orders').select('user_id, total_amount').in('status', ['paid', 'shipped', 'delivered']);
             if (isPeriod) {
                 const dateLimit = new Date();
                 dateLimit.setDate(dateLimit.getDate() - (regra.periodo_dias || 30));
@@ -128,7 +118,7 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
                 .map(([id]) => id);
         } else if (regra.tipo_regla === 'primera_compra') {
             const { data: profiles } = await supabaseAdmin.from('profiles').select('id');
-            const { data: orders } = await supabaseAdmin.from('orders').select('user_id').eq('status', 'paid');
+            const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
             const usersWithOrders = new Set(orders?.map(o => o.user_id));
             eligibleUserIds = profiles?.filter(p => !usersWithOrders.has(p.id)).map(p => p.id) || [];
         } else if (regra.tipo_regla === 'antiguedad') {
