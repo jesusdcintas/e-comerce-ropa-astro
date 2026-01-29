@@ -39,7 +39,6 @@ function formatDate(dateStr: string) {
 }
 
 const statusBadge: Record<string, string> = {
-    pending: "bg-orange-100 text-orange-600 border-orange-200",
     paid: "bg-green-100 text-green-600 border-green-200",
     shipped: "bg-blue-100 text-blue-600 border-blue-200",
     delivered: "bg-purple-100 text-purple-600 border-purple-200",
@@ -47,7 +46,6 @@ const statusBadge: Record<string, string> = {
 };
 
 const statusText: Record<string, string> = {
-    pending: "Pendiente",
     paid: "Pagado",
     shipped: "Enviado",
     delivered: "Entregado",
@@ -323,6 +321,17 @@ const statusText: Record<string, string> = {
                                 class="w-full flex items-center justify-center py-4 bg-brand-gold/10 border border-brand-gold/20 rounded-2xl text-[10px] font-black uppercase tracking-widest text-brand-gold hover:bg-brand-gold hover:text-white transition-all shadow-sm"
                             >
                                 Descargar Factura
+                            </a>
+                        )
+                    }
+                    {
+                        order.refund_invoice_number && (
+                            <a
+                                href={`/api/orders/download-pdf?orderId=${order.id}&type=refund`}
+                                target="_blank"
+                                class="w-full flex items-center justify-center py-4 bg-red-50 border border-red-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                            >
+                                Descargar Factura Abono
                             </a>
                         )
                     }

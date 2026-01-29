@@ -360,14 +360,61 @@ const statusLabels: Record<string, string> = {
                     </button>
                   )}
 
-                  {order.status === "delivered" && (
-                    <button
-                      class="btn-request-return text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-widest flex items-center gap-1"
-                      data-order-id={order.id}
-                      data-order-label={order.id.toString().padStart(6, "0")}
-                    >
+                  {(order.status === "delivered" ||
+                    order.status === "shipped") &&
+                    (order.return_status === "none" ||
+                      order.return_status === "refunded") &&
+                    order.order_items?.some(
+                      (i: any) =>
+                        i.quantity > (i.return_refunded_quantity || 0),
+                    ) && (
+                      <button
+                        class="btn-request-return text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-widest flex items-center gap-1"
+                        data-order-id={order.id}
+                        data-order-label={order.id.toString().padStart(6, "0")}
+                        data-order-status={order.status}
+                        data-items-json={JSON.stringify(
+                          order.order_items || [],
+                        )}
+                      >
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"
+                          />
+                        </svg>
+                        Solicitar Devolución
+                      </button>
+                    )}
+
+                  {order.return_status === "requested" && (
+                    <div class="flex flex-col gap-2">
+                      <div class="bg-brand-gold/10 text-brand-gold px-4 py-2 rounded-xl border border-brand-gold/20 flex items-center gap-2">
+                        <span class="text-[10px] font-black uppercase tracking-widest">
+                          Código para el Transportista:{" "}
+                          {order.return_tracking_id}
+                        </span>
+                      </div>
+                      <button
+                        class="btn-mark-handed text-xs font-black text-slate-900 bg-white border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all uppercase tracking-widest shadow-sm"
+                        data-order-id={order.id}
+                      >
+                        He entregado el paquete al transportista
+                      </button>
+                    </div>
+                  )}
+
+                  {order.return_status === "handed_to_carrier" && (
+                    <div class="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl border border-blue-100 flex items-center gap-2">
                       <svg
-                        class="w-3.5 h-3.5"
+                        class="w-4 h-4 animate-pulse"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -375,12 +422,22 @@ const statusLabels: Record<string, string> = {
                         <path
                           stroke-linecap="round"
                           stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"
+                          stroke-width="2.5"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                      Solicitar Devolución
-                    </button>
+                      <span class="text-[10px] font-black uppercase tracking-widest">
+                        Paquete en tránsito (Regreso)
+                      </span>
+                    </div>
+                  )}
+
+                  {order.return_status === "refunded" && (
+                    <div class="bg-green-50 text-green-600 px-4 py-2 rounded-xl border border-green-100 flex items-center gap-2">
+                      <span class="text-[10px] font-black uppercase tracking-widest">
+                        Devolución Completada - Reembolsado
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -486,6 +543,43 @@ const statusLabels: Record<string, string> = {
                       )}
                     </div>
                   </div>
+
+                  {/* Reembolso */}
+                  {order.refund_invoice_number && (
+                    <div class="flex flex-col items-center gap-3">
+                      <span class="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">
+                        Reembolso
+                      </span>
+                      <div class="flex flex-col items-center gap-2">
+                        <button
+                          class="btn-send-refund-invoice min-w-[170px] h-11 text-[10px] font-black text-red-600 hover:text-white hover:bg-red-500 transition-all flex items-center justify-center gap-2 uppercase tracking-[0.1em] bg-red-50 px-6 rounded-2xl border border-red-100"
+                          data-order-id={order.id}
+                        >
+                          <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2.2"
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
+                          </svg>
+                          Enviar a Email
+                        </button>
+                        <a
+                          href={`/api/orders/download-pdf?orderId=${order.id}&type=refund`}
+                          target="_blank"
+                          class="text-[9px] font-black text-red-600 hover:underline uppercase tracking-widest mt-1"
+                        >
+                          Ver PDF →
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -662,7 +756,7 @@ const statusLabels: Record<string, string> = {
           <span class="w-6 h-px bg-brand-gold"></span>
           Gestión de Devoluciones
         </div>
-        <h3 class="text-2xl font-black tracking-tight">Solicitud Iniciada</h3>
+        <h3 class="text-2xl font-black tracking-tight">Solicitar Devolución</h3>
         <p class="text-slate-500 text-sm mt-2 font-medium">
           Pedido <span id="return-modal-order-id" class="text-brand-gold"
             >#000000</span
@@ -671,73 +765,81 @@ const statusLabels: Record<string, string> = {
       </div>
 
       <div class="p-8 space-y-6">
-        <div class="flex gap-4">
-          <div
-            class="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center flex-shrink-0"
-          >
-            <span class="text-brand-gold font-bold">1</span>
-          </div>
-          <div>
-            <p class="text-sm font-bold text-slate-900 mb-1">
-              Instrucciones de Envío
-            </p>
-            <p class="text-xs text-slate-500 leading-relaxed">
-              Debes enviar los artículos en su embalaje original a nuestra
-              central logística: <br />
-              <strong class="text-slate-700"
-                >Calle de la Moda 123, Polígono Industrial, Madrid (28045)</strong
-              >.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex gap-4">
-          <div
-            class="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center flex-shrink-0"
-          >
-            <span class="text-brand-gold font-bold">2</span>
-          </div>
-          <div>
-            <p class="text-sm font-bold text-slate-900 mb-1">
-              Confirmación por Email
-            </p>
-            <p class="text-xs text-slate-500 leading-relaxed">
-              Hemos enviado un correo electrónico con la <strong
-                >etiqueta de devolución</strong
-              > y el formulario a completar a tu email asociado.
-            </p>
-          </div>
-        </div>
-
-        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 italic">
-          <div class="flex gap-3">
-            <svg
-              class="w-5 h-5 text-brand-gold flex-shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <label
+              class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >¿Qué artículos quieres devolver?</label
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <p class="text-[11px] text-slate-500 font-medium leading-relaxed">
-              <strong class="text-slate-700">Aviso importante:</strong> Una vez recibido
-              y validado el paquete en nuestros almacenes, el reembolso se procesará
-              automáticamente en tu método de pago original en un plazo de 5 a 7 días
-              hábiles.
-            </p>
+            <div class="flex items-center gap-2">
+              <span
+                id="return-type-badge"
+                class="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-400"
+                >Selecciona artículos</span
+              >
+              <div
+                class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors"
+                id="select-all-returns-container"
+              >
+                <input
+                  type="checkbox"
+                  id="select-all-returns"
+                  class="w-3.5 h-3.5 rounded border-slate-300 text-brand-gold focus:ring-brand-gold cursor-pointer"
+                />
+                <span class="text-[9px] font-black uppercase text-slate-500"
+                  >Todo el pedido</span
+                >
+              </div>
+            </div>
           </div>
+          <div
+            id="return-items-list"
+            class="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 max-h-60 overflow-y-auto custom-scrollbar"
+          >
+            <!-- Se poblará por JS -->
+          </div>
+        </div>
+
+        <div class="space-y-2 pt-2">
+          <label
+            class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+            >Motivo de la devolución</label
+          >
+          <select
+            id="return-reason-select"
+            class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-brand-gold/10 font-bold text-slate-700"
+          >
+            <option value="Talla incorrecta">Talla incorrecta</option>
+            <option value="No es lo que esperaba">No es lo que esperaba</option>
+            <option value="Producto dañado">Producto dañado</option>
+            <option value="Pedido por error">Pedido por error</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+          <p
+            class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3"
+          >
+            Resumen de política
+          </p>
+          <ul class="space-y-2">
+            <li class="flex items-center gap-2 text-xs text-slate-600 italic">
+              <span class="w-1.5 h-1.5 bg-brand-gold rounded-full"></span>
+              Reembolso en 5-7 días tras recibir el paquete.
+            </li>
+            <li class="flex items-center gap-2 text-xs text-slate-600 italic">
+              <span class="w-1.5 h-1.5 bg-brand-gold rounded-full"></span>
+              Gastos de envío originales no reembolsables.
+            </li>
+          </ul>
         </div>
 
         <button
-          id="btn-confirm-return-close"
+          id="btn-confirm-return-request"
           class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-gold transition-all shadow-xl shadow-slate-900/10"
         >
-          Entendido
+          Confirmar Devolución
         </button>
       </div>
     </div>
@@ -825,20 +927,311 @@ const statusLabels: Record<string, string> = {
   // Lógica para el Modal de Devolución
   const returnModal = document.getElementById("return-modal");
   const closeReturnModalBtn = document.getElementById("close-return-modal");
-  const confirmReturnCloseBtn = document.getElementById(
-    "btn-confirm-return-close",
+  const btnConfirmReturnRequest = document.getElementById(
+    "btn-confirm-return-request",
   );
+  const returnReasonSelect = document.getElementById(
+    "return-reason-select",
+  ) as HTMLSelectElement;
   const returnModalOrderIdSpan = document.getElementById(
     "return-modal-order-id",
   );
+  const returnItemsList = document.getElementById("return-items-list");
+  const selectAllReturns = document.getElementById(
+    "select-all-returns",
+  ) as HTMLInputElement;
+  const returnTypeBadge = document.getElementById("return-type-badge");
+
+  let currentOrderIdReturn = "";
+  let currentOrderItemsReturn: any[] = [];
+
+  const updateReturnType = () => {
+    const checkboxes = document.querySelectorAll(
+      ".item-checkbox",
+    ) as NodeListOf<HTMLInputElement>;
+    const checked = document.querySelectorAll(
+      ".item-checkbox:checked",
+    ) as NodeListOf<HTMLInputElement>;
+
+    if (checked.length === 0) {
+      if (returnTypeBadge) {
+        returnTypeBadge.innerText = "Selecciona artículos";
+        returnTypeBadge.className =
+          "text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-400";
+      }
+      if (selectAllReturns) selectAllReturns.checked = false;
+      return;
+    }
+
+    // Es completa si todos los checkboxes están marcados Y sus cantidades son el máximo
+    let isComplete = checked.length === checkboxes.length;
+    if (isComplete) {
+      checkboxes.forEach((cb) => {
+        const container = cb.closest("div.flex.items-center.justify-between");
+        const qtySelect = container?.querySelector(
+          ".item-qty-select",
+        ) as HTMLSelectElement;
+        // Si el valor seleccionado no es el máximo posible
+        if (
+          qtySelect &&
+          qtySelect.value !==
+            qtySelect.options[qtySelect.options.length - 1].value
+        ) {
+          isComplete = false;
+        }
+      });
+    }
+
+    if (returnTypeBadge) {
+      if (isComplete) {
+        returnTypeBadge.innerText = "Devolución Completa";
+        returnTypeBadge.className =
+          "text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-green-100 text-green-600 font-bold border border-green-200";
+      } else {
+        returnTypeBadge.innerText = "Devolución Parcial";
+        returnTypeBadge.className =
+          "text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-blue-100 text-blue-600 font-bold border border-blue-200";
+      }
+    }
+
+    if (selectAllReturns)
+      selectAllReturns.checked = checked.length === checkboxes.length;
+  };
+
+  selectAllReturns?.addEventListener("change", () => {
+    const checkboxes = document.querySelectorAll(
+      ".item-checkbox",
+    ) as NodeListOf<HTMLInputElement>;
+    checkboxes.forEach((cb) => {
+      cb.checked = selectAllReturns.checked;
+      const container = cb.closest("div.flex.items-center.justify-between");
+      const qtySelect = container?.querySelector(
+        ".item-qty-select",
+      ) as HTMLSelectElement;
+      if (qtySelect) {
+        if (selectAllReturns.checked) {
+          qtySelect.selectedIndex = qtySelect.options.length - 1;
+        } else {
+          qtySelect.selectedIndex = 0;
+        }
+      }
+    });
+    updateReturnType();
+  });
 
   document.querySelectorAll(".btn-request-return").forEach((btn) => {
     btn.addEventListener("click", () => {
       const b = btn as HTMLButtonElement;
-      if (returnModal && returnModalOrderIdSpan) {
+      const status = b.dataset.orderStatus;
+      const orderId = b.dataset.orderId || "";
+
+      if (status === "shipped") {
+        showModal({
+          title: "Envío en curso",
+          message:
+            "Tu pedido está actualmente en camino. Por motivos de seguridad y logística, solo podrás solicitar la devolución una vez que el paquete haya sido entregado correctamente y el estado cambie a 'Entregado'.",
+          type: "info",
+        });
+        return;
+      }
+
+      if (returnModal && returnModalOrderIdSpan && returnItemsList) {
+        currentOrderIdReturn = orderId;
         returnModalOrderIdSpan.innerText = `#${b.dataset.orderLabel}`;
+
+        // Buscar los items del pedido actual (disponibles en el DOM o inyectados)
+        // Usaremos una técnica simple: buscar en el contenedor padre las líneas de pedido
+        const container = b.closest(".bg-white.rounded-2xl");
+        const itemRows = container?.querySelectorAll(
+          ".flex.items-center.gap-4",
+        );
+
+        returnItemsList.innerHTML = "";
+        itemRows?.forEach((row: any, idx) => {
+          const name = row.querySelector("h4")?.innerText || "Producto";
+          const details = row.querySelector("p")?.innerText || "";
+          const qtyText = details.split("Cantidad:")[1]?.trim() || "1";
+          const qty = parseInt(qtyText);
+
+          // Asumiremos que el orden coincide o usaremos data-attributes si los pusiera (lo haré en el próximo paso si falla)
+          // Para robustez, inyectaré los items como JSON en el botón en el futuro, pero ahora intentaré leer del DOM.
+          const div = document.createElement("div");
+          div.className =
+            "flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm";
+          div.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" name="item_return_${idx}" class="item-checkbox w-4 h-4 rounded border-slate-200 text-brand-gold focus:ring-brand-gold" data-idx="${idx}">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-slate-800">${name}</span>
+                        <span class="text-[10px] text-slate-400">${details.split("|")[0]}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-black text-slate-400 uppercase">Cant:</span>
+                    <select class="item-qty-select bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold py-1 px-2 focus:ring-2 focus:ring-brand-gold/10 outline-none">
+                        ${Array.from({ length: qty }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("")}
+                    </select>
+                </div>
+            `;
+          returnItemsList.appendChild(div);
+        });
+
+        // Necesitamos mapear a los IDs reales de order_items.
+        // Lo más seguro es pasar el JSON de items en el botón.
+        // Voy a actualizar mis-pedidos.astro para incluir data-items-json
+        if (selectAllReturns) selectAllReturns.checked = false;
+        if (returnTypeBadge) {
+          returnTypeBadge.innerText = "Selecciona artículos";
+          returnTypeBadge.className =
+            "text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-400";
+        }
+
+        try {
+          const itemsJson = (b as any).dataset.itemsJson;
+          if (itemsJson) {
+            currentOrderItemsReturn = JSON.parse(itemsJson);
+            // Re-render con IDs reales
+            returnItemsList.innerHTML = "";
+            currentOrderItemsReturn.forEach((item, i) => {
+              const rem = item.quantity - (item.return_refunded_quantity || 0);
+              if (rem <= 0) return;
+
+              const div = document.createElement("div");
+              div.className =
+                "flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm";
+              div.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" value="${item.id}" class="item-checkbox w-4 h-4 rounded-md border-slate-200 text-brand-gold focus:ring-brand-gold" data-id="${item.id}">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-800 line-clamp-1">${item.product_name}</span>
+                                <span class="text-[10px] text-slate-400">Talla: ${item.product_size}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <select class="item-qty-select bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold py-1 px-2 focus:ring-2 focus:ring-brand-gold/10 outline-none">
+                                ${Array.from({ length: rem }, (_, k) => `<option value="${k + 1}">${k + 1}</option>`).join("")}
+                            </select>
+                        </div>
+                    `;
+              returnItemsList.appendChild(div);
+            });
+
+            // Añadir listeners a los nuevos checkboxes
+            document
+              .querySelectorAll(".item-checkbox, .item-qty-select")
+              .forEach((el) => {
+                el.addEventListener("change", updateReturnType);
+              });
+          }
+        } catch (e) {
+          console.error("Error parsing items JSON", e);
+        }
+
         returnModal.classList.remove("hidden");
         returnModal.classList.add("flex");
+      }
+    });
+  });
+
+  btnConfirmReturnRequest?.addEventListener("click", async () => {
+    const reason = returnReasonSelect.value;
+    const selectedCheckboxes = document.querySelectorAll(
+      ".item-checkbox:checked",
+    );
+
+    if (selectedCheckboxes.length === 0) {
+      addToast("Selecciona al menos un artículo para devolver", "error");
+      return;
+    }
+
+    const itemsToReturn = Array.from(selectedCheckboxes).map((cb) => {
+      const input = cb as HTMLInputElement;
+      const container = input.closest("div.flex.items-center.justify-between");
+      const qtySelect = container?.querySelector(
+        ".item-qty-select",
+      ) as HTMLSelectElement;
+      return {
+        id: parseInt(input.value),
+        quantity: parseInt(qtySelect.value),
+      };
+    });
+
+    try {
+      btnConfirmReturnRequest.innerText = "Procesando...";
+      (btnConfirmReturnRequest as HTMLButtonElement).disabled = true;
+
+      const res = await fetch("/api/orders/return/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: currentOrderIdReturn,
+          reason,
+          itemsToReturn,
+        }),
+      });
+
+      if (!res.ok) throw new Error("No se pudo procesar la solicitud");
+
+      const allCheckboxes = document.querySelectorAll(".item-checkbox");
+      let isComplete = selectedCheckboxes.length === allCheckboxes.length;
+
+      if (isComplete) {
+        selectedCheckboxes.forEach((cb) => {
+          const container = (cb as HTMLElement).closest(
+            "div.flex.items-center.justify-between",
+          );
+          const qtySelect = container?.querySelector(
+            ".item-qty-select",
+          ) as HTMLSelectElement;
+          if (
+            qtySelect &&
+            qtySelect.value !==
+              qtySelect.options[qtySelect.options.length - 1].value
+          ) {
+            isComplete = false;
+          }
+        });
+      }
+
+      addToast(
+        `Solicitud de devolución ${isComplete ? "completa" : "parcial"} enviada correctamente.`,
+        "success",
+      );
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      addToast("Error al solicitar devolución.", "error");
+      btnConfirmReturnRequest.innerText = "Confirmar Devolución";
+      (btnConfirmReturnRequest as HTMLButtonElement).disabled = false;
+    }
+  });
+
+  // Marcar como entregado al transportista
+  document.querySelectorAll(".btn-mark-handed").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const b = btn as HTMLButtonElement;
+      const orderId = b.dataset.orderId;
+
+      try {
+        b.innerText = "Sincronizando...";
+        b.disabled = true;
+
+        const res = await fetch("/api/orders/return/mark-handed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId }),
+        });
+
+        if (!res.ok) throw new Error("Error");
+
+        addToast(
+          "Estado actualizado. El administrador confirmará la recepción pronto.",
+          "success",
+        );
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        addToast("Error al actualizar el estado.", "error");
+        b.innerText = "He entregado el paquete al transportista";
+        b.disabled = false;
       }
     });
   });
@@ -851,7 +1244,6 @@ const statusLabels: Record<string, string> = {
   };
 
   closeReturnModalBtn?.addEventListener("click", closeReturnModal);
-  confirmReturnCloseBtn?.addEventListener("click", closeReturnModal);
   returnModal?.addEventListener("click", (e) => {
     if (e.target === returnModal) closeReturnModal();
   });
@@ -956,6 +1348,41 @@ const statusLabels: Record<string, string> = {
           b.innerHTML = originalHtml;
         }, 3000);
       } catch (err) {
+        b.innerHTML = "Error";
+        setTimeout(() => {
+          b.disabled = false;
+          b.innerHTML = originalHtml;
+        }, 3000);
+      }
+    });
+  });
+
+  // Reenviar Factura de Abono
+  document.querySelectorAll(".btn-send-refund-invoice").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const b = btn as HTMLButtonElement;
+      const originalHtml = b.innerHTML;
+
+      try {
+        b.disabled = true;
+        b.innerHTML = "Enviando...";
+
+        const response = await fetch("/api/orders/send-refund-invoice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: b.dataset.orderId }),
+        });
+
+        if (!response.ok) throw new Error("Error");
+
+        addToast("Factura de abono enviada correctamente", "success");
+        b.innerHTML = "✓ Enviada";
+        setTimeout(() => {
+          b.disabled = false;
+          b.innerHTML = originalHtml;
+        }, 3000);
+      } catch (err) {
+        addToast("Error al enviar la factura de abono", "error");
         b.innerHTML = "Error";
         setTimeout(() => {
           b.disabled = false;

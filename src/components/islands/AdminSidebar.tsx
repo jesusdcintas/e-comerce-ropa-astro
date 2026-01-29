@@ -191,6 +191,14 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                 <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Pedidos</span>
             </a>
 
+            {/* Devoluciones */}
+            <a href="/admin/orders/returns" className={`${navLinkClass} ${isActive('/admin/orders/returns') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Devoluciones" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/orders/returns') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                </svg>
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Devoluciones</span>
+            </a>
+
             {/* Clientes */}
             <a href="/admin/clients" className={`${navLinkClass} ${isActive('/admin/clients') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Clientes" : ""}>
                 <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/clients') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">

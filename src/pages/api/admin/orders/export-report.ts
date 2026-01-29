@@ -23,7 +23,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             status: 200,
             headers: {
                 "Content-Type": "application/pdf",
-                "Content-Disposition": `attachment; filename="Reporte_Ventas_${label.replace(/\s+/g, '_')}_${new Date().toLocaleDateString()}.pdf"`
+                "Content-Disposition": `attachment; filename="REPORTE_FISCAL_${label.replace(/\s+/g, '_').toUpperCase()}.pdf"`
             }
         });
     } catch (error: any) {

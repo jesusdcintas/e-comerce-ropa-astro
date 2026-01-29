@@ -1,0 +1,288 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+
+if (!user || user.app_metadata?.role !== "admin") {
+    return Astro.redirect("/");
+}
+
+// Obtener pedidos con devolución activa y sus items
+const { data: returnOrders, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .neq("return_status", "none")
+    .order("updated_at", { ascending: false });
+
+const returnStatusBadge: Record<string, string> = {
+    requested: "bg-yellow-50 text-yellow-600 border-yellow-100",
+    handed_to_carrier: "bg-blue-50 text-blue-600 border-blue-100",
+    received: "bg-purple-50 text-purple-600 border-purple-100",
+    refunded: "bg-green-50 text-green-600 border-green-100",
+};
+
+const returnStatusText: Record<string, string> = {
+    requested: "Solicitada",
+    handed_to_carrier: "Enviada por Cliente",
+    received: "Recibida",
+    refunded: "Reembolsada",
+};
+---
+
+<AdminLayout title="Gestión de Devoluciones">
+    <div class="space-y-8">
+        <div>
+            <div
+                class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-3"
+            >
+                <span class="w-8 h-px bg-brand-gold"></span>
+                Operaciones Post-Venta
+            </div>
+            <h2 class="text-4xl font-black text-slate-800 tracking-tighter">
+                Control de <span class="text-brand-gold italic font-serif"
+                    >Devoluciones</span
+                >
+            </h2>
+            <p class="text-slate-400 font-medium mt-2">
+                Gestiona solicitudes de reembolso y reposición de stock.
+            </p>
+        </div>
+
+        <div
+            class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden"
+        >
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr
+                            class="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100"
+                        >
+                            <th class="px-8 py-5">Pedido</th>
+                            <th class="px-6 py-5">Cliente</th>
+                            <th class="px-6 py-5">Motivo</th>
+                            <th class="px-6 py-5">Estado Devolución</th>
+                            <th class="px-6 py-5">Tracking Retorno</th>
+                            <th class="px-8 py-5 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {
+                            returnOrders?.map((order) => (
+                                <tr class="hover:bg-slate-50/50 transition-colors group">
+                                    <td class="px-8 py-6">
+                                        <span class="font-black text-slate-900">
+                                            #
+                                            {order.id
+                                                .toString()
+                                                .padStart(6, "0")}
+                                        </span>
+                                        <p class="text-[10px] text-slate-400 font-medium mt-1">
+                                            Total:{" "}
+                                            {(order.total_amount / 100).toFixed(
+                                                2,
+                                            )}
+                                            €
+                                        </p>
+                                    </td>
+                                    <td class="px-6 py-6">
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-bold text-slate-800">
+                                                {order.shipping_name}
+                                            </span>
+                                            <span class="text-[10px] text-slate-400">
+                                                {order.shipping_email}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-6">
+                                        <div class="flex flex-col gap-2">
+                                            <span class="text-xs text-slate-800 font-bold italic">
+                                                "{order.return_reason}"
+                                            </span>
+                                            <div class="flex flex-col gap-1">
+                                                {order.order_items
+                                                    ?.filter(
+                                                        (i: any) =>
+                                                            i.return_requested_quantity >
+                                                            0,
+                                                    )
+                                                    .map((item: any) => (
+                                                        <div class="flex items-center gap-2 bg-slate-50 px-2 py-1 rounded text-[9px] border border-slate-100">
+                                                            <span class="font-black text-slate-900">
+                                                                {
+                                                                    item.return_requested_quantity
+                                                                }
+                                                                x
+                                                            </span>
+                                                            <span class="text-slate-500 truncate max-w-[120px]">
+                                                                {
+                                                                    item.product_name
+                                                                }
+                                                            </span>
+                                                            <span class="text-[8px] text-slate-400">
+                                                                (
+                                                                {
+                                                                    item.product_size
+                                                                }
+                                                                )
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-6">
+                                        <span
+                                            class={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${returnStatusBadge[order.return_status]}`}
+                                        >
+                                            {
+                                                returnStatusText[
+                                                    order.return_status
+                                                ]
+                                            }
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-6">
+                                        <span class="font-mono text-[10px] text-slate-500">
+                                            {order.return_tracking_id || "N/A"}
+                                        </span>
+                                    </td>
+                                    <td class="px-8 py-6 text-right">
+                                        <div class="flex justify-end gap-2">
+                                            {order.refund_invoice_number && (
+                                                <a
+                                                    href={`/api/orders/download-pdf?orderId=${order.id}&type=refund`}
+                                                    target="_blank"
+                                                    class="p-2 text-red-400 hover:text-red-600 transition-colors"
+                                                    title="Descargar Factura Abono"
+                                                >
+                                                    <svg
+                                                        class="w-5 h-5"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                        />
+                                                    </svg>
+                                                </a>
+                                            )}
+                                            <a
+                                                href={`/admin/orders/${order.id}`}
+                                                class="p-2 text-slate-400 hover:text-slate-900 transition-colors"
+                                            >
+                                                <svg
+                                                    class="w-5 h-5"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                                    />
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                    />
+                                                </svg>
+                                            </a>
+
+                                            {order.return_status !==
+                                                "refunded" && (
+                                                <button
+                                                    class="btn-confirm-receipt px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-brand-gold transition-all shadow-lg shadow-slate-900/10"
+                                                    data-order-id={order.id}
+                                                >
+                                                    Confirmar y Reembolsar
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        }
+                    </tbody>
+                </table>
+
+                {
+                    !returnOrders?.length && (
+                        <div class="py-20 text-center">
+                            <p class="text-slate-400 font-medium">
+                                No hay devoluciones activas en este momento.
+                            </p>
+                        </div>
+                    )
+                }
+            </div>
+        </div>
+    </div>
+</AdminLayout>
+
+<script>
+    import { addToast } from "../../../stores/toastStore";
+
+    document.querySelectorAll(".btn-confirm-receipt").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            const b = btn as HTMLButtonElement;
+            const orderId = b.dataset.orderId;
+
+            const returnInfo =
+                b.closest("tr")?.querySelector(".italic")?.textContent || "";
+            const amountTotal =
+                b
+                    .closest("tr")
+                    ?.querySelector("td p")
+                    ?.textContent?.split(":")[1]
+                    ?.trim() || "0€";
+
+            if (
+                !confirm(
+                    `¿Confirmas la recepción física de los artículos de este pedido? \n\nSe emitirá el reembolso correspondiente a los artículos solicitados.`,
+                )
+            )
+                return;
+
+            try {
+                b.disabled = true;
+                b.innerText = "Procesando...";
+
+                const res = await fetch("/api/admin/orders/return/confirm", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orderId }),
+                });
+
+                if (!res.ok)
+                    throw new Error("Error al confirmar la devolución");
+
+                addToast(
+                    "Devolución procesada con éxito. Reembolso emitido y stock actualizado.",
+                    "success",
+                );
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (err) {
+                addToast("Error al procesar la devolución.", "error");
+                b.disabled = false;
+                b.innerText = "Confirmar y Reembolsar";
+            }
+        });
+    });
+</script>

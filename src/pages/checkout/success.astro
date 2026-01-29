@@ -46,6 +46,7 @@ if (sessionId) {
 
             if (!existingOrder) {
                 const discountAmount = parseInt(metadata?.discount || "0");
+                const shippingCost = parseInt(metadata?.shipping_cost || "0");
                 const userIdValue =
                     metadata?.user_id && metadata.user_id !== ""
                         ? metadata.user_id
@@ -53,6 +54,7 @@ if (sessionId) {
                 const orderData = {
                     user_id: userIdValue,
                     total_amount: session.amount_total || 0,
+                    shipping_cost: shippingCost,
                     shipping_name: metadata?.customer_name || "",
                     shipping_email: session.customer_details?.email || "",
                     shipping_address: metadata?.address || "",

@@ -22,114 +22,100 @@ const calculateVAT = (totalCents: number, rate = 0.21) => {
 };
 
 /**
- * Genera el PDF del Ticket (Recibo automático) con diseño Premium
+ * Formatea códigos de documento según el estándar ONL-F/R-YYYYMMDD-XXXX
+ */
+export const formatDocNumber = (id: number | string, date: string | Date, prefix = 'ONL-F') => {
+  const d = new Date(date);
+  const dateStr = d.getFullYear().toString() +
+    (d.getMonth() + 1).toString().padStart(2, '0') +
+    d.getDate().toString().padStart(2, '0');
+  const idStr = id.toString().padStart(4, '0');
+  return `${prefix}-${dateStr}-${idStr}`;
+};
+
+/**
+ * Genera el PDF del Ticket (Recibo automático) con diseño Ultra-Premium
  */
 export const generateTicketPDF = (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): string | Buffer => {
   const doc = new jsPDF();
-  const ticketNum = order.ticket_number || `T-${order.id.toString().padStart(6, '0')}`;
+  const ticketNum = order.ticket_number || formatDocNumber(order.id, order.created_at, 'ONL-F');
 
-  // Header Superior (Blanco y Oro)
+  // Header Blanco Elegant con sombra sutil simulada
   doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, 210, 45, 'F');
+  doc.rect(0, 0, 210, 60, 'F');
 
   // Línea decorativa dorada superior
   doc.setDrawColor(212, 175, 55);
-  doc.setLineWidth(0.8);
-  doc.line(0, 45, 210, 45);
+  doc.setLineWidth(1);
+  doc.line(20, 50, 190, 50);
 
-  // Replicación del Logo con Texto (Fashion Store)
+  // Logo FASHION STORE
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(28);
-  doc.setTextColor(26, 26, 26);
-  const fashionTxt = "FASHION";
-  const storeTxt = "STORE";
-  const fashionWidth = doc.getTextWidth(fashionTxt + " ");
-  const storeWidth = doc.getTextWidth(storeTxt);
-  const totalWidth = fashionWidth + storeWidth;
-  const startX = (210 - totalWidth) / 2;
-
-  doc.text(fashionTxt, startX, 28);
-  doc.setTextColor(212, 175, 55); // Color Oro Premium
-  doc.text(storeTxt, startX + fashionWidth, 28);
+  doc.setFontSize(26);
+  doc.setTextColor(15, 23, 42); // Slate-900
+  doc.text("FASHION", 20, 35);
+  doc.setTextColor(212, 175, 55); // Gold
+  doc.text("STORE", 20 + doc.getTextWidth("FASHION "), 35);
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(150, 150, 150);
-  doc.text("PREMIUM BOUTIQUE", 105, 35, { align: "center", charSpace: 2 });
+  doc.setTextColor(148, 163, 184); // Slate-400
+  doc.text("PREMIUM BOUTIQUE SELECTION", 20, 42, { charSpace: 1.5 });
 
-  // Cuerpo del Ticket
-  doc.setTextColor(26, 26, 26);
-  doc.setFontSize(20);
+  // Título Documento
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.text("FACTURA SIMPLIFICADA", 105, 60, { align: "center" });
+  doc.text("RECIBO DE COMPRA", 190, 37, { align: "right" });
+
+  // Información del Pedido
+  doc.setFillColor(248, 250, 252); // Slate-50
+  doc.roundedRect(20, 65, 170, 30, 3, 3, 'F');
 
   doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text("DOCUMENTO NO VÁLIDO COMO FACTURA COMERCIAL", 105, 66, { align: "center" });
-
-  // Información del Pedido (Elegante) - Expandida
-  doc.setDrawColor(230, 230, 230);
-  doc.setFillColor(252, 252, 252);
-  doc.roundedRect(20, 75, 170, 38, 2, 2, 'FD');
-
-  doc.setTextColor(40, 40, 40);
-  doc.setFontSize(9);
-
-  // Bloque Izquierdo
+  doc.setTextColor(100, 116, 139); // Slate-500
   doc.setFont("helvetica", "bold");
-  doc.text("ID CONTROL:", 30, 84);
-  doc.setFont("helvetica", "normal");
-  doc.text(ticketNum, 60, 84);
+  doc.text("Nº PEDIDO", 30, 75);
+  doc.text("FECHA", 80, 75);
+  doc.text("METODO PAGO", 130, 75);
 
-  doc.setFont("helvetica", "bold");
-  doc.text("FECHA:", 30, 90);
   doc.setFont("helvetica", "normal");
-  doc.text(new Date(order.created_at).toLocaleDateString('es-ES'), 60, 90);
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(10);
+  doc.text(`#${order.id.toString().padStart(6, '0')}`, 30, 82);
+  doc.text(new Date(order.created_at).toLocaleDateString('es-ES'), 80, 82);
+  doc.text("TARJETA BANCARIA", 130, 82);
 
-  doc.setFont("helvetica", "bold");
-  doc.text("EMAIL:", 30, 96);
-  doc.setFont("helvetica", "normal");
-  doc.text(order.shipping_email || 'N/A', 60, 96);
-
-  // Bloque Derecho
-  doc.setFont("helvetica", "bold");
-  doc.text("CLIENTE:", 110, 84);
-  doc.setFont("helvetica", "normal");
-  doc.text(order.shipping_name, 135, 84);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("DIRECCIÓN:", 110, 90);
-  doc.setFont("helvetica", "normal");
-  const fullAddr = `${order.shipping_address}, ${order.shipping_zip} ${order.shipping_city}`;
-  const splitAddr = doc.splitTextToSize(fullAddr, 50);
-  doc.text(splitAddr, 135, 90);
-
-  // Tabla Premium
-  let y = 125;
-  doc.setFillColor(26, 26, 26);
-  doc.roundedRect(20, y, 170, 10, 2, 2, 'F');
+  // Tabla
+  let y = 110;
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(20, y, 170, 12, 2, 2, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.text("DESCRIPCIÓN DEL ARTÍCULO", 25, y + 6.5);
-  doc.text("TOTAL", 170, y + 6.5);
+  doc.setFontSize(9);
+  doc.text("DESCRIPCIÓN DEL ARTÍCULO", 25, y + 7.5);
+  doc.text("IMPORTE", 185, y + 7.5, { align: "right" });
 
-  y += 18;
-  doc.setFontSize(11);
-  doc.setTextColor(26, 26, 26);
-  doc.setFont("helvetica", "normal");
+  y += 22;
+  doc.setTextColor(15, 23, 42);
 
   items.forEach(item => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
     doc.text(`${item.product_name}`, 25, y);
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Talla: ${item.size || item.product_size} | Cantidad: ${item.quantity}`, 25, y + 5);
 
-    doc.setFontSize(11);
-    doc.setTextColor(26, 26, 26);
-    doc.text(formatPrice(item.price_at_time * item.quantity), 170, y, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Talla: ${item.size || item.product_size}  |  Cant: ${item.quantity}`, 25, y + 5);
 
-    y += 15;
-    doc.setDrawColor(245, 245, 245);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(formatPrice(item.price_at_time * item.quantity), 185, y + 2, { align: 'right' });
+
+    y += 18;
+    doc.setDrawColor(241, 245, 249);
     doc.line(20, y - 8, 190, y - 8);
 
     if (y > 250) {
@@ -142,176 +128,159 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
   y += 5;
   const vat = calculateVAT(order.total_amount);
 
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Base Imponible:", 130, y);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "normal");
+  doc.text("Base Imponible", 130, y);
   doc.text(vat.base, 185, y, { align: 'right' });
+
   y += 7;
-  doc.text("IVA Aplicado (21%):", 130, y);
+  doc.text("IVA (21%)", 130, y);
   doc.text(vat.iva, 185, y, { align: 'right' });
 
-  y += 12;
-  doc.setFillColor(26, 26, 26);
-  doc.rect(120, y - 8, 70, 12, 'F');
-  doc.setTextColor(212, 175, 55);
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text("TOTAL (IVA Inc.)", 125, y);
+  y += 15;
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(120, y - 10, 70, 16, 3, 3, 'F');
   doc.setTextColor(255, 255, 255);
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("TOTAL PAGADO", 125, y);
+  doc.setTextColor(212, 175, 55);
   doc.text(vat.total, 185, y, { align: 'right' });
 
-  // Pie de página
-  doc.setFontSize(8);
-  doc.setTextColor(180, 180, 180);
-  doc.text("Gracias por elegir la elegancia de Fashion Store.", 105, 285, { align: "center" });
+  // Footer
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text("Gracias por su compra. Para cualquier devolución dispone de 30 días desde la recepción.", 105, 285, { align: "center" });
 
-  if (outputType === 'buffer') {
-    return Buffer.from(doc.output('arraybuffer'));
-  }
-
+  if (outputType === 'buffer') return Buffer.from(doc.output('arraybuffer'));
   return doc.output('datauristring').split(',')[1];
 };
 
 /**
- * Genera el PDF de la Factura con diseño Corporativo/Premium
+ * Genera el PDF de la Factura con diseño Corporativo Premium
  */
 export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): string | Buffer => {
   const doc = new jsPDF();
   const invoiceNum = order.invoice_number || `F-${new Date().getFullYear()}-${order.id.toString().padStart(5, '0')}`;
   const fiscal = order.invoice_fiscal_data || {};
 
-  // Header Blanco Elegant
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, 210, 50, 'F');
-
-  // Replicación del Logo con Texto (Fashion Store) - Superior Izquierda
+  // Logo FASHION STORE
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
-  doc.setTextColor(26, 26, 26);
-  doc.text("FASHION", 20, 25);
+  doc.setFontSize(26);
+  doc.setTextColor(15, 23, 42);
+  doc.text("FASHION", 20, 35);
   doc.setTextColor(212, 175, 55);
-  doc.text("STORE", 20 + doc.getTextWidth("FASHION "), 25);
+  doc.text("STORE", 20 + doc.getTextWidth("FASHION "), 35);
 
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(120, 120, 120);
-  doc.text("PREMIUM BOUTIQUE", 20, 31, { charSpace: 1.5 });
+  doc.setTextColor(148, 163, 184);
+  doc.text("PREMIUM BOUTIQUE SELECTION", 20, 42, { charSpace: 1.5 });
 
-  // (Eliminamos el texto repetido ya que el logo ahora es el texto principal)
-
-  // Título FACTURA con línea
-  doc.setTextColor(26, 26, 26);
-  doc.setFontSize(32);
+  // Título Factura
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
-  doc.text("FACTURA", 190, 35, { align: "right" });
+  doc.text("FACTURA", 190, 37, { align: "right" });
 
   doc.setDrawColor(212, 175, 55);
   doc.setLineWidth(1.5);
-  doc.line(20, 48, 190, 48);
+  doc.line(20, 50, 190, 50);
 
-  // Detalles de Facturación Grid
-  doc.setTextColor(26, 26, 26);
+  // Grid de Datos
   doc.setFontSize(9);
-
-  // Box Emisor
+  doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
-  doc.text("EMISOR", 20, 65);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(70, 70, 70);
-  doc.text("Fashion Store S.L.", 20, 70);
-  doc.text("NIF: B12345678", 20, 74);
-  doc.text("Calle de la Moda, 123", 20, 78);
-  doc.text("28001 Madrid, España", 20, 82);
+  doc.text("EMISOR", 20, 70);
+  doc.text("CLIENTE", 110, 70);
 
-  // Box Receptor
-  doc.setTextColor(26, 26, 26);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(71, 85, 105);
+  doc.text(["Fashion Store S.L.", "NIF: B12345678", "Calle de la Moda, 123", "28001 Madrid, España"], 20, 76);
+
+  doc.text([
+    fiscal.razon_social || order.shipping_name,
+    `NIF/CIF: ${fiscal.nif || 'N/A'}`,
+    fiscal.direccion || order.shipping_address,
+    `${fiscal.codigo_postal || ''} ${fiscal.ciudad || ''}`
+  ], 110, 76);
+
+  // Info Box
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(20, 105, 170, 15, 2, 2, 'F');
+  doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
-  doc.text("CLIENTE / RECEPTOR", 110, 65);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(70, 70, 70);
-  doc.text(fiscal.razon_social || order.shipping_name, 110, 70);
-  doc.text(`NIF/CIF: ${fiscal.nif || 'N/A'}`, 110, 74);
-  doc.text(fiscal.direccion || order.shipping_address, 110, 78);
-  doc.text(`${fiscal.codigo_postal || ''} ${fiscal.city || fiscal.ciudad || ''}`, 110, 82);
+  doc.text("Nº FACTURA", 25, 114);
+  doc.text("FECHA", 140, 114);
 
-  // Box Info Factura
-  doc.setFillColor(250, 250, 250);
-  doc.roundedRect(20, 95, 170, 15, 2, 2, 'F');
-  doc.setTextColor(26, 26, 26);
-  doc.setFont("helvetica", "bold");
-  doc.text("Nº FACTURA:", 25, 104);
   doc.setFont("helvetica", "normal");
-  doc.text(invoiceNum, 55, 104);
+  doc.text(invoiceNum, 55, 114);
+  doc.text(new Date().toLocaleDateString('es-ES'), 155, 114);
 
-  doc.setFont("helvetica", "bold");
-  doc.text("FECHA:", 135, 104);
-  doc.setFont("helvetica", "normal");
-  doc.text(new Date().toLocaleDateString('es-ES'), 155, 104);
-
-  // Tabla Factura
-  let y = 125;
-  doc.setFillColor(212, 175, 55);
-  doc.rect(20, y, 170, 10, 'F');
+  // Tabla
+  let y = 135;
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(20, y, 170, 10, 2, 2, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.text("DESCRIPCIÓN", 25, y + 6.5);
-  doc.text("CANT.", 115, y + 6.5, { align: "center" });
-  doc.text("P. UNIT.", 145, y + 6.5, { align: "right" });
+  doc.text("CANT.", 120, y + 6.5, { align: "center" });
+  doc.text("PRECIO", 150, y + 6.5, { align: "right" });
   doc.text("TOTAL", 185, y + 6.5, { align: "right" });
 
   y += 18;
-  doc.setTextColor(26, 26, 26);
-  doc.setFont("helvetica", "normal");
-
+  doc.setTextColor(15, 23, 42);
   items.forEach(item => {
     const totalItem = (item.price_at_time * item.quantity) / 100;
-    doc.text(`${item.product_name} (${item.size || item.product_size})`, 25, y);
-    doc.text(item.quantity.toString(), 115, y, { align: 'center' });
-    doc.text((item.price_at_time / 100).toFixed(2) + '€', 145, y, { align: 'right' });
-    doc.text(totalItem.toFixed(2) + '€', 185, y, { align: 'right' });
+    doc.setFont("helvetica", "bold");
+    doc.text(`${item.product_name}`, 25, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Talla: ${item.size || item.product_size}`, 25, y + 4.5);
 
-    y += 12;
-    doc.setDrawColor(240, 240, 240);
-    doc.line(20, y - 6, 190, y - 6);
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text(item.quantity.toString(), 120, y + 2, { align: 'center' });
+    doc.text((item.price_at_time / 100).toFixed(2) + '€', 150, y + 2, { align: 'right' });
+    doc.text(totalItem.toFixed(2) + '€', 185, y + 2, { align: 'right' });
 
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
+    y += 15;
+    doc.setDrawColor(241, 245, 249);
+    doc.line(20, y - 8, 190, y - 8);
+
+    if (y > 250) { doc.addPage(); y = 20; }
   });
 
   // Totales
-  y += 10;
+  y += 5;
   const vat = calculateVAT(order.total_amount);
-
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Base Imponible:", 130, y);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Base Imponible", 130, y);
   doc.text(vat.base, 185, y, { align: 'right' });
   y += 7;
-  doc.text("IVA (21%):", 130, y);
+  doc.text("IVA (21%)", 130, y);
   doc.text(vat.iva, 185, y, { align: 'right' });
 
   y += 15;
-  doc.setFillColor(26, 26, 26);
-  doc.roundedRect(120, y - 10, 70, 15, 2, 2, 'F');
-  doc.setTextColor(212, 175, 55);
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(120, y - 10, 70, 16, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL (IVA Inc.)", 125, y);
-  doc.setTextColor(255, 255, 255);
+  doc.text("TOTAL", 125, y);
+  doc.setTextColor(212, 175, 55);
   doc.text(vat.total, 185, y, { align: 'right' });
 
-  // Pie de página Legal
+  // Pie de Página
   doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
-  doc.text("FashionStore Studio S.L. - Inscrita en el Registro Mercantil de Madrid, Tomo 1234, Folio 56, Sección 8, Hoja M-78901.", 105, 280, { align: "center" });
-  doc.text("Este documento cumple con todos los requisitos legales del Real Decreto 1619/2012 de facturación.", 105, 284, { align: "center" });
+  doc.setTextColor(148, 163, 184);
+  doc.text("Fashion Store Studio S.L. - Registro Mercantil de Madrid, Tomo 1234, Folio 56, Sección 8, Hoja M-78901.", 105, 280, { align: "center" });
+  doc.text("Este documento cumple con los requisitos legales del Real Decreto 1619/2012 de facturación.", 105, 284, { align: "center" });
 
-  if (outputType === 'buffer') {
-    return Buffer.from(doc.output('arraybuffer'));
-  }
-
+  if (outputType === 'buffer') return Buffer.from(doc.output('arraybuffer'));
   return doc.output('datauristring').split(',')[1];
 };
 
@@ -771,7 +740,7 @@ export const generateOrdersReportPDF = (orders: any[], label: string): string =>
 
   doc.setFontSize(14);
   doc.setTextColor(212, 175, 55); // brand-gold
-  doc.text(label.toUpperCase(), 20, 30);
+  doc.text(`PERIODO: ${label.toUpperCase()}`, 20, 30);
 
   doc.setFontSize(9);
   doc.setTextColor(150, 150, 150);
@@ -783,28 +752,79 @@ export const generateOrdersReportPDF = (orders: any[], label: string): string =>
   doc.setFontSize(16);
   doc.text("Métricas del Período", 20, y);
 
-  const totalRevenue = orders.reduce((acc, curr) => acc + (curr.status !== 'cancelled' ? curr.total_amount : 0), 0);
-  const vatStats = calculateVAT(totalRevenue);
-  const avgOrder = orders.length > 0 ? (totalRevenue / orders.length) : 0;
+  // Preparar transacciones (Venta positiva + Reembolso negativo)
+  const transactions: any[] = [];
+  let totalGross = 0;
+  let totalRefunds = 0;
+
+  orders.forEach(order => {
+    // Entrada positiva: Venta original
+    const ticketNum = order.ticket_number || formatDocNumber(order.id, order.created_at, 'ONL-F');
+    const gross = order.total_amount;
+    const payMethod = "Tarjeta"; // Por ahora solo Stripe
+    totalGross += gross;
+    transactions.push({
+      id: order.id,
+      docCode: ticketNum,
+      date: order.created_at,
+      name: order.shipping_name,
+      status: order.status,
+      type: `VENTA - ${payMethod}`,
+      amount: gross
+    });
+
+    // Entrada negativa: Reembolsos parciales o totales
+    let refundAmount = (order.order_items || []).reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
+
+    const isTotalCancellation = order.status === 'cancelled' && (order.payment_status === 'refunded' || order.payment_status === 'paid');
+
+    if (isTotalCancellation || refundAmount > 0) {
+      let finalRefundValue = isTotalCancellation ? order.total_amount : refundAmount;
+
+      if (finalRefundValue > order.total_amount) {
+        finalRefundValue = order.total_amount;
+      }
+
+      const refundNum = order.refund_invoice_number || formatDocNumber(order.id, order.updated_at || new Date(), 'ONL-R');
+      const payMethod = "Tarjeta";
+
+      totalRefunds += finalRefundValue;
+      transactions.push({
+        id: order.id,
+        docCode: refundNum,
+        date: order.return_received_at || order.updated_at,
+        name: order.shipping_name,
+        status: 'REEMBOLSADO',
+        type: `ABONO - ${payMethod}`,
+        amount: -finalRefundValue
+      });
+    }
+  });
+
+  const netRevenue = totalGross - totalRefunds;
+  const vatStats = calculateVAT(netRevenue);
 
   y += 15;
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("Total Pedidos:", 30, y);
+  doc.text("Ventas Brutas:", 30, y);
   doc.setFont("helvetica", "normal");
-  doc.text(orders.length.toString(), 70, y);
+  doc.text(formatPrice(totalGross), 70, y);
 
-  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("Total (IVA Inc.):", 110, y);
+  doc.text("Reembolsos:", 110, y);
   doc.setFont("helvetica", "normal");
-  doc.text(formatPrice(totalRevenue), 160, y);
+  doc.setTextColor(220, 38, 38); // Red
+  doc.text(`-${formatPrice(totalRefunds)}`, 160, y);
+  doc.setTextColor(15, 23, 42);
 
   y += 8;
   doc.setFont("helvetica", "bold");
-  doc.text("Ticket Medio:", 30, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(formatPrice(avgOrder), 70, y);
+  doc.text("Total Neto:", 30, y);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(212, 175, 55);
+  doc.text(formatPrice(netRevenue), 70, y);
+  doc.setTextColor(15, 23, 42);
 
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
@@ -827,21 +847,21 @@ export const generateOrdersReportPDF = (orders: any[], label: string): string =>
 
   y += 10;
   doc.setFillColor(245, 245, 245);
-  doc.rect(15, y, 180, 8, 'F');
+  doc.rect(5, y, 200, 8, 'F');
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  doc.text("ID", 18, y + 5.5);
-  doc.text("FECHA", 38, y + 5.5);
+  doc.text("DOCUMENTO", 8, y + 5.5);
+  doc.text("FECHA", 45, y + 5.5);
   doc.text("CLIENTE", 65, y + 5.5);
-  doc.text("ESTADO", 115, y + 5.5);
-  doc.text("BASE", 145, y + 5.5, { align: 'right' });
-  doc.text("IVA (21%)", 170, y + 5.5, { align: 'right' });
-  doc.text("TOTAL", 192, y + 5.5, { align: 'right' });
+  doc.text("TIPO", 115, y + 5.5);
+  doc.text("BASE", 155, y + 5.5, { align: 'right' });
+  doc.text("IVA", 180, y + 5.5, { align: 'right' });
+  doc.text("TOTAL", 201, y + 5.5, { align: 'right' });
 
   y += 15;
   doc.setTextColor(26, 26, 26);
 
-  orders.forEach((order) => {
+  transactions.forEach((tx) => {
     if (y > 270) {
       doc.addPage();
       y = 20;
@@ -852,21 +872,28 @@ export const generateOrdersReportPDF = (orders: any[], label: string): string =>
       y = 25;
     }
 
-    const itemVat = calculateVAT(order.total_amount);
+    const itemVat = calculateVAT(Math.abs(tx.amount));
+    const isRefund = tx.amount < 0;
 
-    doc.setFont("helvetica", "bold");
-    doc.text(`#${order.id.toString().padStart(5, '0')}`, 18, y);
+    doc.setFont("helvetica", isRefund ? "italic" : "bold");
+    if (isRefund) doc.setTextColor(220, 38, 38);
+
+    doc.setFontSize(7);
+    doc.text(tx.docCode, 8, y);
     doc.setFont("helvetica", "normal");
-    doc.text(new Date(order.created_at).toLocaleDateString('es-ES'), 38, y);
-    doc.text(order.shipping_name.substring(0, 20), 65, y);
-    doc.text(order.status.toUpperCase(), 115, y);
-    doc.text(itemVat.base, 145, y, { align: 'right' });
-    doc.text(itemVat.iva, 170, y, { align: 'right' });
-    doc.text(itemVat.total, 192, y, { align: 'right' });
+    doc.text(new Date(tx.date).toLocaleDateString('es-ES'), 45, y);
+    doc.text(tx.name.substring(0, 25), 65, y);
+    doc.text(tx.type, 115, y);
 
+    const signStr = isRefund ? '-' : '';
+    doc.text(signStr + itemVat.base, 155, y, { align: 'right' });
+    doc.text(signStr + itemVat.iva, 180, y, { align: 'right' });
+    doc.text(signStr + itemVat.total, 201, y, { align: 'right' });
+
+    doc.setTextColor(26, 26, 26);
     y += 8;
     doc.setDrawColor(245, 245, 245);
-    doc.line(15, y - 4, 195, y - 4);
+    doc.line(5, y - 4, 201, y - 4);
   });
 
   // Footer
@@ -923,3 +950,262 @@ export const sendAccountDeletedEmail = async (email: string, name: string) => {
     return { success: false, error };
   }
 };
+
+/**
+ * Notifica al cliente que su solicitud de devolución ha sido recibida
+ */
+export const sendReturnRequestedEmail = async (order: any) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const to = order.shipping_email;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #0f172a; padding: 50px 20px; text-align: center;">
+        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 15px;">Gestión de Devoluciones</div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">Solicitud <span style="color: #d4af37;">Recibida</span></h1>
+      </div>
+      <div style="padding: 40px;">
+        <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+          Hola <strong>${order.shipping_name}</strong>,<br>
+          Hemos registrado tu solicitud de devolución para el pedido <strong>#${order.id.toString().padStart(6, '0')}</strong>.
+        </p>
+
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 1px dashed #d4af37; margin-bottom: 30px;">
+            <p style="margin: 0; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;">Código para el Transportista</p>
+            <p style="margin: 0; font-size: 24px; font-weight: 900; color: #0f172a; font-family: monospace;">${order.return_tracking_id}</p>
+        </div>
+
+        <h3 style="color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 15px;">Siguientes pasos:</h3>
+        <ol style="color: #64748b; font-size: 14px; line-height: 1.8; padding-left: 20px;">
+            <li>Prepara el paquete en su embalaje original.</li>
+            <li>Adjunta una nota con este código dentro del paquete para que podamos identificarlo.</li>
+            <li>Entrega el paquete al transportista y facilítale el código <strong>${order.return_tracking_id}</strong> si te lo solicita.</li>
+            <li>Una vez entregado, marca el pedido como "Enviado" en tu panel de cliente.</li>
+        </ol>
+
+        <p style="margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-t: 1px solid #f1f5f9; padding-top: 20px;">
+            El reembolso se procesará automáticamente en cuanto verifiquemos el estado de los artículos.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `Solicitud de devolución pedido #${order.id.toString().padStart(6, '0')} - Fashion Store`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
+  sendSmtpEmail.to = [{ email: to, name: order.shipping_name }];
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending return request email:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Notifica al cliente que su reembolso ha sido procesado
+ */
+export const sendReturnRefundedEmail = async (order: any, refundAmount: number) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const to = order.shipping_email;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #16a34a; padding: 50px 20px; text-align: center;">
+        <div style="color: #ffffff; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; opacity: 0.8; margin-bottom: 15px;">Devolución Finalizada</div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">Reembolso <span style="color: #ffffff; opacity: 0.7;">Procesado</span></h1>
+      </div>
+      <div style="padding: 40px; text-align: center;">
+        <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+          Hola <strong>${order.shipping_name}</strong>,<br>
+          Hemos recibido y verificado los artículos de tu devolución correspondiente al pedido <strong>#${order.id.toString().padStart(6, '0')}</strong>.
+        </p>
+
+        <div style="background-color: #f0fdf4; padding: 30px; border-radius: 20px; margin-bottom: 35px; border: 1px solid #dcfce7;">
+           <p style="margin: 0; font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;">Importe Reembolsado</p>
+           <p style="margin: 0; font-size: 32px; font-weight: 900; color: #16a34a;">${(refundAmount / 100).toFixed(2)}€</p>
+        </div>
+
+        <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-bottom: 30px;">
+          El dinero debería aparecer en tu cuenta en un plazo de 5 a 10 días hábiles, dependiendo de tu entidad bancaria.
+        </p>
+
+        <p style="margin-top: 40px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          Gracias por tu paciencia. Esperamos verte de nuevo pronto en nuestra boutique.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `Tu reembolso ha sido procesado - Pedido #${order.id.toString().padStart(6, '0')}`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
+  sendSmtpEmail.to = [{ email: to, name: order.shipping_name }];
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending refund confirmation email:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Genera el PDF del Reembolso (Negativo para admin, Positivo para cliente)
+ */
+export const generateRefundInvoicePDF = (order: any, refundAmount: number, items: any[] = [], outputType: 'base64' | 'buffer' = 'base64', isAdminView: boolean = false): string | Buffer => {
+  const doc = new jsPDF();
+  const refundNum = order.refund_invoice_number || formatDocNumber(order.id, order.updated_at || new Date(), 'ONL-R');
+  const fiscal = order.invoice_fiscal_data || {};
+  const sign = isAdminView ? '-' : '';
+  const mainColor = [15, 23, 42];    // Slate
+  const accentColor = [212, 175, 55]; // Gold
+
+  // Header Elegant
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, 210, 60, 'F');
+
+  // Logo FASHION STORE
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(26);
+  doc.setTextColor(mainColor[0], mainColor[1], mainColor[2]);
+  doc.text("FASHION", 20, 35);
+  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+  doc.text("STORE", 20 + doc.getTextWidth("FASHION "), 35);
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(148, 163, 184);
+  doc.text("PREMIUM BOUTIQUE SELECTION", 20, 42, { charSpace: 1.5 });
+
+  // Título Dinámico - Ajustado para evitar solapamiento
+  doc.setTextColor(mainColor[0], mainColor[1], mainColor[2]);
+  doc.setFontSize(isAdminView ? 16 : 22);
+  doc.setFont("helvetica", "bold");
+  doc.text(isAdminView ? "FACTURA RECTIFICATIVA" : "REEMBOLSO", 190, 35, { align: "right" });
+
+  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
+  doc.setLineWidth(1);
+  doc.line(20, 50, 190, 50);
+
+  // Grid Datos
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.text("EMISOR", 20, 70);
+  doc.text("CLIENTE", 110, 70);
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(71, 85, 105);
+  doc.text(["Fashion Store S.L.", "NIF: B12345678"], 20, 76);
+  doc.text([fiscal.razon_social || order.shipping_name, `NIF/CIF: ${fiscal.nif || 'N/A'}`], 110, 76);
+
+  // Info Box
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(20, 95, 170, 15, 2, 2, 'F');
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.text(isAdminView ? "Nº RECTIFICATIVA" : "REF. REEMBOLSO", 25, 104);
+  doc.text("PEDIDO ORIGEN", 135, 104);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(refundNum, 65, 104);
+  doc.text(`#${order.id.toString().padStart(6, '0')}`, 165, 104);
+
+  // Tabla
+  let y = 125;
+  doc.setFillColor(15, 23, 42); // Slate
+  doc.roundedRect(20, y, 170, 10, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.text("CONCEPTO DE ABONO", 25, y + 6.5);
+  doc.text("IMPORTE", 185, y + 6.5, { align: "right" });
+
+  y += 20;
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "normal");
+  const desc = order.status === 'cancelled' ? `Anulación de pedido #${order.id}` : `Devolución de productos - Pedido #${order.id}`;
+  doc.text(desc, 25, y);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${sign}${(refundAmount / 100).toFixed(2)}€`, 185, y, { align: 'right' });
+
+  // Si hay cupón, mostrar información adicional de descuento aplicado originalmente
+  if (order.coupon_code) {
+    y += 10;
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`* Descuento aplicado en compra original (Cupón: ${order.coupon_code})`, 25, y);
+  }
+
+  // Totales
+  y += 25;
+  const vat = calculateVAT(refundAmount);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Base Imponible", 130, y);
+  doc.text(`${sign}${vat.base}`, 185, y, { align: 'right' });
+  y += 7;
+  doc.text("IVA (21%)", 130, y);
+  doc.text(`${sign}${vat.iva}`, 185, y, { align: 'right' });
+
+  y += 15;
+  doc.setFillColor(15, 23, 42); // Slate
+  doc.roundedRect(120, y - 10, 70, 16, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("TOTAL ABONO", 125, y);
+  doc.setTextColor(212, 175, 55); // Gold
+  doc.text(`${sign}${vat.total}`, 185, y, { align: 'right' });
+
+  if (outputType === 'buffer') return Buffer.from(doc.output('arraybuffer'));
+  return doc.output('datauristring').split(',')[1];
+};
+
+/**
+ * Envía la factura rectificativa por email
+ */
+export const sendRefundInvoiceEmail = async (order: any, refundAmount: number) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const to = order.shipping_email;
+  const pdfBase64 = generateRefundInvoicePDF(order, refundAmount, [], 'base64', false) as string;
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; overflow: hidden;">
+      <div style="background: #1e293b; color: white; padding: 40px 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">Documento de Abono</h1>
+        <p style="opacity: 0.7; margin: 5px 0;">Tu reembolso ha sido procesado</p>
+      </div>
+      <div style="padding: 30px;">
+        <p>Hola <strong>${order.shipping_name}</strong>,</p>
+        <p>Te informamos de que hemos procesado el reembolso de <strong>${(refundAmount / 100).toFixed(2)}€</strong> correspondiente a tu pedido #${order.id.toString().padStart(6, '0')}.</p>
+        <p>Adjunto encontrarás la <strong>factura rectificativa</strong> para tu contabilidad.</p>
+        <p style="margin-top: 20px; font-size: 13px; color: #64748b;">El abono aparecerá en tu cuenta en un plazo de 5-10 días hábiles.</p>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `Factura Rectificativa pedido #${order.id.toString().padStart(6, '0')} - Fashion Store`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
+  sendSmtpEmail.to = [{ email: to, name: order.shipping_name }];
+  const orderLabel = order.id.toString().padStart(6, '0');
+  sendSmtpEmail.attachment = [{ name: `Factura_Reembolso_${orderLabel}.pdf`, content: pdfBase64 }];
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending refund invoice:', error);
+    return { success: false, error };
+  }
+};
+
+

@@ -39,7 +39,8 @@
 ## Funcionalidades Implementadas
 - [x] **Arquitectura Astro 5.0 Híbrida**: Generación estática para catálogo/productos y SSR para checkout, mi cuenta y admin.
 - [x] **Panel Admin Avanzado (Dashboard Ejecutivo)**: 
-  - [x] KPI Cards con ingresos semanales, mensuales, semestrales y anuales.
+  - [x] KPI Cards con ingresos semanales, mensuales, semestrales y anuales con enlaces directos a tramos temporales.
+  - [x] **Filtrado Avanzado Dinámico**: Selector de estados premium con iconografía integrado en la navegación de periodos.
   - [x] Gráfico visual dinámico (Chart.js) de tendencia de ventas diarias.
   - [x] Estadísticas de inventario (Total unidades, stock bajo, agotados).
 - [x] **Buscador en Vivo (Live Search)**: 
@@ -55,10 +56,14 @@
   - [x] Precios originales tachados en carrito y checkout para resaltar el ahorro.
   - [x] Gestión de ofertas en lote (Bulk removal) desde el panel de administración.
 - [x] **Gestión de Pedidos & Post-Venta**:
-  - [x] Historial de pedidos con estados (Pendiente, Pagado, Enviado, Entregado, Cancelado).
+  - [x] Historial de pedidos con estados optimizados (Pagado, Enviado, Entregado, Cancelado).
+  - [x] **Flujo Simplificado**: Eliminación del estado "Pendiente" innecesario tras confirmar pago por Stripe.
   - [x] Botón de **Cancelación automática** habilitado en estado "Pagado".
   - [x] Lógica de restauración de stock y reembolso Stripe en cancelación.
-  - [x] Facturación dinámica: Generación de Tickets y Facturas PDF (jspdf).
+  - [x] **Facturación e Informes Pro**: 
+    - Generación de Tickets y Facturas PDF (jspdf).
+    - **Informes Trimestrales de Auditoría**: Reportes PDF con desglose de IVA, bases imponibles y detalles de transacción (Método de Pago: Tarjeta).
+    - Maquetación A4 de alta precisión sin solapamientos de datos.
 - [x] **Perfil de Usuario**: 
   - [x] Gestión de información personal, datos fiscales y direcciones.
   - [x] **Cambio de contraseña funcional** (Autenticado).
@@ -119,6 +124,7 @@
 - **UI**: Sin emojis; usar SVGs premium.
 
 ## Última actualización
+2026-01-29 (Check-in Actual): Refinamiento del motor de Business Intelligence. Optimización de reportes PDF trimestrales para auditoría fiscal (A4 layout), implementación del sistema de filtrado dinámico por estados en el Admin y simplificación del flujo operativo eliminando estados redundantes. Rediseño premium de la barra de herramientas de gestión de pedidos.
 2026-01-28: Rediseño premium de la sección de perfil, implementación de borrado de cuenta seguro con estándares profesionales de re-autenticación y validación de estado de pedidos previa a la baja. Confirmación del flujo de "Guest Checkout" para compras sin registro.
 
 ## Versiones Estables (Checkpoints)

@@ -30,10 +30,12 @@ startOfWeek.setHours(0, 0, 0, 0);
 // 2. Inicio de Mes
 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 
-// 3. Inicio de Semestre (Últimos 6 meses naturales)
-const startOfSixMonths = new Date(
+// 3. Trimestre Actual
+const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+const startMonthOfQuarter = (currentQuarter - 1) * 3;
+const startOfQuarter = new Date(
     now.getFullYear(),
-    now.getMonth() - 5,
+    startMonthOfQuarter,
     1,
     0,
     0,
@@ -46,7 +48,7 @@ const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
 
 const weekIso = startOfWeek.toISOString();
 const monthIso = startOfMonth.toISOString();
-const sixMonthsIso = startOfSixMonths.toISOString();
+const quarterIso = startOfQuarter.toISOString();
 const yearIso = startOfYear.toISOString();
 
 // Herramientas de visualización
@@ -57,26 +59,61 @@ const currentMonthLabel =
     monthName.charAt(0).toUpperCase() + monthName.slice(1);
 const currentYear = now.getFullYear();
 
-// 1. Ingresos Totales y por Periodos
-const { data: allSales } = await supabase
-    .from("orders")
-    .select("total_amount, created_at")
-    .neq("status", "cancelled");
+const quarterLabel = `Trimestre ${currentQuarter} (T${currentQuarter})`;
 
-const calculateSales = (sinceIso?: string) => {
-    if (!allSales) return 0;
+// 1. Ingresos y Reembolsos Técnicos
+// Nota: allSales ahora incluye TODO para cálculos fiscales precisos
+const { data: allSalesData } = await supabase
+    .from("orders")
+    .select("*, order_items(*)");
+
+const calculateNetSales = (sinceIso?: string) => {
+    if (!allSalesData) return 0;
+
     return (
-        allSales
+        allSalesData
             .filter((order) => !sinceIso || order.created_at >= sinceIso)
-            .reduce((acc, curr) => acc + curr.total_amount, 0) / 100
+            .reduce((acc, order) => {
+                // Si el pedido fue cancelado antes de pagarse, no cuenta.
+                // Si fue pagado y luego cancelado, el NETO es 0.
+                if (
+                    order.status === "cancelled" &&
+                    order.payment_status !== "refunded"
+                ) {
+                    return acc;
+                }
+
+                let gross = order.total_amount;
+
+                // Restamos devoluciones procesadas
+                const refundedAmount = (order.order_items || []).reduce(
+                    (sum: number, item: any) => {
+                        return (
+                            sum +
+                            item.price * (item.return_refunded_quantity || 0)
+                        );
+                    },
+                    0,
+                );
+
+                // Si el pedido entero está cancelado/reembolsado
+                if (
+                    order.payment_status === "refunded" ||
+                    order.status === "cancelled"
+                ) {
+                    return acc; // El ingreso neto de este pedido es 0
+                }
+
+                return acc + (gross - refundedAmount);
+            }, 0) / 100
     );
 };
 
-const totalSales = calculateSales();
-const weekSales = calculateSales(weekIso);
-const monthSales = calculateSales(monthIso);
-const halfYearSales = calculateSales(sixMonthsIso);
-const yearSales = calculateSales(yearIso);
+const totalSales = calculateNetSales();
+const weekSales = calculateNetSales(weekIso);
+const monthSales = calculateNetSales(monthIso);
+const quarterSales = calculateNetSales(quarterIso);
+const yearSales = calculateNetSales(yearIso);
 
 // 2. Datos para el Gráfico de Tendencia (Ventas diarias este mes)
 const { data: trendData } = await supabase
@@ -140,15 +177,28 @@ const { count: productsCount } = await supabase
     .from("products")
     .select("*", { count: "exact", head: true });
 
-// 5. Pedidos Recientes
+// 5. Actividad Global Reciente
 const { data: recentOrders } = await supabase
     .from("orders")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(5);
 
+const { data: recentReturns } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .neq("return_status", "none")
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+const { data: recentCancellations } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("status", "cancelled")
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
 const statusBadge: Record<string, string> = {
-    pending: "bg-orange-50 text-orange-600",
     paid: "bg-green-50 text-green-600",
     shipped: "bg-blue-50 text-blue-600",
     delivered: "bg-purple-50 text-purple-600",
@@ -156,7 +206,6 @@ const statusBadge: Record<string, string> = {
 };
 
 const statusText: Record<string, string> = {
-    pending: "Pendiente",
     paid: "Pagado",
     shipped: "Enviado",
     delivered: "Entregado",
@@ -292,13 +341,14 @@ const statusText: Record<string, string> = {
             data-stats={JSON.stringify({
                 weekSales,
                 monthSales,
-                halfYearSales,
+                quarterSales,
                 yearSales,
                 stockStats,
                 ordersCount,
                 productsCount,
                 periodLabels: {
                     month: currentMonthLabel,
+                    quarter: quarterLabel,
                     year: currentYear,
                 },
                 chartData: {
@@ -353,21 +403,21 @@ const statusText: Record<string, string> = {
             </a>
 
             <a
-                href="/admin/orders?period=year"
+                href="/admin/orders?period=quarter"
                 class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-indigo-200/20 transition-all duration-300 group"
             >
                 <h3
                     class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 group-hover:text-indigo-500 transition-colors"
                 >
-                    Último Semestre
+                    {quarterLabel}
                 </h3>
                 <p class="text-3xl font-black text-slate-800 tracking-tighter">
-                    {halfYearSales.toFixed(2)}€
+                    {quarterSales.toFixed(2)}€
                 </p>
                 <div class="mt-4 flex items-center gap-2">
                     <span
                         class="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-black rounded-lg"
-                        >BLOQUE 6 MESES</span
+                        >BALANCE NETO</span
                     >
                 </div>
             </a>
@@ -663,85 +713,163 @@ const statusText: Record<string, string> = {
                 </div>
             </div>
 
-            <!-- Sección Derecha: Acciones y Tips -->
-            <div class="space-y-6">
+            <!-- Actividad Detallada: Reembolsos y Cancelaciones -->
+            <div class="flex flex-col gap-8">
+                <!-- Panel de Devoluciones Recientes -->
                 <div
-                    class="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl shadow-slate-900/20 relative overflow-hidden"
+                    class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8"
                 >
-                    <div class="relative z-10">
-                        <h3 class="text-xl font-bold mb-2">Accesos Directos</h3>
-                        <p class="text-slate-400 text-sm mb-6 font-medium">
-                            Gestiona tu tienda rápidamente.
-                        </p>
-
-                        <div class="space-y-3">
-                            <a
-                                href="/admin/products/new"
-                                class="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:scale-[1.02] transition-all group"
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3
+                                class="text-xl font-black text-slate-800 tracking-tight"
                             >
-                                <span class="font-bold text-sm"
-                                    >Añadir Producto</span
-                                >
-                                <svg
-                                    class="w-5 h-5 text-brand-gold"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M12 4v16m8-8H4"></path>
-                                </svg>
-                            </a>
-                            <a
-                                href="/admin/popups"
-                                class="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 hover:scale-[1.02] transition-all group"
+                                Devoluciones
+                            </h3>
+                            <p
+                                class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"
                             >
-                                <span class="font-bold text-sm"
-                                    >Configurar Pop-ups</span
-                                >
-                                <svg
-                                    class="w-5 h-5 text-slate-500 group-hover:text-brand-gold transition-colors"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
-                            </a>
+                                Últimas solicitudes
+                            </p>
                         </div>
+                        <a
+                            href="/admin/orders/returns"
+                            class="text-[10px] font-black text-brand-gold hover:underline"
+                            >VER TODAS</a
+                        >
                     </div>
-                    <!-- Decoración fondo -->
-                    <div
-                        class="absolute -right-10 -bottom-10 w-40 h-40 bg-brand-gold/10 blur-3xl rounded-full"
-                    >
+                    <div class="space-y-4">
+                        {
+                            recentReturns?.map((order) => (
+                                <div
+                                    class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-md transition-all cursor-pointer clickable-row"
+                                    data-href={`/admin/orders/${order.id}`}
+                                >
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-xs font-black text-slate-400">
+                                            {order.id
+                                                .toString()
+                                                .padStart(2, "0")}
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-bold text-slate-800">
+                                                {order.shipping_name}
+                                            </span>
+                                            <span class="text-[10px] text-red-500 font-black uppercase tracking-tighter">
+                                                {order.order_items.reduce(
+                                                    (s: number, i: any) =>
+                                                        s +
+                                                        (i.return_refunded_quantity ||
+                                                            0),
+                                                    0,
+                                                )}{" "}
+                                                ART. DEVUELTOS
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-black text-slate-900">
+                                            -
+                                            {(
+                                                order.order_items.reduce(
+                                                    (s: number, i: any) =>
+                                                        s +
+                                                        i.price *
+                                                            (i.return_refunded_quantity ||
+                                                                0),
+                                                    0,
+                                                ) / 100
+                                            ).toFixed(2)}
+                                            €
+                                        </p>
+                                        <span class="text-[9px] font-bold text-slate-400">
+                                            {new Date(
+                                                order.updated_at,
+                                            ).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        }
+                        {
+                            !recentReturns?.length && (
+                                <p class="text-center py-10 text-slate-400 text-xs italic">
+                                    No hay devoluciones recientes
+                                </p>
+                            )
+                        }
                     </div>
                 </div>
 
+                <!-- Panel de Cancelaciones Recientes -->
                 <div
-                    class="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm"
+                    class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8"
                 >
-                    <h3 class="font-bold text-slate-800 mb-4">Tips Pro</h3>
-                    <div class="flex gap-4">
-                        <div
-                            class="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center shrink-0 font-black text-brand-gold"
-                        >
-                            TIP
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3
+                                class="text-xl font-black text-slate-800 tracking-tight"
+                            >
+                                Cancelaciones
+                            </h3>
+                            <p
+                                class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"
+                            >
+                                Pedidos anulados
+                            </p>
                         </div>
-                        <p
-                            class="text-xs text-slate-500 italic leading-relaxed"
+                        <a
+                            href="/admin/orders?status=cancelled"
+                            class="text-[10px] font-black text-brand-gold hover:underline"
+                            >VER TODAS</a
                         >
-                            "Los productos con más de 3 imágenes de alta calidad
-                            suelen tener un <span
-                                class="text-brand-gold font-bold">20% más</span
-                            > de conversión de ventas."
-                        </p>
+                    </div>
+                    <div class="space-y-4">
+                        {
+                            recentCancellations?.map((order) => (
+                                <div
+                                    class="flex items-center justify-between p-4 bg-red-50/30 rounded-2xl border border-red-100 group hover:bg-white hover:shadow-md transition-all cursor-pointer clickable-row"
+                                    data-href={`/admin/orders/${order.id}`}
+                                >
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-10 h-10 rounded-xl bg-white border border-red-100 flex items-center justify-center text-xs font-black text-red-400">
+                                            {order.id
+                                                .toString()
+                                                .padStart(2, "0")}
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-bold text-slate-800">
+                                                {order.shipping_name}
+                                            </span>
+                                            <span class="text-[9px] font-black text-red-600/60 uppercase tracking-widest">
+                                                ANULACIÓN COMPLETA
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-black text-red-600">
+                                            -
+                                            {(order.total_amount / 100).toFixed(
+                                                2,
+                                            )}
+                                            €
+                                        </p>
+                                        <span class="text-[9px] font-bold text-slate-400">
+                                            {new Date(
+                                                order.updated_at,
+                                            ).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        }
+                        {
+                            !recentCancellations?.length && (
+                                <p class="text-center py-10 text-slate-400 text-xs italic">
+                                    No hay cancelaciones recientes
+                                </p>
+                            )
+                        }
                     </div>
                 </div>
             </div>

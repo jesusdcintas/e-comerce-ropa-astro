@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
 import { createClient } from "@supabase/supabase-js";
-import { generateTicketPDF, generateInvoicePDF } from "../../../lib/emails";
+import { generateTicketPDF, generateInvoicePDF, generateRefundInvoicePDF } from "../../../lib/emails";
 
 const supabaseAdmin = createClient(
     import.meta.env.PUBLIC_SUPABASE_URL,
@@ -11,7 +11,7 @@ const supabaseAdmin = createClient(
 export const GET: APIRoute = async ({ url, cookies }) => {
     try {
         const orderId = url.searchParams.get("orderId");
-        const type = url.searchParams.get("type") || "ticket"; // ticket o invoice
+        const type = url.searchParams.get("type") || "ticket"; // ticket, invoice o refund
         const accessToken = cookies.get("sb-access-token")?.value;
 
         if (!accessToken) {
@@ -64,6 +64,18 @@ export const GET: APIRoute = async ({ url, cookies }) => {
             }
             pdfBuffer = generateInvoicePDF(order, items, 'buffer') as Buffer;
             filename = `Factura_${order.invoice_number || order.id}.pdf`;
+        } else if (type === "refund") {
+            if (!order.refund_invoice_number && !isAdmin) {
+                return new Response("Factura de abono no disponible", { status: 400 });
+            }
+            // El importe a reembolsar es el total menos envío si fue cancelación, o lo que se devolvió
+            const refundAmount = order.status === 'cancelled'
+                ? order.total_amount
+                : order.order_items.reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
+
+            pdfBuffer = generateRefundInvoicePDF(order, refundAmount, items, 'buffer', isAdmin) as Buffer;
+            const orderLabel = order.id.toString().padStart(6, '0');
+            filename = isAdmin ? `Rectificativa_Pedido_${orderLabel}.pdf` : `Reembolso_Pedido_${orderLabel}.pdf`;
         } else {
             pdfBuffer = generateTicketPDF(order, items, 'buffer') as Buffer;
             filename = `Ticket_${order.id}.pdf`;
