@@ -49,7 +49,7 @@ const statusBadge: Record<string, string> = {
 const statusText: Record<string, string> = {
     paid: "Pagado",
     processing: "En Proceso",
-    completed: "Finalizado (Comercialmente Cerrado)",
+    completed: "Finalizado",
     cancelled: "Cancelado",
     refunded: "Reembolsado",
 };
@@ -68,7 +68,7 @@ const shippingStatusText: Record<string, string> = {
     shipped: "En Tránsito",
     in_delivery: "En Reparto",
     delivered: "Entregado",
-    returned: "Devuelto",
+    returned: "Devuelto / Incidencia",
     failed: "Incidencia",
 };
 
@@ -534,7 +534,7 @@ function formatFullDate(date: string | null) {
                     shipped: "EN TRÁNSITO",
                     in_delivery: "EN REPARTO",
                     delivered: "ENTREGADO",
-                    returned: "DEVUELTO",
+                    returned: "DEVUELTO / INCIDENCIA",
                     failed: "INCIDENCIA",
                 };
 

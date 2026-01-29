@@ -65,27 +65,39 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 updated_at: new Date().toISOString()
             };
 
-            if (status) updateData.status = status;
-            if (shipping_status) updateData.shipping_status = shipping_status;
+            const now = new Date().toISOString();
+
+            // Regla: Envío 'shipped' o 'in_delivery' -> Pedido 'processing' automáticamente
+            if (shipping_status === 'shipped' || shipping_status === 'in_delivery') {
+                // Nota: En bulk update, aplicamos a todos los que no estén ya finalizados/cancelados
+                // pero como la query de Supabase es directa, el estado comercial avanzará
+                updateData.status = 'processing';
+                updateData.processing_at = now;
+            }
 
             // Regla: Si marcamos como entregado masivamente, cerramos pedidos
             if (shipping_status === 'delivered') {
                 updateData.status = 'completed';
+                updateData.delivered_at = now;
             }
 
+            if (status) updateData.status = status;
+            if (shipping_status) updateData.shipping_status = shipping_status;
+
             // Timestamps logísticos
-            const now = new Date().toISOString();
             if (shipping_status === 'shipped') updateData.shipped_at = now;
             if (shipping_status === 'in_delivery') updateData.in_delivery_at = now;
-            if (shipping_status === 'delivered') updateData.delivered_at = now;
+            if (shipping_status === 'delivered' && !updateData.delivered_at) updateData.delivered_at = now;
 
             // Timestamps comerciales
-            if (status === 'processing') updateData.processing_at = now;
+            if (status === 'processing' && !updateData.processing_at) updateData.processing_at = now;
 
             const { error } = await supabaseAdmin
                 .from('orders')
                 .update(updateData)
-                .in('id', numericIds);
+                .in('id', numericIds)
+                .neq('status', 'completed') // No retroceder pedidos ya finalizados
+                .neq('status', 'cancelled'); // No re-activar cancelados
 
             if (error) throw error;
 

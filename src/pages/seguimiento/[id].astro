@@ -169,15 +169,15 @@ const trackingNumber =
                     >
                         {
                             shippingStatus === "pending"
-                                ? "En Proceso"
+                                ? "Pendiente de Envío"
                                 : shippingStatus === "shipped"
-                                  ? "En tránsito"
+                                  ? "En Tránsito"
                                   : shippingStatus === "in_delivery"
-                                    ? "En reparto"
+                                    ? "En Reparto"
                                     : shippingStatus === "delivered"
                                       ? "Entregado"
                                       : shippingStatus === "returned"
-                                        ? "Devuelto"
+                                        ? "Devuelto / Incidencia"
                                         : "Incidencia"
                         }
                     </p>

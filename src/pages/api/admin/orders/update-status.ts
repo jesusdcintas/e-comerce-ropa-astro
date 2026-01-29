@@ -40,25 +40,36 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             updated_at: new Date().toISOString()
         };
 
+        // Regla: Envío 'shipped' o 'in_delivery' -> Pedido 'processing' automáticamente si estaba en 'paid'
+        if ((shipping_status === 'shipped' || shipping_status === 'in_delivery') && order.status === 'paid') {
+            updateData.status = 'processing';
+            updateData.processing_at = new Date().toISOString();
+        }
+
         // Regla: Envío 'delivered' -> Pedido 'completed' automáticamente
         if (shipping_status === 'delivered') {
             updateData.status = 'completed';
+            updateData.delivered_at = new Date().toISOString();
         }
 
-        // Aplicar cambios según lo recibido
+        // Aplicar cambios según lo recibido explicitly (sobrescribe reglas si se manda ambos)
         if (status) updateData.status = status;
         if (shipping_status) updateData.shipping_status = shipping_status;
 
         // Timestamps de trazabilidad real (Logística)
         if (shipping_status === 'shipped') updateData.shipped_at = new Date().toISOString();
         if (shipping_status === 'in_delivery') updateData.in_delivery_at = new Date().toISOString();
-        if (shipping_status === 'delivered') updateData.delivered_at = new Date().toISOString();
+        if (shipping_status === 'delivered' && !updateData.delivered_at) updateData.delivered_at = new Date().toISOString();
 
         // Timestamps comerciales
-        if (status === 'processing') updateData.processing_at = new Date().toISOString();
+        if (status === 'processing' && !updateData.processing_at) updateData.processing_at = new Date().toISOString();
 
         // Lógica de cancelación
         if (status === 'cancelled') {
+            // Verificar si se puede cancelar
+            if (order.shipping_status !== 'pending') {
+                throw new Error('No se puede cancelar un pedido que ya ha sido enviado o está en reparto.');
+            }
             await cancelOrder(numericId);
         } else {
             const { error } = await supabaseAdmin

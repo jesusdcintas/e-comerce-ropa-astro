@@ -241,7 +241,7 @@ const trackerStepPriority: Record<string, number> = {
                     {/* Estados logísticos */}
                     {[
                       { key: "pending", label: "En Proceso", icon: "📦" },
-                      { key: "shipped", label: "Enviado", icon: "🚚" },
+                      { key: "shipped", label: "En Tránsito", icon: "🚚" },
                       { key: "in_delivery", label: "En Reparto", icon: "🛵" },
                       { key: "delivered", label: "Entregado", icon: "🏠" },
                     ].map((step, idx) => {
@@ -355,30 +355,32 @@ const trackerStepPriority: Record<string, number> = {
               {/* Footer / Acciones */}
               <div class="px-6 py-4 bg-gray-50/30 border-t border-gray-100 flex flex-wrap justify-between items-center gap-4">
                 <div class="flex gap-4">
-                  {(order.status === "pending" ||
-                    order.status === "paid" ||
-                    order.status === "processing") && (
-                    <button
-                      class="btn-cancel-order text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-widest flex items-center gap-1 bg-red-50/50 px-3 py-1.5 rounded-lg border border-red-100/50"
-                      data-order-id={order.id}
-                      data-shipping-status={order.shipping_status || "pending"}
-                    >
-                      <svg
-                        class="w-3 h-3"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                  {order.shipping_status === "pending" &&
+                    (order.status === "paid" ||
+                      order.status === "processing") && (
+                      <button
+                        class="btn-cancel-order text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-widest flex items-center gap-1 bg-red-50/50 px-3 py-1.5 rounded-lg border border-red-100/50"
+                        data-order-id={order.id}
+                        data-shipping-status={
+                          order.shipping_status || "pending"
+                        }
                       >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                      Cancelar Pedido
-                    </button>
-                  )}
+                        <svg
+                          class="w-3 h-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                        Cancelar Pedido
+                      </button>
+                    )}
 
                   {order.status !== "cancelled" &&
                     order.status !== "refunded" &&

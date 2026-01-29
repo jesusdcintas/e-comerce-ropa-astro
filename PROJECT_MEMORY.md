@@ -61,15 +61,12 @@
 - [x] **Gestión de Pedidos & Post-Venta**:
   - [x] Historial de pedidos with estados optimizados (Pagado, Enviado, Entregado, Cancelado).
   - [x] **Flujo Simplificado**: Eliminación del estado "Pendiente" innecesario tras confirmar pago por Stripe.
-  - [x] **Sistema Logístico Automatizado (Boutique Standard)**:
-    - Ciclo de vida de 48h desde la creación.
-    - +0h: Pedido Recibido / Pago Confirmado.
-    - +12h: Preparación Completada (Visual).
-    - +24h: **En Tránsito (Shipped)** - Único trigger manual del admin.
-    - +44h: **En Reparto** - Evolución automática del sistema + Email "Se entrega hoy".
-    - +48h: **Entregado** - Evolución automática del sistema + Email "Entregado" + Factura.
+  - [x] **Sistema Logístico y Comercial Sincronizado**:
+    - **Compra (Comercial)**: PAGADO (Pago confirmado), EN PROCESO (En preparación o ya en tránsito), FINALIZADO (Entregado).
+    - **Envío (Logístico)**: PENDIENTE DE ENVÍO, EN TRÁNSITO, EN REPARTO, ENTREGADO.
+    - **Sincronización**: El avance logístico a 'En Tránsito'/'En Reparto' mueve automáticamente la compra a 'En Proceso'. La entrega física mueve la compra a 'Finalizado'.
+    - Botón de **Cancelación automática** solo habilitado si el envío está 'Pendiente'.
   - [x] **Motor Cron-Ready**: Endpoint `/api/cron/advance-orders` para automatización total en Coolify.
-  - [x] Botón de **Cancelación automática** habilitado en estado "Pagado".
   - [x] Lógica de restauración de stock y reembolso Stripe en cancelación.
   - [x] **Sistema de Seguimiento de Envíos (Branded Tracking)**:
     - [x] Seguimiento simunlado realista en `/seguimiento/[id]`.

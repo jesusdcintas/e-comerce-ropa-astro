@@ -87,6 +87,7 @@ function getFilterUrl(newParams: Record<string, string | number>) {
 
 // Mapeos de estados del PEDIDO (Comercial)
 const orderStatusText: Record<string, string> = {
+    paid: "Pagado",
     processing: "En Proceso",
     completed: "Finalizado",
     cancelled: "Cancelado",
@@ -103,11 +104,11 @@ const orderStatusBadge: Record<string, string> = {
 
 // Mapeos de estados del ENVÍO (Logístico)
 const shippingStatusText: Record<string, string> = {
-    pending: "Pendiente",
+    pending: "Pendiente de Envío",
     shipped: "En Tránsito",
     in_delivery: "En Reparto",
     delivered: "Entregado",
-    returned: "Devuelto",
+    returned: "Devuelto / Incidencia",
     failed: "Incidencia",
 };
 
