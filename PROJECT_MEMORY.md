@@ -70,7 +70,12 @@
   - [x] **Motor Cron-Ready**: Endpoint `/api/cron/advance-orders` para automatización total en Coolify.
   - [x] Botón de **Cancelación automática** habilitado en estado "Pagado".
   - [x] Lógica de restauración de stock y reembolso Stripe en cancelación.
-  - [x] **Notificaciones Post-Venta Centralizadas**: Implementación de globos informativos en tiempo real para Devoluciones, Pedidos y Consultas mediante API protegida.
+  - [x] **Sistema de Seguimiento de Envíos (Branded Tracking)**:
+    - [x] Seguimiento simunlado realista en `/seguimiento/[id]`.
+    - [x] Interfaz premium con timeline y mapa.
+    - [x] Integración en historial de pedidos y emails.
+  - [x] **Notificaciones Proactivas (Email)**:
+    - [x] Flujo de emails "Pagado", "Enviado" y "Entregado" con diseño premium.
   - [x] **Facturación e Informes Pro**: 
     - Generación de Tickets y Facturas PDF (jspdf).
     - **Informes Trimestrales de Auditoría**: Reportes PDF con desglose de IVA, bases imponibles y detalles de transacción (Método de Pago: Tarjeta).
@@ -92,15 +97,6 @@
 
 ## Pendientes (TODO)
 
-- [x] **Sistema de Seguimiento de Envíos (Branded Tracking)**:
-  - [x] **Seguimiento Simulado Realista**: Página `/seguimiento/[id]` que genera un timeline detallado basado en la fecha del pedido.
-  - [x] **Interfaz Premium**: Línea de tiempo con estados (Preparación, Tránsito, Reparto) y mapa simulado para mantener la estética de lujo.
-  - [x] **Acceso Directo**: Botón de seguimiento integrado en el historial de pedidos.
-  - [x] **Admin UI**: Acciones masivas para actualizar estados de múltiples pedidos simultáneamente.
-- [x] **Notificaciones Proactivas (Email)**:
-  - [x] **Flujo Automatizado**: Correos automáticos para "Pagado", "Enviado" y "Entregado". ("Cancelado" ya existía).
-  - [x] **Seguimiento Integrado**: Botón directo a la página de seguimiento premium en el correo de envío.
-  - [x] **Diseño Coherente**: Todos los emails usan la nueva estética dorado/negro de la marca.
 - [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
 - [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
