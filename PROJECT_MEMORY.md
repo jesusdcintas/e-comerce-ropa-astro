@@ -45,6 +45,7 @@
   - [x] **Filtrado Avanzado Dinámico**: Selector de estados premium con iconografía integrado en la navegación de periodos.
   - [x] Gráfico visual dinámico (Chart.js) de tendencia de ventas diarias.
   - [x] Estadísticas de inventario (Total unidades, stock bajo, agotados).
+  - [x] **KPI "Producto Más Vendido"**: Tarjeta interactiva en el Dashboard con imagen, nombre y volumen de ventas del mes.
 - [x] **Buscador en Vivo (Live Search)**: 
   - [x] Barra con debounce en Header PC and pantalla completa en móvil.
   - [x] Despliegue visual de resultados con imágenes y precios sin recara de página.
@@ -97,7 +98,6 @@
 
 ## Pendientes (TODO)
 
-- [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
 - [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.

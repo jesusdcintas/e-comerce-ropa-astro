@@ -115,6 +115,48 @@ const monthSales = calculateNetSales(monthIso);
 const quarterSales = calculateNetSales(quarterIso);
 const yearSales = calculateNetSales(yearIso);
 
+// 1.5. Producto Más Vendido (Mes Actual)
+const getBestSeller = (sinceIso?: string) => {
+    if (!allSalesData) return null;
+    const sellers: Record<number, { id: number; name: string; total: number }> =
+        {};
+
+    allSalesData
+        .filter(
+            (order) =>
+                (!sinceIso || order.created_at >= sinceIso) &&
+                order.status !== "cancelled",
+        )
+        .forEach((order) => {
+            order.order_items?.forEach((item: any) => {
+                if (!item.product_id) return;
+                if (!sellers[item.product_id]) {
+                    sellers[item.product_id] = {
+                        id: item.product_id,
+                        name: item.product_name,
+                        total: 0,
+                    };
+                }
+                sellers[item.product_id].total += item.quantity;
+            });
+        });
+
+    return Object.values(sellers).sort((a, b) => b.total - a.total)[0] || null;
+};
+
+const topSellerBasic = getBestSeller(monthIso);
+let bestProduct = null;
+if (topSellerBasic) {
+    const { data: p } = await supabase
+        .from("products")
+        .select("images, slug")
+        .eq("id", topSellerBasic.id)
+        .single();
+    if (p) {
+        bestProduct = { ...topSellerBasic, ...p };
+    }
+}
+
 // 2. Datos para el Gráfico de Tendencia (Ventas diarias este mes)
 const { data: trendData } = await supabase
     .from("orders")
@@ -362,7 +404,7 @@ const statusText: Record<string, string> = {
         </div>
 
         <!-- Tarjetas de Resumen de Ingresos -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             <a
                 href="/admin/orders?period=week"
                 class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-200/20 transition-all duration-300 group"
@@ -439,6 +481,69 @@ const statusText: Record<string, string> = {
                     <span
                         class="px-2 py-0.5 bg-slate-900 text-white text-[9px] font-black rounded-lg"
                         >CORTE FISCAL</span
+                    >
+                </div>
+            </a>
+
+            <!-- Producto Más Vendido -->
+            <a
+                href={bestProduct
+                    ? `/admin/products?search=${encodeURIComponent(bestProduct.name)}`
+                    : "#"}
+                class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-brand-gold/10 transition-all duration-300 border-b-4 border-b-brand-gold group flex flex-col justify-between"
+            >
+                <div>
+                    <h3
+                        class="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1 group-hover:text-brand-gold transition-colors"
+                    >
+                        Top Ventas ({currentMonthLabel})
+                    </h3>
+                    {
+                        bestProduct ? (
+                            <div class="flex items-center gap-3 mt-3">
+                                {bestProduct.images?.[0] ? (
+                                    <img
+                                        src={bestProduct.images[0]}
+                                        alt={bestProduct.name}
+                                        class="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm transition-transform group-hover:rotate-3 group-hover:scale-110"
+                                    />
+                                ) : (
+                                    <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300">
+                                        <svg
+                                            class="w-6 h-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                                            />
+                                        </svg>
+                                    </div>
+                                )}
+                                <div class="flex flex-col min-w-0">
+                                    <span class="text-xs font-black text-slate-800 tracking-tight truncate group-hover:text-brand-gold transition-colors">
+                                        {bestProduct.name}
+                                    </span>
+                                    <span class="text-[10px] font-black text-brand-gold uppercase">
+                                        {bestProduct.total} unidades
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            <p class="text-xs font-bold text-slate-400 mt-4 italic">
+                                Sin datos este mes
+                            </p>
+                        )
+                    }
+                </div>
+                <div class="mt-4 flex items-center gap-2">
+                    <span
+                        class="px-2 py-0.5 bg-yellow-50 text-brand-gold text-[9px] font-black rounded-lg"
+                        >ÉXITO DE VENTAS</span
                     >
                 </div>
             </a>
