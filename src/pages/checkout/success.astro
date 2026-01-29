@@ -44,6 +44,9 @@ if (sessionId) {
                 .eq("stripe_session_id", sessionId)
                 .maybeSingle();
 
+            let order: any;
+            let orderLines: any[] = [];
+
             if (!existingOrder) {
                 const discountAmount = parseInt(metadata?.discount || "0");
                 const shippingCost = parseInt(metadata?.shipping_cost || "0");
@@ -69,124 +72,133 @@ if (sessionId) {
                     discount_amount: discountAmount,
                 };
 
-                const { data: order, error: orderError } = await supabaseAdmin
-                    .from("orders")
-                    .insert(orderData)
-                    .select()
-                    .single();
+                const { data: newOrder, error: orderError } =
+                    await supabaseAdmin
+                        .from("orders")
+                        .insert(orderData)
+                        .select()
+                        .single();
 
                 if (orderError) {
-                    if (orderError.code === "23505") {
-                        orderCreated = true;
-                    } else {
-                        console.error("Error al insertar pedido:", orderError);
-                        throw new Error(
-                            `Error DB Pedido: ${orderError.message}`,
-                        );
-                    }
-                } else {
-                    // 5. Crear líneas
-                    const { data: variants } = await supabaseAdmin
-                        .from("product_variants")
-                        .select("id, product_id, size, product:products(name)")
-                        .in(
-                            "product_id",
-                            items.map((i: any) => parseInt(i.id)),
-                        );
+                    console.error("Error al insertar pedido:", orderError);
+                    throw new Error(`Error DB Pedido: ${orderError.message}`);
+                }
+                order = newOrder;
 
-                    const orderLines = items.map((item: any) => {
-                        const variant = variants?.find(
-                            (v) =>
-                                v.product_id === parseInt(item.id) &&
-                                v.size === item.s,
-                        );
-                        const productName =
+                // 2. Crear líneas
+                const { data: variants } = await supabaseAdmin
+                    .from("product_variants")
+                    .select("id, product_id, size, product:products(name)")
+                    .in(
+                        "product_id",
+                        items.map((i: any) => parseInt(i.id)),
+                    );
+
+                const newOrderLines = items.map((item: any) => {
+                    const variant = variants?.find(
+                        (v) =>
+                            v.product_id === parseInt(item.id) &&
+                            v.size === item.s,
+                    );
+                    return {
+                        order_id: order.id,
+                        product_id: parseInt(item.id),
+                        variant_id: variant?.id,
+                        quantity: item.q,
+                        price: item.p,
+                        product_name:
                             (variant?.product as any)?.name ||
-                            `Producto ${item.id}`;
+                            `Producto ${item.id}`,
+                        product_size: item.s,
+                    };
+                });
+
+                const { error: linesError } = await supabaseAdmin
+                    .from("order_items")
+                    .insert(newOrderLines);
+
+                if (linesError)
+                    console.error("Error al insertar líneas:", linesError);
+                orderLines = newOrderLines;
+
+                // 3. Confirmar compra/stock
+                const cartSessionId =
+                    Astro.cookies.get("cart_session_id")?.value;
+                if (cartSessionId) {
+                    await supabaseAdmin
+                        .rpc("confirm_cart_purchase", {
+                            p_session_id: cartSessionId,
+                        })
+                        .catch(console.error);
+                }
+
+                // 4. Finalizar cupón
+                if (metadata?.coupon_id) {
+                    const { finalizeCouponUse } =
+                        await import("../../lib/coupon-system");
+                    await finalizeCouponUse(
+                        order.id.toString(),
+                        userIdValue || "",
+                        metadata.coupon_id,
+                        discountAmount,
+                        discountAmount,
+                    ).catch(console.error);
+                }
+            } else {
+                // El pedido ya existe (posiblemente creado por webhook o recarga)
+                const { data: fullOrder } = await supabaseAdmin
+                    .from("orders")
+                    .select("*, order_items(*)")
+                    .eq("id", existingOrder.id)
+                    .single();
+
+                order = fullOrder;
+                orderLines = fullOrder.order_items || [];
+                console.log(
+                    "[CHECKOUT] Usando pedido existente para procesar emails.",
+                );
+            }
+
+            // 5. Enviar emails (Siempre intentamos si estamos en la página de éxito)
+            if (order && orderLines.length > 0) {
+                try {
+                    const { sendInvoiceEmail, sendAdminNewOrderNotification } =
+                        await import("../../lib/emails");
+                    const productIds = orderLines.map((l: any) => l.product_id);
+                    const { data: products } = await supabase
+                        .from("products")
+                        .select("id, images")
+                        .in("id", productIds);
+
+                    const invoiceItems = orderLines.map((line: any) => {
+                        const product = products?.find(
+                            (p) => p.id === line.product_id,
+                        );
                         return {
-                            order_id: order.id,
-                            product_id: parseInt(item.id),
-                            variant_id: variant?.id,
-                            quantity: item.q,
-                            price: item.p,
-                            product_name: productName,
-                            product_size: item.s,
+                            product_name: line.product_name,
+                            size: line.product_size,
+                            quantity: line.quantity,
+                            price_at_time: line.price,
+                            product_image: product?.images?.[0] || null,
                         };
                     });
 
-                    const { error: linesError } = await supabaseAdmin
-                        .from("order_items")
-                        .insert(orderLines);
-
-                    if (linesError)
-                        console.error("Error al insertar líneas:", linesError);
-
-                    // 6. Confirmar compra/stock
-                    const cartSessionId =
-                        Astro.cookies.get("cart_session_id")?.value;
-                    if (cartSessionId) {
-                        try {
-                            await supabaseAdmin.rpc("confirm_cart_purchase", {
-                                p_session_id: cartSessionId,
-                            });
-                        } catch (stockErr) {
-                            console.error("Error procesando stock:", stockErr);
-                        }
-                    }
-
-                    // 7. Finalizar cupón
-                    if (metadata?.coupon_id) {
-                        try {
-                            const { finalizeCouponUse } =
-                                await import("../../lib/coupon-system");
-                            await finalizeCouponUse(
-                                order.id.toString(),
-                                userIdValue || "",
-                                metadata.coupon_id,
-                                parseInt(metadata.discount || "0"),
-                                parseInt(metadata.discount || "0"),
-                            );
-                        } catch (couponErr) {
-                            console.error(
-                                "Error finalizando cupón:",
-                                couponErr,
-                            );
-                        }
-                    }
-
-                    // 8. Enviar email
-                    try {
-                        const { sendInvoiceEmail } =
-                            await import("../../lib/emails");
-                        const productIds = items.map((i: any) =>
-                            parseInt(i.id),
-                        );
-                        const { data: products } = await supabase
-                            .from("products")
-                            .select("id, images")
-                            .in("id", productIds);
-
-                        const invoiceItems = orderLines.map((line: any) => {
-                            const product = products?.find(
-                                (p) => p.id === line.product_id,
-                            );
-                            return {
-                                product_name: line.product_name,
-                                size: line.product_size,
-                                quantity: line.quantity,
-                                price_at_time: line.price,
-                                product_image: product?.images?.[0] || null,
-                            };
-                        });
-                        await sendInvoiceEmail(order, invoiceItems);
-                    } catch (emailErr) {
-                        console.error("Error al enviar factura:", emailErr);
-                    }
-                    orderCreated = true;
+                    console.log(
+                        `[EMAILS] Enviando notificaciones para pedido #${order.id}`,
+                    );
+                    const resCust = await sendInvoiceEmail(order, invoiceItems);
+                    const resAdm = await sendAdminNewOrderNotification(
+                        order,
+                        invoiceItems,
+                    );
+                    console.log(
+                        `[EMAILS] Resultado: Cliente(${resCust.success}), Admin(${resAdm.success})`,
+                    );
+                } catch (emailErr) {
+                    console.error("[EMAILS] Fallo crítico:", emailErr);
                 }
-            } else {
-                orderCreated = true;
             }
+            orderCreated = true;
         }
     } catch (err: any) {
         console.error("Error procesando éxito de pago:", err);

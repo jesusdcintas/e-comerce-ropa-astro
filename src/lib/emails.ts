@@ -2,8 +2,17 @@ import * as brevo from '@getbrevo/brevo';
 import { jsPDF } from 'jspdf';
 import { LOGO_BASE64 } from './logo';
 
+// Helper para compatibilidad entre Astro y Node
+const getEnv = (key: string) => {
+  const val = (import.meta.env?.[key]) || (process.env?.[key]) || '';
+  return val;
+};
+
+console.log('[EMAILS] Cargando biblioteca de correos...');
+console.log('[EMAILS] BREVO_API_KEY detectada:', !!getEnv('BREVO_API_KEY'));
+
 const apiInstance = new brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, import.meta.env.BREVO_API_KEY || '');
+apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, getEnv('BREVO_API_KEY'));
 
 const formatPrice = (cents: number) => (cents / 100).toFixed(2) + '€';
 
@@ -289,7 +298,7 @@ export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64
  * NOTA: Alias sendInvoiceEmail para compatibilidad con checkout/success.astro
  */
 export const sendOrderReceiptEmail = async (order: any, items: any[]) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
   const pdfBuffer = generateTicketPDF(order, items) as string;
 
@@ -319,10 +328,15 @@ export const sendOrderReceiptEmail = async (order: any, items: any[]) => {
   sendSmtpEmail.attachment = [{ name: `Recibo_${order.id}.pdf`, content: pdfBuffer }];
 
   try {
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`[EMAILS] Intentando enviar recibo a cliente: ${to} desde ${from}`);
+    const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('[EMAILS] Recibo enviado con éxito. Resp:', JSON.stringify(response));
     return { success: true };
-  } catch (error) {
-    console.error('Error sending receipt:', error);
+  } catch (error: any) {
+    console.error('[EMAILS] Error enviando recibo:', error);
+    if (error.response?._body) {
+      console.error('[EMAILS] Detalle del error Brevo:', error.response._body);
+    }
     return { success: false, error };
   }
 };
@@ -331,7 +345,7 @@ export const sendOrderReceiptEmail = async (order: any, items: any[]) => {
  * Envía la factura oficial (solicitada por el cliente)
  */
 export const sendOfficialInvoiceEmail = async (order: any, items: any[]) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
   const pdfBuffer = generateInvoicePDF(order, items) as string;
 
@@ -367,7 +381,7 @@ export const sendOfficialInvoiceEmail = async (order: any, items: any[]) => {
 export const sendInvoiceEmail = sendOrderReceiptEmail;
 
 export const sendCouponEmail = async (email: string, name: string, coupon: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
 
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
@@ -421,7 +435,7 @@ export const sendCouponEmail = async (email: string, name: string, coupon: any) 
  * Envía email de notificación de pedido cancelado
  */
 export const sendOrderCancelledEmail = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
 
   const html = `
@@ -472,7 +486,7 @@ export const sendOrderCancelledEmail = async (order: any) => {
  * Envía email de notificación cuando el pedido está siendo preparado
  */
 export const sendOrderProcessingEmail = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
 
   const html = `
@@ -519,9 +533,9 @@ export const sendOrderProcessingEmail = async (order: any) => {
  * Envía email de notificación cuando el pedido ha sido enviado
  */
 export const sendOrderShippedEmail = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
-  const trackingUrl = `${import.meta.env.PUBLIC_SITE_URL || 'https://fashionstore-cintas.netlify.app'}/seguimiento/${order.id}`;
+  const trackingUrl = `${getEnv('PUBLIC_SITE_URL') || 'https://fashionstore-cintas.netlify.app'}/seguimiento/${order.id}`;
 
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
@@ -567,9 +581,9 @@ export const sendOrderShippedEmail = async (order: any) => {
  * Envía email de notificación cuando el pedido está en reparto (último tramo)
  */
 export const sendOrderInDeliveryEmail = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
-  const trackingUrl = `${import.meta.env.PUBLIC_SITE_URL || 'https://fashionstore-cintas.netlify.app'}/seguimiento/${order.id}`;
+  const trackingUrl = `${getEnv('PUBLIC_SITE_URL') || 'https://fashionstore-cintas.netlify.app'}/seguimiento/${order.id}`;
 
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
@@ -615,7 +629,7 @@ export const sendOrderInDeliveryEmail = async (order: any) => {
  * Envía email de notificación cuando el pedido ha sido entregado
  */
 export const sendOrderDeliveredEmail = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
 
   const html = `
@@ -639,7 +653,7 @@ export const sendOrderDeliveredEmail = async (order: any) => {
         </p>
 
         <div style="margin-top: 40px;">
-           <a href="${import.meta.env.PUBLIC_SITE_URL}/mis-pedidos" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 18px 45px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;">Ver mi Historial</a>
+           <a href="${getEnv('PUBLIC_SITE_URL') || 'https://fashionstore-cintas.netlify.app'}/mis-pedidos" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 18px 45px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;">Ver mi Historial</a>
         </div>
       </div>
     </div>
@@ -664,8 +678,8 @@ export const sendOrderDeliveredEmail = async (order: any) => {
  * Notifica al administrador de una nueva consulta o mensaje
  */
 export const sendAdminInquiryNotification = async (inquiry: any, message: string) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
-  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
+  const adminEmail = getEnv('ADMIN_EMAIL') || 'jdcintas.dam@gmail.com';
 
   const isNew = !inquiry.responded_at;
   const subject = isNew
@@ -714,7 +728,7 @@ export const sendAdminInquiryNotification = async (inquiry: any, message: string
  * Notifica al cliente de una respuesta del administrador
  */
 export const sendCustomerInquiryNotification = async (inquiry: any, message: string) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = inquiry.customer_email;
 
   const html = `
@@ -998,7 +1012,7 @@ export const generateOrdersReportPDF = (orders: any[], label: string): string =>
  * Envía un email de confirmación tras borrar la cuenta
  */
 export const sendAccountDeletedEmail = async (email: string, name: string) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; overflow: hidden;">
@@ -1045,7 +1059,7 @@ export const sendAccountDeletedEmail = async (email: string, name: string) => {
  * Notifica al cliente que su solicitud de devolución ha sido recibida
  */
 export const sendReturnRequestedEmail = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
 
   const html = `
@@ -1099,7 +1113,7 @@ export const sendReturnRequestedEmail = async (order: any) => {
  * Notifica al cliente que su reembolso ha sido procesado
  */
 export const sendReturnRefundedEmail = async (order: any, refundAmount: number) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
 
   const html = `
@@ -1262,7 +1276,7 @@ export const generateRefundInvoicePDF = (order: any, refundAmount: number, items
  * Envía la factura rectificativa por email
  */
 export const sendRefundInvoiceEmail = async (order: any, refundAmount: number) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
   const pdfBase64 = generateRefundInvoicePDF(order, refundAmount, [], 'base64', false) as string;
 
@@ -1302,8 +1316,8 @@ export const sendRefundInvoiceEmail = async (order: any, refundAmount: number) =
  * Notifica al administrador de un nuevo pedido realizado
  */
 export const sendAdminNewOrderNotification = async (order: any, items: any[]) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
-  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
+  const adminEmail = getEnv('ADMIN_EMAIL') || 'jdcintas.dam@gmail.com';
 
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
@@ -1337,12 +1351,16 @@ export const sendAdminNewOrderNotification = async (order: any, items: any[]) =>
   sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
 
   try {
-    console.log(`[EMAILS] Intentando enviar notificación de nuevo pedido a admin: ${adminEmail}`);
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`[EMAILS] Intentando enviar notificación de nuevo pedido a admin: ${adminEmail} desde ${from}`);
+    const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('[EMAILS] Respuesta de Brevo:', JSON.stringify(response));
     console.log('[EMAILS] Notificación de nuevo pedido enviada con éxito');
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('[EMAILS] Error enviando alerta de nuevo pedido a admin:', error);
+    if (error.response?._body) {
+      console.error('[EMAILS] Detalles del error:', error.response._body);
+    }
     return { success: false, error };
   }
 };
@@ -1351,8 +1369,8 @@ export const sendAdminNewOrderNotification = async (order: any, items: any[]) =>
  * Notifica al administrador de una cancelación de pedido
  */
 export const sendAdminOrderCancelledNotification = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
-  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
+  const adminEmail = getEnv('ADMIN_EMAIL') || 'jdcintas.dam@gmail.com';
 
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #fee2e2; overflow: hidden; background-color: #ffffff;">
@@ -1392,8 +1410,8 @@ export const sendAdminOrderCancelledNotification = async (order: any) => {
  * Notifica al administrador de una nueva solicitud de devolución
  */
 export const sendAdminReturnRequestedNotification = async (order: any) => {
-  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
-  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
+  const adminEmail = getEnv('ADMIN_EMAIL') || 'jdcintas.dam@gmail.com';
 
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #fef3c7; overflow: hidden; background-color: #ffffff;">
