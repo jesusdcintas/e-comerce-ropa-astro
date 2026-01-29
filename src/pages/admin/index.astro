@@ -249,6 +249,7 @@ const statusBadge: Record<string, string> = {
 };
 
 const statusText: Record<string, string> = {
+    paid: "Pagado",
     processing: "En Proceso",
     completed: "Finalizado",
     cancelled: "Cancelado",
@@ -702,125 +703,120 @@ const statusText: Record<string, string> = {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Sección Izquierda: Actividad Reciente -->
-            <div class="lg:col-span-2 space-y-6">
-                <div
-                    class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-10"
-                >
-                    <div class="flex items-center justify-between mb-8">
-                        <div>
-                            <h3
-                                class="text-2xl font-black text-slate-800 tracking-tighter"
-                            >
-                                Pedidos Recientes
-                            </h3>
-                            <p class="text-sm text-slate-400 font-medium">
-                                Últimos 5 movimientos procesados
-                            </p>
-                        </div>
-                        <a
-                            href="/admin/orders"
-                            class="px-6 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all"
-                            >Explorar Todo →</a
+        <!-- Sección de Actividad y Post-Venta -->
+        <div class="space-y-8">
+            <!-- Pedidos Recientes (Ancho Completo) -->
+            <div
+                class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-10"
+            >
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h3
+                            class="text-2xl font-black text-slate-800 tracking-tighter"
                         >
+                            Pedidos Recientes
+                        </h3>
+                        <p class="text-sm text-slate-400 font-medium">
+                            Últimos 5 movimientos procesados
+                        </p>
                     </div>
+                    <a
+                        href="/admin/orders"
+                        class="px-6 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all"
+                        >Explorar Todo →</a
+                    >
+                </div>
 
-                    <div class="overflow-x-auto">
-                        <table
-                            class="w-full text-left border-separate border-spacing-y-4"
-                        >
-                            <thead>
-                                <tr
-                                    class="text-slate-400 text-[10px] uppercase tracking-widest font-black"
-                                >
-                                    <th class="pb-2 pl-4">ID</th>
-                                    <th class="pb-2">Cliente</th>
-                                    <th class="pb-2">Importe</th>
-                                    <th class="pb-2 text-center">Estado</th>
-                                    <th class="pb-2 pr-4 text-right"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {
-                                    recentOrders?.map((order) => (
-                                        <tr
-                                            class="group hover:bg-slate-50/50 transition-colors rounded-3xl overflow-hidden shadow-sm border border-slate-50 cursor-pointer clickable-row"
-                                            data-href={`/admin/orders/${order.id}`}
-                                        >
-                                            <td class="py-5 pl-4">
-                                                <span class="text-xs font-black text-slate-400 uppercase tracking-tighter">
-                                                    #
-                                                    {order.id
-                                                        .toString()
-                                                        .padStart(5, "0")}
-                                                </span>
-                                            </td>
-                                            <td class="py-5">
-                                                <div class="flex items-center gap-3">
-                                                    <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
-                                                        {order.shipping_name.charAt(
-                                                            0,
-                                                        )}
-                                                    </div>
-                                                    <div class="flex flex-col">
-                                                        <span class="text-xs font-black text-slate-800 tracking-tight">
-                                                            {
-                                                                order.shipping_name
-                                                            }
-                                                        </span>
-                                                        <span class="text-[10px] text-slate-400 font-medium">
-                                                            {
-                                                                order.shipping_email
-                                                            }
-                                                        </span>
-                                                    </div>
+                <div class="overflow-x-auto">
+                    <table
+                        class="w-full text-left border-separate border-spacing-y-4"
+                    >
+                        <thead>
+                            <tr
+                                class="text-slate-400 text-[10px] uppercase tracking-widest font-black"
+                            >
+                                <th class="pb-2 pl-4">ID</th>
+                                <th class="pb-2">Cliente</th>
+                                <th class="pb-2">Importe</th>
+                                <th class="pb-2 text-center">Estado</th>
+                                <th class="pb-2 pr-4 text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {
+                                recentOrders?.map((order) => (
+                                    <tr
+                                        class="group hover:bg-slate-50/50 transition-colors rounded-3xl overflow-hidden shadow-sm border border-slate-50 cursor-pointer clickable-row"
+                                        data-href={`/admin/orders/${order.id}`}
+                                    >
+                                        <td class="py-5 pl-4">
+                                            <span class="text-xs font-black text-slate-400 uppercase tracking-tighter">
+                                                #
+                                                {order.id
+                                                    .toString()
+                                                    .padStart(5, "0")}
+                                            </span>
+                                        </td>
+                                        <td class="py-5">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
+                                                    {order.shipping_name.charAt(
+                                                        0,
+                                                    )}
                                                 </div>
-                                            </td>
-                                            <td class="py-5 text-sm font-black text-slate-800 tracking-tighter">
-                                                {(
-                                                    order.total_amount / 100
-                                                ).toFixed(2)}
-                                                €
-                                            </td>
-                                            <td class="py-5 text-center">
-                                                <span
-                                                    class={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${statusBadge[order.status]}`}
+                                                <div class="flex flex-col">
+                                                    <span class="text-xs font-black text-slate-800 tracking-tight">
+                                                        {order.shipping_name}
+                                                    </span>
+                                                    <span class="text-[10px] text-slate-400 font-medium">
+                                                        {order.shipping_email}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="py-5 text-sm font-black text-slate-800 tracking-tighter">
+                                            {(order.total_amount / 100).toFixed(
+                                                2,
+                                            )}
+                                            €
+                                        </td>
+                                        <td class="py-5 text-center">
+                                            <span
+                                                class={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${statusBadge[order.status]}`}
+                                            >
+                                                {statusText[order.status]}
+                                            </span>
+                                        </td>
+                                        <td class="py-5 pr-4 text-right">
+                                            <a
+                                                href={`/admin/orders/${order.id}`}
+                                                class="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                                            >
+                                                <svg
+                                                    class="w-4 h-4"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
                                                 >
-                                                    {statusText[order.status]}
-                                                </span>
-                                            </td>
-                                            <td class="py-5 pr-4 text-right">
-                                                <a
-                                                    href={`/admin/orders/${order.id}`}
-                                                    class="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
-                                                >
-                                                    <svg
-                                                        class="w-4 h-4"
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                        stroke="currentColor"
-                                                    >
-                                                        <path
-                                                            stroke-linecap="round"
-                                                            stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M9 5l7 7-7 7"
-                                                        />
-                                                    </svg>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    ))
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 5l7 7-7 7"
+                                                    />
+                                                </svg>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                ))
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Actividad Detallada: Reembolsos y Cancelaciones -->
-            <div class="flex flex-col gap-8">
+            <!-- Grid de Post-Venta (Devoluciones y Cancelaciones) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- Panel de Devoluciones Recientes -->
                 <div
                     class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8"
