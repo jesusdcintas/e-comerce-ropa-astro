@@ -26,6 +26,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         const numericId = Number(id);
 
+        // Obtener datos actuales del pedido para las notificaciones
+        const { data: order, error: fetchError } = await supabaseAdmin
+            .from('orders')
+            .select('*')
+            .eq('id', numericId)
+            .single();
+
+        if (fetchError || !order) throw new Error('No se pudo encontrar el pedido para notificar');
+
         // Si el nuevo estado es 'cancelled', usamos la lógica centralizada
         if (status === 'cancelled') {
             await cancelOrder(numericId);
@@ -40,6 +49,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 .eq('id', numericId);
 
             if (error) throw error;
+
+            // Enviar notificaciones según el nuevo estado
+            try {
+                const { sendOrderShippedEmail, sendOrderDeliveredEmail } = await import('../../../../lib/emails');
+                if (status === 'shipped') {
+                    await sendOrderShippedEmail(order);
+                } else if (status === 'delivered') {
+                    await sendOrderDeliveredEmail(order);
+                }
+            } catch (emailErr) {
+                console.error('Error enviando email de notificación:', emailErr);
+                // No bloqueamos la respuesta principal si falla el email
+            }
         }
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });

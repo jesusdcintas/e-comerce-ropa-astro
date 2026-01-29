@@ -1,0 +1,434 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { supabase } from "../../lib/supabase";
+
+const { id } = Astro.params;
+
+// Obtener datos del pedido
+const { data: order, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .eq("id", id)
+    .single();
+
+if (error || !order) {
+    return Astro.redirect("/404");
+}
+
+// Lógica de simulación realista
+const createdDate = new Date(order.created_at);
+const status = order.status;
+
+// Generar eventos simulados basados en el estado real
+const events = [];
+
+// Evento 1: Recibido (Siempre ocurre el día de creación)
+events.push({
+    title: "Pedido Recibido",
+    description: "Hemos recibido tu pedido y estamos verificando los detalles.",
+    date: createdDate,
+    time: createdDate.toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+    }),
+    completed: true,
+    icon: "check",
+});
+
+// Evento 2: Procesado (Ocurre inmediatamente tras el pago)
+if (status !== "pending") {
+    const processDate = new Date(createdDate);
+    events.push({
+        title: "Pago Confirmado",
+        description: "Tu pago ha sido validado correctamente.",
+        date: processDate,
+        time: processDate.toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+        }),
+        completed: true,
+        icon: "payment",
+    });
+}
+
+// Evento 3: Almacén (Ahora mucho más rápido: 8 horas después)
+if (["paid", "shipped", "delivered"].includes(status)) {
+    const warehouseDate = new Date(createdDate);
+    warehouseDate.setHours(warehouseDate.getHours() + 8);
+    events.push({
+        title: "Preparación completada",
+        description:
+            "Tu paquete ha sido embalado y está listo para la recogida.",
+        date: warehouseDate,
+        time: "15:30",
+        completed: ["shipped", "delivered"].includes(status),
+        icon: "warehouse",
+    });
+}
+
+// Evento 4: Envío (Ahora a las 20 horas de la compra para cumplir las 24/48h)
+if (status === "shipped" || status === "delivered") {
+    const shippingDate = new Date(createdDate);
+    shippingDate.setHours(shippingDate.getHours() + 20);
+    events.push({
+        title: "En Tránsito",
+        description: `El paquete ha salido de nuestra central logística en Madrid. Transportista: ${order.carrier_name || "FashionStore Priority"}.`,
+        date: shippingDate,
+        time: "09:20",
+        completed: true,
+        icon: "truck",
+    });
+
+    // Si está enviado pero no entregado, añadimos una actualización realista de "en tránsito"
+    if (status === "shipped") {
+        const transitDate = new Date();
+        transitDate.setMinutes(transitDate.getMinutes() - 45); // Hace 45 min
+        events.push({
+            title: "En movimiento",
+            description:
+                "El paquete se encuentra en el centro de distribución regional.",
+            date: transitDate,
+            time: "En curso",
+            completed: false,
+            icon: "location",
+        });
+    }
+}
+
+// Evento 5: Entrega
+if (status === "delivered") {
+    const deliveryDate = new Date(order.updated_at);
+    events.push({
+        title: "Entregado",
+        description:
+            "El paquete ha sido entregado en la dirección indicada. ¡Disfruta de tu compra!",
+        date: deliveryDate,
+        time: "11:05",
+        completed: true,
+        icon: "home",
+    });
+}
+
+// Invertir para mostrar lo más reciente arriba
+const sortedEvents = [...events].reverse();
+
+function formatDate(date: Date) {
+    return date.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+    });
+}
+
+const trackingNumber =
+    order.tracking_number ||
+    `FS-${order.id.toString().padStart(6, "0")}-${createdDate.getFullYear()}`;
+---
+
+<BaseLayout title={`Seguimiento de Pedido #${order.id} - FashionStore`}>
+    <div class="max-w-3xl mx-auto px-4 py-16">
+        {/* Header de Seguimiento */}
+        <div class="mb-12">
+            <div
+                class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-4"
+            >
+                <span class="w-8 h-px bg-brand-gold"></span>
+                Portal de Seguimiento
+            </div>
+            <div
+                class="flex flex-col md:flex-row md:items-end justify-between gap-6"
+            >
+                <div>
+                    <h1
+                        class="text-4xl font-black text-slate-800 tracking-tighter mb-2"
+                    >
+                        Sigue tu <span class="text-brand-gold italic font-serif"
+                            >Paquete</span
+                        >
+                    </h1>
+                    <p class="text-slate-400 font-medium">
+                        Número de seguimiento: <span
+                            class="text-slate-900 font-bold"
+                            >{trackingNumber}</span
+                        >
+                    </p>
+                </div>
+                <div
+                    class="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 italic"
+                >
+                    <p
+                        class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1"
+                    >
+                        Estado Actual
+                    </p>
+                    <p
+                        class="text-slate-900 font-bold uppercase tracking-tight"
+                    >
+                        {
+                            status === "pending"
+                                ? "Procesando"
+                                : status === "paid"
+                                  ? "Preparando envío"
+                                  : status === "shipped"
+                                    ? "En tránsito"
+                                    : status === "delivered"
+                                      ? "Entregado"
+                                      : "Cancelado"
+                        }
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {/* Timeline Visual */}
+        <div
+            class="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 md:p-12 relative overflow-hidden"
+        >
+            {/* Adorno de fondo */}
+            <div
+                class="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"
+            >
+                <svg
+                    class="w-48 h-48 text-brand-gold"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path d="M11 11V13H9V15H7V13H5V11H7V9H9V11H11Z"></path>
+                    <path
+                        fill-rule="evenodd"
+                        d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM13 5H11V7H13V5ZM13 17H11V19H13V17ZM13 9H11V15H13V9Z"
+                        clip-rule="evenodd"></path>
+                </svg>
+            </div>
+
+            <div class="relative space-y-12">
+                {/* Línea vertical de fondo */}
+                <div
+                    class="absolute left-[23px] md:left-[27px] top-4 bottom-4 w-0.5 bg-slate-50"
+                >
+                </div>
+
+                {
+                    sortedEvents.map((event, index) => (
+                        <div
+                            class={`relative flex items-start gap-6 group ${!event.completed ? "opacity-50" : ""}`}
+                        >
+                            {/* Indicador de punto */}
+                            <div
+                                class={`relative z-10 w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 ${
+                                    event.completed
+                                        ? "bg-slate-900 border-slate-900 text-brand-gold shadow-lg shadow-slate-900/20"
+                                        : "bg-white border-slate-100 text-slate-300"
+                                }`}
+                            >
+                                {event.icon === "check" && (
+                                    <svg
+                                        class="w-6 h-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2.5"
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                )}
+                                {event.icon === "payment" && (
+                                    <svg
+                                        class="w-6 h-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2.5"
+                                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                                        />
+                                    </svg>
+                                )}
+                                {event.icon === "warehouse" && (
+                                    <svg
+                                        class="w-6 h-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2.5"
+                                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                        />
+                                    </svg>
+                                )}
+                                {event.icon === "truck" && (
+                                    <svg
+                                        class="w-6 h-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2.5"
+                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                                        />
+                                    </svg>
+                                )}
+                                {event.icon === "location" && (
+                                    <div class="relative">
+                                        <svg
+                                            class="w-6 h-6 animate-bounce"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2.5"
+                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                            />
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2.5"
+                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
+                                        </svg>
+                                        <span class="absolute top-0 right-0 w-3 h-3 bg-brand-gold rounded-full animate-ping" />
+                                    </div>
+                                )}
+                                {event.icon === "home" && (
+                                    <svg
+                                        class="w-6 h-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2.5"
+                                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                                        />
+                                    </svg>
+                                )}
+                            </div>
+
+                            {/* Contenido del evento */}
+                            <div class="flex-1 pt-1">
+                                <div class="flex flex-col md:flex-row md:items-center justify-between gap-1 mb-2">
+                                    <h3 class="text-lg font-black text-slate-800 tracking-tight uppercase italic">
+                                        {event.title}
+                                    </h3>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-full uppercase tracking-widest">
+                                            {formatDate(event.date)}
+                                        </span>
+                                        <span class="text-[10px] font-bold text-brand-gold uppercase tracking-widest">
+                                            {event.time}
+                                        </span>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-500 font-medium leading-relaxed max-w-lg">
+                                    {event.description}
+                                </p>
+                            </div>
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+
+        {/* Detalles del Envío y Mapa Simulado */}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+            <div
+                class="bg-white rounded-3xl border border-slate-100 p-8 shadow-xl shadow-slate-200/30"
+            >
+                <h4
+                    class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 font-sans"
+                >
+                    Dirección de Entrega
+                </h4>
+                <div class="space-y-1">
+                    <p class="text-slate-900 font-black text-lg">
+                        {order.shipping_name}
+                    </p>
+                    <p class="text-slate-500 font-medium">
+                        {order.shipping_address}
+                    </p>
+                    <p class="text-slate-500 font-medium">
+                        {order.shipping_city}, {order.shipping_zip}
+                    </p>
+                </div>
+            </div>
+
+            <div
+                class="bg-slate-900 rounded-3xl overflow-hidden shadow-xl shadow-slate-900/20 relative group"
+            >
+                <div
+                    class="absolute inset-0 bg-gradient-to-br from-slate-900/80 to-transparent z-10 p-8 flex flex-col justify-end"
+                >
+                    <h4
+                        class="text-xs font-black uppercase tracking-widest text-brand-gold mb-2"
+                    >
+                        Simulación en tiempo real
+                    </h4>
+                    <p class="text-white font-black text-xl italic font-serif">
+                        Rastreado por <span class="text-brand-gold"
+                            >FashionStore Priority</span
+                        >
+                    </p>
+                </div>
+                {/* Imagen del mapa (Simulada con un mapa estático premium) */}
+                <img
+                    src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=800"
+                    alt="Mapa de seguimiento"
+                    class="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
+                />
+            </div>
+        </div>
+
+        {/* Botón Volver */}
+        <div class="mt-16 text-center">
+            <a
+                href="/mis-pedidos"
+                class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+            >
+                <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    ><path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2.5"
+                        d="M15 19l-7-7 7-7"></path></svg
+                >
+                Volver a mis pedidos
+            </a>
+        </div>
+    </div>
+</BaseLayout>
+
+<style>
+    /* Estilos extra para la simulación premium */
+    @keyframes pulse-gold {
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+    }
+</style>

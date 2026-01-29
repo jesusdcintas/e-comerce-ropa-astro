@@ -214,6 +214,13 @@ if (accessToken) {
         document.cookie = `sb-refresh-token=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
       }
 
+      // Sincronizar pedidos de invitado anteriores al crear la cuenta
+      try {
+        await fetch("/api/auth/sync-guest-orders", { method: "POST" });
+      } catch (e) {
+        console.error("Error sincronizando pedidos post-registro:", e);
+      }
+
       // Redirigir directamente
       successMsg.textContent = "¡Cuenta creada con éxito! Redirigiendo...";
       successMsg.classList.remove("hidden");

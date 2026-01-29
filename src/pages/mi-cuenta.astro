@@ -505,27 +505,121 @@ const billingInfo = {
       </div>
     </div>
 
-    <!-- Gestión de Sesión -->
-    <div class="mt-12 pt-8 border-t border-gray-200 text-center">
-      <button
-        id="logout-btn-page"
-        class="inline-flex items-center px-6 py-3 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-all font-medium gap-2"
-      >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-          ></path>
-        </svg>
-        Cerrar Sesión Completamente
-      </button>
+    <!-- Gestión de Sesión & Zona de Peligro -->
+    <div class="mt-24 pt-12 border-t border-slate-100">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <!-- Columna 1: Info/Ayuda -->
+        <div class="space-y-4">
+          <h3
+            class="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2"
+          >
+            <span class="w-2 h-2 bg-brand-gold rounded-full"></span>
+            Gestión de Cuenta
+          </h3>
+          <p class="text-sm text-slate-400 font-medium leading-relaxed">
+            Desde aquí puedes finalizar tu sesión actual o, si lo deseas,
+            solicitar la eliminación permanente de tus datos personales.
+          </p>
+        </div>
+
+        <!-- Columna 2: Logout -->
+        <div class="flex flex-col items-start justify-start">
+          <button
+            id="logout-btn-page"
+            class="group w-full flex items-center justify-between px-6 py-5 bg-white border border-slate-200 rounded-2xl hover:border-slate-800 hover:bg-slate-50 transition-all duration-300"
+          >
+            <div class="flex items-center gap-4">
+              <div
+                class="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-colors"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  ></path>
+                </svg>
+              </div>
+              <div class="text-left">
+                <span
+                  class="block text-[11px] font-black uppercase tracking-widest text-slate-900"
+                  >Cerrar Sesión</span
+                >
+              </div>
+            </div>
+            <svg
+              class="w-4 h-4 text-slate-300 transform group-hover:translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Columna 3: Delete Account (Zona de Peligro) -->
+        <div class="flex flex-col items-start justify-start">
+          <button
+            id="delete-account-btn"
+            class="group w-full flex items-center justify-between px-6 py-5 bg-white border border-red-100 rounded-2xl hover:border-red-500 hover:bg-red-50 transition-all duration-300"
+          >
+            <div class="flex items-center gap-4">
+              <div
+                class="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  ></path>
+                </svg>
+              </div>
+              <div class="text-left">
+                <span
+                  class="block text-[11px] font-black uppercase tracking-widest text-red-500"
+                  >Eliminar Cuenta</span
+                >
+              </div>
+            </div>
+            <svg
+              class="w-4 h-4 text-red-200 transform group-hover:translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"></path>
+            </svg>
+          </button>
+          <p
+            class="mt-4 text-[9px] text-slate-400 font-medium uppercase tracking-tighter leading-relaxed"
+          >
+            * Se eliminarán tus pedidos y beneficios. Si vuelves a registrarte
+            con el mismo email, empezarás de cero.
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </BaseLayout>
@@ -534,6 +628,7 @@ const billingInfo = {
   import { supabase } from "../lib/supabase";
   import { clearCart } from "../stores/cartStore";
   import { clearFavorites } from "../stores/favoriteStore";
+  import { addToast } from "../stores/toastStore";
 
   // Actualizar perfil
   const profileForm = document.getElementById(
@@ -745,5 +840,65 @@ const billingInfo = {
     document.cookie = "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
     document.cookie = "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
     window.location.href = "/";
+  });
+
+  // Eliminar Cuenta
+  const deleteBtn = document.getElementById("delete-account-btn");
+  deleteBtn?.addEventListener("click", async () => {
+    // @ts-ignore
+    window.showCustomModal({
+      title: "Confirmar Identidad",
+      message:
+        "Por seguridad, introduce tu contraseña para confirmar que deseas eliminar permanentemente tu cuenta y todos sus datos asociados.",
+      type: "prompt",
+      inputType: "password",
+      confirmText: "Borrar Cuenta",
+      onConfirm: async (password: string | undefined) => {
+        if (!password) return;
+
+        try {
+          const res = await fetch("/api/auth/delete-account", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            addToast(
+              "Cuenta eliminada correctamente. Te echaremos de menos.",
+              "info",
+            );
+            // Limpiar todo y redirigir
+            await supabase.auth.signOut();
+            clearCart();
+            clearFavorites();
+            document.cookie =
+              "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
+            document.cookie =
+              "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
+            setTimeout(() => (window.location.href = "/"), 2000);
+          } else {
+            // Mostrar error grande en modal (Pedidos activos, contraseña incorrecta, etc)
+            // @ts-ignore
+            window.showCustomModal({
+              title: "Acción Denegada",
+              message:
+                data.error ||
+                "No se ha podido procesar la baja en este momento.",
+              type: "alert",
+            });
+          }
+        } catch (error: any) {
+          // @ts-ignore
+          window.showCustomModal({
+            title: "Error técnico",
+            message:
+              "Ha ocurrido un problema al conectar con el servidor. Por favor, inténtalo más tarde.",
+            type: "alert",
+          });
+        }
+      },
+    });
   });
 </script>

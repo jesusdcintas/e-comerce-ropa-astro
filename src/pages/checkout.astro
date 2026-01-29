@@ -4,18 +4,13 @@ import CheckoutFlow from "../components/functional/CheckoutFlow";
 import { supabase } from "../lib/supabase";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
+let user = null;
 
-if (!accessToken) {
-    return Astro.redirect("/login?redirect=/checkout");
-}
-
-// Verificar que el usuario es válido
-const {
-    data: { user },
-    error,
-} = await supabase.auth.getUser(accessToken);
-if (error || !user) {
-    return Astro.redirect("/login?redirect=/checkout");
+if (accessToken) {
+    const {
+        data: { user: authUser },
+    } = await supabase.auth.getUser(accessToken);
+    user = authUser;
 }
 ---
 
@@ -27,19 +22,23 @@ if (error || !user) {
                     Finalizar Compra
                 </h1>
                 <p class="text-lg text-gray-600">
-                    Completa tus datos para recibir tu pedido premium en casa.
+                    {
+                        user
+                            ? `¡Hola ${user.user_metadata?.full_name || "de nuevo"}! Completa tus datos para recibir tu pedido.`
+                            : "Completa tus datos para recibir tu pedido premium en casa."
+                    }
                 </p>
             </div>
 
             <CheckoutFlow
                 client:load
-                initialEmail={user.email}
-                initialName={user.user_metadata?.full_name ||
-                    user.user_metadata?.name ||
+                initialEmail={user?.email || ""}
+                initialName={user?.user_metadata?.full_name ||
+                    user?.user_metadata?.name ||
                     ""}
-                initialAddress={user.user_metadata?.address || ""}
-                initialCity={user.user_metadata?.city || ""}
-                initialZip={user.user_metadata?.zip || ""}
+                initialAddress={user?.user_metadata?.address || ""}
+                initialCity={user?.user_metadata?.city || ""}
+                initialZip={user?.user_metadata?.zip || ""}
             />
         </div>
     </div>

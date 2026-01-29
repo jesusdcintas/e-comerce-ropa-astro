@@ -313,6 +313,57 @@ const periodLabels = {
             </div>
         </div>
 
+        <div
+            id="bulk-actions-bar"
+            class="hidden sticky top-4 z-30 bg-slate-900 text-white p-6 rounded-[2rem] shadow-2xl mb-10 items-center justify-between animate-in zoom-in-95 duration-200"
+        >
+            <div class="flex items-center gap-6">
+                <div
+                    class="bg-brand-gold text-slate-900 w-10 h-10 rounded-xl flex items-center justify-center font-black"
+                    id="selected-count"
+                >
+                    0
+                </div>
+                <div>
+                    <p
+                        class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+                    >
+                        Pedidos seleccionados
+                    </p>
+                    <p class="text-sm font-bold">
+                        Acciones masivas disponibles
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <select
+                    id="bulk-status-select"
+                    class="bg-slate-800 border-none rounded-xl text-xs font-bold uppercase tracking-widest px-4 py-3 outline-none focus:ring-2 focus:ring-brand-gold/50 cursor-pointer"
+                >
+                    <option value="" disabled selected
+                        >CAMBIAR ESTADO A...</option
+                    >
+                    {
+                        Object.entries(statusText).map(([key, text]) => (
+                            <option value={key}>{text.toUpperCase()}</option>
+                        ))
+                    }
+                </select>
+                <button
+                    id="apply-bulk-action"
+                    class="bg-brand-gold text-slate-900 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-lg active:scale-95"
+                >
+                    Aplicar a seleccionados
+                </button>
+                <button
+                    id="cancel-selection"
+                    class="text-slate-400 hover:text-white text-[10px] font-black uppercase tracking-widest px-4"
+                >
+                    Cancelar
+                </button>
+            </div>
+        </div>
+
         {
             error && (
                 <div class="bg-red-50 text-red-700 p-6 rounded-3xl mb-10 border border-red-100 flex items-center gap-4">
@@ -329,6 +380,13 @@ const periodLabels = {
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="border-b border-slate-50">
+                            <th class="px-8 py-6 w-10">
+                                <input
+                                    type="checkbox"
+                                    id="select-all-orders"
+                                    class="w-5 h-5 rounded-lg border-2 border-slate-200 text-brand-gold focus:ring-brand-gold/20 cursor-pointer"
+                                />
+                            </th>
                             <th class="px-8 py-6">
                                 <a
                                     href={getSortUrl("created_at")}
@@ -387,6 +445,13 @@ const periodLabels = {
                                     class="group hover:bg-slate-50/50 transition-colors cursor-pointer clickable-row"
                                     data-href={`/admin/orders/${order.id}`}
                                 >
+                                    <td class="px-8 py-6">
+                                        <input
+                                            type="checkbox"
+                                            class="order-checkbox w-5 h-5 rounded-lg border-2 border-slate-200 text-brand-gold focus:ring-brand-gold/20 cursor-pointer"
+                                            data-id={order.id}
+                                        />
+                                    </td>
                                     <td class="px-8 py-6">
                                         <div class="font-black text-slate-800">
                                             #
@@ -614,11 +679,13 @@ const periodLabels = {
                     const target = e.target;
                     if (!target) return;
 
-                    // Si el clic es en un botón, enlace o select específico, no navegar aquí
+                    // Si el clic es en un botón, enlace, select o checkbox, no navegar
                     if (
                         target.closest("button") ||
                         target.closest("a") ||
-                        target.closest("select")
+                        target.closest("select") ||
+                        target.closest("input[type='checkbox']") ||
+                        target.classList.contains("order-checkbox")
                     ) {
                         return;
                     }
@@ -626,10 +693,133 @@ const periodLabels = {
                     if (href) window.location.href = href;
                 });
             });
+
+            // Evitar que el clic en la celda del checkbox propague hacia la fila
+            const checkboxes = document.querySelectorAll(".order-checkbox");
+            checkboxes.forEach((cb) => {
+                cb.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                });
+
+                // También evitar que el clic en el TD que contiene el checkbox navegue
+                cb.parentElement?.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                });
+            });
+
+            const selectAll = document.getElementById("select-all-orders");
+            selectAll?.addEventListener("click", (e) => {
+                e.stopPropagation();
+            });
         }
 
-        document.addEventListener("DOMContentLoaded", initClickableRows);
-        document.addEventListener("astro:after-swap", initClickableRows);
+        // Lógica de Selección Masiva
+        function initBulkActions() {
+            const selectAll = document.getElementById("select-all-orders");
+            const checkboxes = document.querySelectorAll(".order-checkbox");
+            const bulkBar = document.getElementById("bulk-actions-bar");
+            const selectedCountDisplay =
+                document.getElementById("selected-count");
+            const applyBtn = document.getElementById("apply-bulk-action");
+            const bulkSelect = document.getElementById("bulk-status-select");
+            const cancelBtn = document.getElementById("cancel-selection");
+
+            function updateUI() {
+                const selected = Array.from(checkboxes).filter(
+                    (cb) => cb.checked,
+                );
+                const count = selected.length;
+
+                if (count > 0) {
+                    bulkBar.classList.remove("hidden");
+                    bulkBar.classList.add("flex");
+                    selectedCountDisplay.textContent = count;
+                } else {
+                    bulkBar.classList.add("hidden");
+                    bulkBar.classList.remove("flex");
+                }
+            }
+
+            selectAll?.addEventListener("change", () => {
+                checkboxes.forEach((cb) => (cb.checked = selectAll.checked));
+                updateUI();
+            });
+
+            checkboxes.forEach((cb) => {
+                cb.addEventListener("change", () => {
+                    if (!cb.checked) selectAll.checked = false;
+                    updateUI();
+                });
+            });
+
+            cancelBtn?.addEventListener("click", () => {
+                checkboxes.forEach((cb) => (cb.checked = false));
+                if (selectAll) selectAll.checked = false;
+                updateUI();
+            });
+
+            applyBtn?.addEventListener("click", async () => {
+                const selectedIds = Array.from(checkboxes)
+                    .filter((cb) => cb.checked)
+                    .map((cb) => cb.dataset.id);
+                const newStatus = bulkSelect.value;
+
+                if (!newStatus) {
+                    window.showCustomModal({
+                        title: "Acción requerida",
+                        message:
+                            "Por favor, selecciona un estado para aplicar.",
+                        type: "alert",
+                    });
+                    return;
+                }
+
+                window.showCustomModal({
+                    title: "Acción Masiva",
+                    message: `¿Estás seguro de cambiar el estado de ${selectedIds.length} pedidos a "${newStatus.toUpperCase()}"?`,
+                    type: "confirm",
+                    onConfirm: async () => {
+                        applyBtn.disabled = true;
+                        applyBtn.textContent = "Procesando...";
+
+                        try {
+                            const res = await fetch(
+                                "/api/admin/orders/bulk-update-status",
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        ids: selectedIds,
+                                        status: newStatus,
+                                    }),
+                                },
+                            );
+
+                            if (res.ok) {
+                                window.location.reload();
+                            } else {
+                                const err = await res.json();
+                                throw new Error(
+                                    err.error || "Error desconocido",
+                                );
+                            }
+                        } catch (err) {
+                            window.showCustomModal({
+                                title: "Error",
+                                message:
+                                    "No se pudieron actualizar los pedidos: " +
+                                    err.message,
+                                type: "alert",
+                            });
+                            applyBtn.disabled = false;
+                            applyBtn.textContent = "Aplicar a seleccionados";
+                        }
+                    },
+                });
+            });
+        }
 
         // Lógica de exportación
         function initExport() {
@@ -689,7 +879,16 @@ const periodLabels = {
             });
         }
 
-        document.addEventListener("DOMContentLoaded", initExport);
-        document.addEventListener("astro:after-swap", initExport);
+        document.addEventListener("DOMContentLoaded", () => {
+            initClickableRows();
+            initBulkActions();
+            initExport();
+        });
+
+        document.addEventListener("astro:after-swap", () => {
+            initClickableRows();
+            initBulkActions();
+            initExport();
+        });
     </script>
 </AdminLayout>

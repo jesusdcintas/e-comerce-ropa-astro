@@ -46,8 +46,12 @@ if (sessionId) {
 
             if (!existingOrder) {
                 const discountAmount = parseInt(metadata?.discount || "0");
+                const userIdValue =
+                    metadata?.user_id && metadata.user_id !== ""
+                        ? metadata.user_id
+                        : null;
                 const orderData = {
-                    user_id: metadata?.user_id || null,
+                    user_id: userIdValue,
                     total_amount: session.amount_total || 0,
                     shipping_name: metadata?.customer_name || "",
                     shipping_email: session.customer_details?.email || "",
@@ -135,7 +139,7 @@ if (sessionId) {
                                 await import("../../lib/coupon-system");
                             await finalizeCouponUse(
                                 order.id.toString(),
-                                metadata.user_id || "",
+                                userIdValue || "",
                                 metadata.coupon_id,
                                 parseInt(metadata.discount || "0"),
                                 parseInt(metadata.discount || "0"),
@@ -222,12 +226,16 @@ if (sessionId) {
         </p>
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-                href="/mis-pedidos"
-                class="bg-brand-black text-white px-8 py-4 rounded-lg font-bold hover:bg-gray-800 transition-all"
-            >
-                Ver mis pedidos
-            </a>
+            {
+                accessToken && (
+                    <a
+                        href="/mis-pedidos"
+                        class="bg-brand-black text-white px-8 py-4 rounded-lg font-bold hover:bg-gray-800 transition-all"
+                    >
+                        Ver mis pedidos
+                    </a>
+                )
+            }
             <a
                 href="/"
                 class="bg-gray-100 text-gray-800 px-8 py-4 rounded-lg font-bold hover:bg-gray-200 transition-all"

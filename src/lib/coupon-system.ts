@@ -26,7 +26,7 @@ export async function validateCoupon(
     const { data, error } = await supabaseAdmin.rpc('rpc_validate_coupon', {
         p_code: code.trim(),
         p_cart_subtotal: subtotalCents || 0,
-        p_user_id: userId
+        p_user_id: userId && userId !== "" ? userId : null
     });
 
     if (error) {
@@ -82,7 +82,7 @@ export async function finalizeCouponUse(
     const { data, error } = await supabaseAdmin.rpc('rpc_consume_coupon', {
         p_coupon_id: couponId,
         p_order_id: parseInt(orderId),
-        p_user_id: userId,
+        p_user_id: userId && userId !== "" ? userId : null,
         p_amount_saved: amountSaved
     });
 

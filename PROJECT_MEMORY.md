@@ -49,7 +49,7 @@
 - [x] **Marketing & Conversión**:
   - [x] Pop-ups configurables (Newsletter/Descuento) con interruptor de visibilidad.
   - [x] Newsletter funcional con suscripción y registro en base de datos.
-  - [x] **Controles Globales**: Interruptores maestros para Ofertas, Novedades y Pop-ups desde el Dashboard.
+  - [x] **Controles Globales**: Interruptores maestros para Ofertas Flash, Novedades y Pop-ups vinculados directamente a la base de datos para control en tiempo real desde el Dashboard.
   - [x] **Modo Mantenimiento**: Bloqueo global de la tienda para clientes mientras se mantiene el acceso para administradores.
 - [x] **Visualización Premium**:
   - [x] Precios originales tachados en carrito y checkout para resaltar el ahorro.
@@ -62,6 +62,7 @@
 - [x] **Perfil de Usuario**: 
   - [x] Gestión de información personal, datos fiscales y direcciones.
   - [x] **Cambio de contraseña funcional** (Autenticado).
+  - [x] **Eliminación de cuenta segura**: Flujo profesional con re-autenticación por contraseña obligatoria, comprobación de pedidos en curso y aviso de pérdida de historial (UUID reset).
 - [x] **UX Móvil Premium**:
   - [x] Bottom Tab Bar con estados activos y diseño "app-like".
   - [x] Navegación de cuenta mediante Bottom Sheet deslizable.
@@ -74,22 +75,22 @@
 
 ## Pendientes (TODO)
 
-- [ ] **Sistema de Seguimiento de Envíos (AfterShip)**:
-  - [ ] **DB Update**: Añadir campos `tracking_number` y `carrier_name` a la tabla `orders`.
-  - [ ] **Admin UI**: Implementar popup de captura de tracking al cambiar estado a "ENVIADO".
-  - [ ] **Integración External**: Configurar AfterShip (Sandbox mode) para sincronización de estados real.
-  - [ ] **Branded Tracking Page**: Creación de la página de seguimiento personalizada con estética premium.
-- [ ] **Notificaciones Proactivas (Email)**:
-  - [ ] Flujo de correos automáticos para cada cambio de estado (Pagado, Enviado con tracking, Entregado, Cancelado).
-  - [ ] Inclusión de botón de seguimiento dinámico en el email de envío.
+- [x] **Sistema de Seguimiento de Envíos (Branded Tracking)**:
+  - [x] **Seguimiento Simulado Realista**: Página `/seguimiento/[id]` que genera un timeline detallado basado en la fecha del pedido.
+  - [x] **Interfaz Premium**: Línea de tiempo con estados (Preparación, Tránsito, Reparto) y mapa simulado para mantener la estética de lujo.
+  - [x] **Acceso Directo**: Botón de seguimiento integrado en el historial de pedidos.
+  - [x] **Admin UI**: Acciones masivas para actualizar estados de múltiples pedidos simultáneamente.
+- [x] **Notificaciones Proactivas (Email)**:
+  - [x] **Flujo Automatizado**: Correos automáticos para "Pagado", "Enviado" y "Entregado". ("Cancelado" ya existía).
+  - [x] **Seguimiento Integrado**: Botón directo a la página de seguimiento premium en el correo de envío.
+  - [x] **Diseño Coherente**: Todos los emails usan la nueva estética dorado/negro de la marca.
 - [ ] **Facturas de Abono**: Generación de factura negativa y lógica de abono automático en devoluciones tras entrega.
 - [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
-- [ ] **Lógica de Interruptor en Home**: Vincular el estado de `flash_offers_enabled` de la tabla `settings` para mostrar/ocultar el carrusel de ofertas en la Home.
 - [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
 - [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
-- [ ] **Compras sin iniciar sesión**: Permitir a los usuarios realizar pedidos sin tener una cuenta creada.
+- [x] **Compras sin iniciar sesión**: Permitir a los usuarios realizar pedidos sin tener una cuenta creada.
 
 
 ## Sistema de Cupones 2.0 (Reglas del Negocio)
@@ -118,7 +119,7 @@
 - **UI**: Sin emojis; usar SVGs premium.
 
 ## Última actualización
-2026-01-27: Implementación del Recomendador de Tallas inteligente (incluyendo lógica de Talla Única), Sistema de Restock Rápido para Admin y endurecimiento de la API de inventario frente a errores de caché de esquema.
+2026-01-28: Rediseño premium de la sección de perfil, implementación de borrado de cuenta seguro con estándares profesionales de re-autenticación y validación de estado de pedidos previa a la baja. Confirmación del flujo de "Guest Checkout" para compras sin registro.
 
 ## Versiones Estables (Checkpoints)
 - **Commit 07f5e19 (26/01/2026)**: Versión Premium Mobile & Desktop.

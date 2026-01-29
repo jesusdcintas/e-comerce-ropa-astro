@@ -12,6 +12,7 @@ export interface ModalState {
     onConfirm?: (value?: string) => void;
     onCancel?: () => void;
     defaultValue?: string;
+    inputType?: 'text' | 'password' | 'email' | 'number';
 }
 
 const initialModal: ModalState = {

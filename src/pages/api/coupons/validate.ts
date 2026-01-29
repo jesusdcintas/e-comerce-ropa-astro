@@ -10,18 +10,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ valid: false, message: 'Código requerido' }), { status: 400 });
         }
 
-        // Obtener usuario actual
+        // Obtener usuario actual (opcional para invitados)
         const accessToken = cookies.get('sb-access-token')?.value;
-        if (!accessToken) {
-            return new Response(JSON.stringify({ valid: false, message: 'Debes iniciar sesión para usar cupones' }), { status: 401 });
+        let userId: string | null = null;
+
+        if (accessToken) {
+            const { data: { user } } = await supabase.auth.getUser(accessToken);
+            userId = user?.id || null;
         }
 
-        const { data: { user } } = await supabase.auth.getUser(accessToken);
-        if (!user) {
-            return new Response(JSON.stringify({ valid: false, message: 'Usuario no válido' }), { status: 401 });
-        }
-
-        const result = await validateCoupon(codigo, user.id, subtotalCents);
+        const result = await validateCoupon(codigo, userId as any, subtotalCents);
 
         return new Response(JSON.stringify(result), { status: 200 });
 

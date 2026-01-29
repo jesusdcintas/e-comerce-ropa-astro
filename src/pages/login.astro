@@ -177,7 +177,7 @@ const isCheckoutRedirect = redirect === "/checkout";
     });
 
     if (error) {
-      errorMsg.textContent = "Credenciales incorrectas o acceso denegado.";
+      errorMsg.textContent = "Usuario o contraseña incorrectos.";
       errorMsg.classList.remove("hidden");
     } else if (data.user) {
       // Guardar tokens en cookies
@@ -190,6 +190,13 @@ const isCheckoutRedirect = redirect === "/checkout";
       }
       if (refreshToken) {
         document.cookie = `sb-refresh-token=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
+      }
+
+      // Sincronizar pedidos de invitado anteriores
+      try {
+        await fetch("/api/auth/sync-guest-orders", { method: "POST" });
+      } catch (e) {
+        console.error("Error sincronizando pedidos:", e);
       }
 
       // Verificar rol y redirigir

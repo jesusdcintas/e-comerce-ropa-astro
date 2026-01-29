@@ -70,7 +70,7 @@ export default function GlobalModal() {
 
                     {isPrompt && (
                         <input
-                            type="text"
+                            type={$modal.inputType || 'text'}
                             value={promptValue}
                             onChange={(e) => setPromptValue(e.target.value)}
                             className="w-full bg-slate-50 border-none rounded-xl p-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"

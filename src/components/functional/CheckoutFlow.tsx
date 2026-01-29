@@ -105,14 +105,10 @@ export default function CheckoutFlow({
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                addToast('Debes iniciar sesión para comprar', 'error');
-                window.location.href = '/login?redirect=/checkout';
-                return;
-            }
 
-            if (user.app_metadata?.role === 'admin') {
+            if (user && user.app_metadata?.role === 'admin') {
                 addToast('Vista de administrador: No puedes comprar', 'info');
+                setLoading(false);
                 return;
             }
 
@@ -126,7 +122,7 @@ export default function CheckoutFlow({
                     customerName: formData.name,
                     shippingCost: shippingCost,
                     metadata: {
-                        user_id: user.id,
+                        user_id: user?.id || '', // '' para invitados
                         address: formData.address,
                         city: formData.city,
                         zip: formData.zip,
