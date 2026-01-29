@@ -143,6 +143,7 @@
 - Estado: Incidencia mitigada — emails enviados desde cuenta verificada; pendiente: migrar a dominio propio y configurar DKIM/DMARC para robustecer entregabilidad.
 
 ## Versiones Estables (Checkpoints)
+- **Commit 24592f2 (29/01/2026)**: Última versión estable — ajustes en envío de emails (uso de `EMAIL_FROM` verificado), actualización de documentación (`PROJECT_MEMORY.md`) y correcciones locales.
 - **Commit 07f5e19 (26/01/2026)**: Versión Premium Mobile & Desktop.
 - **Commit 86e0281 (26/01/2026)**: Versión 100% funcional previa a cambios de navegación móvil.
 
