@@ -74,6 +74,7 @@
   - [x] **Facturación e Informes Pro**: 
     - Generación de Tickets y Facturas PDF (jspdf).
     - **Informes Trimestrales de Auditoría**: Reportes PDF con desglose de IVA, bases imponibles y detalles de transacción (Método de Pago: Tarjeta).
+    - **Facturas de Abono**: Generación de factura negativa y lógica de abono automático en devoluciones tras entrega.
     - Maquetación A4 de alta precisión sin solapamientos de datos.
 - [x] **Perfil de Usuario**: 
   - [x] Gestión de información personal, datos fiscales y direcciones.
@@ -100,7 +101,6 @@
   - [x] **Flujo Automatizado**: Correos automáticos para "Pagado", "Enviado" y "Entregado". ("Cancelado" ya existía).
   - [x] **Seguimiento Integrado**: Botón directo a la página de seguimiento premium en el correo de envío.
   - [x] **Diseño Coherente**: Todos los emails usan la nueva estética dorado/negro de la marca.
-- [ ] **Facturas de Abono**: Generación de factura negativa y lógica de abono automático en devoluciones tras entrega.
 - [ ] **KPI "Producto Más Vendido"**: Añadir tarjeta dedicada en el Dashboard de Admin.
 - [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
