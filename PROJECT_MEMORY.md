@@ -132,6 +132,16 @@
 2026-01-29 (Check-in Actual): Refinamiento del motor de Business Intelligence. Optimización de reportes PDF trimestrales para auditoría fiscal (A4 layout), implementación del sistema de filtrado dinámico por estados en el Admin y simplificación del flujo operativo eliminando estados redundantes. Rediseño premium de la barra de herramientas de gestión de pedidos.
 2026-01-28: Rediseño premium de la sección de perfil, implementación de borrado de cuenta seguro con estándares profesionales de re-autenticación y validación de estado de pedidos previa a la baja. Confirmación del flujo de "Guest Checkout" para compras sin registro.
 
+2026-01-29 (EMAILS) - Incidencia y resolución:
+- Síntoma: Tras intentar añadir notificación al administrador, se detectó que los correos transaccionales seguían registrándose como enviados por la API (Brevo responde 201 Created) pero el destinatario no los recibía.
+- Diagnóstico: Logs indican envío correcto. Revisión en Brevo mostró el remitente usado por defecto: `jdcintas.dam@10489692.brevosend.com`. Los envíos desde dominios de envío compartido de Brevo pueden sufrir entregabilidad reducida (problemas DKIM/DMARC) especialmente hacia Gmail.
+- Acciones realizadas:
+  - Verificado remitente en Brevo: `jdcintas.dam@gmail.com` (estado: Verificado en Brevo).
+  - Actualizado `.env` para usar el email verificado como remitente: `EMAIL_FROM=jdcintas.dam@gmail.com`.
+  - Reiniciado servidor de desarrollo y reproducido envío desde la ruta de pruebas (`/mis-pedidos` / envío de factura). Brevo devuelve `201 Created` y genera `messageId`.
+  - Notas: Brevo muestra advertencias de DKIM/DMARC al usar un dominio gratuito (Gmail). Recomendado usar dominio propio con DKIM/DNS configurado para máxima entregabilidad o configurar registros SPF/DKIM para dominio propio si se dispone.
+- Estado: Incidencia mitigada — emails enviados desde cuenta verificada; pendiente: migrar a dominio propio y configurar DKIM/DMARC para robustecer entregabilidad.
+
 ## Versiones Estables (Checkpoints)
 - **Commit 07f5e19 (26/01/2026)**: Versión Premium Mobile & Desktop.
 - **Commit 86e0281 (26/01/2026)**: Versión 100% funcional previa a cambios de navegación móvil.
