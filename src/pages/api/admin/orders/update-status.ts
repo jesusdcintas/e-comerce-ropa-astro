@@ -18,49 +18,80 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: 'Solo los administradores pueden cambiar el estado' }), { status: 403 });
         }
 
-        const { id, status } = await request.json();
+        const { id, status, shipping_status } = await request.json();
 
-        if (!id || !status) {
+        if (!id || (!status && !shipping_status)) {
             return new Response(JSON.stringify({ error: 'ID y estado requeridos' }), { status: 400 });
         }
 
         const numericId = Number(id);
 
-        // Obtener datos actuales del pedido para las notificaciones
+        // Obtener datos actuales
         const { data: order, error: fetchError } = await supabaseAdmin
             .from('orders')
             .select('*')
             .eq('id', numericId)
             .single();
 
-        if (fetchError || !order) throw new Error('No se pudo encontrar el pedido para notificar');
+        if (fetchError || !order) throw new Error('Pedido no encontrado');
 
-        // Si el nuevo estado es 'cancelled', usamos la lógica centralizada
+        // Preparar actualización
+        const updateData: any = {
+            updated_at: new Date().toISOString()
+        };
+
+        // Regla: Envío 'delivered' -> Pedido 'completed' automáticamente
+        if (shipping_status === 'delivered') {
+            updateData.status = 'completed';
+        }
+
+        // Aplicar cambios según lo recibido
+        if (status) updateData.status = status;
+        if (shipping_status) updateData.shipping_status = shipping_status;
+
+        // Timestamps de trazabilidad real (Logística)
+        if (shipping_status === 'shipped') updateData.shipped_at = new Date().toISOString();
+        if (shipping_status === 'in_delivery') updateData.in_delivery_at = new Date().toISOString();
+        if (shipping_status === 'delivered') updateData.delivered_at = new Date().toISOString();
+
+        // Timestamps comerciales
+        if (status === 'processing') updateData.processing_at = new Date().toISOString();
+
+        // Lógica de cancelación
         if (status === 'cancelled') {
             await cancelOrder(numericId);
         } else {
-            // Cambio de estado normal (envío, entregado, etc.)
             const { error } = await supabaseAdmin
                 .from('orders')
-                .update({
-                    status,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', numericId);
 
             if (error) throw error;
 
-            // Enviar notificaciones según el nuevo estado
+            // Notificaciones manuales basadas en la ACTIVIDAD real
             try {
-                const { sendOrderShippedEmail, sendOrderDeliveredEmail } = await import('../../../../lib/emails');
-                if (status === 'shipped') {
+                const {
+                    sendOrderProcessingEmail,
+                    sendOrderShippedEmail,
+                    sendOrderInDeliveryEmail,
+                    sendOrderDeliveredEmail
+                } = await import('../../../../lib/emails');
+
+                // Notificar cambios comerciales
+                if (status === 'processing') {
+                    await sendOrderProcessingEmail(order);
+                }
+
+                // Notificar hitos logísticos
+                if (shipping_status === 'shipped') {
                     await sendOrderShippedEmail(order);
-                } else if (status === 'delivered') {
+                } else if (shipping_status === 'in_delivery') {
+                    await sendOrderInDeliveryEmail(order);
+                } else if (shipping_status === 'delivered') {
                     await sendOrderDeliveredEmail(order);
                 }
             } catch (emailErr) {
-                console.error('Error enviando email de notificación:', emailErr);
-                // No bloqueamos la respuesta principal si falla el email
+                console.error('Error enviando email manual:', emailErr);
             }
         }
 

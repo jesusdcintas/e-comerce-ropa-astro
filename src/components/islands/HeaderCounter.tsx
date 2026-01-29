@@ -5,7 +5,7 @@ import { favoriteCount, setFavoriteCount } from '../../stores/favoriteStore';
 import { supabase } from '../../lib/supabase';
 
 interface Props {
-    type: 'cart' | 'favorite' | 'inquiry' | 'notification' | 'coupon_notification' | 'badge';
+    type: 'cart' | 'favorite' | 'inquiry' | 'notification' | 'coupon_notification' | 'badge' | 'admin_orders' | 'admin_returns' | 'admin_inquiries';
     dark?: boolean;
 }
 
@@ -37,10 +37,28 @@ export default function HeaderCounter({ type, dark }: Props) {
     const prevCount = useRef(0);
 
     const fetchData = async () => {
+        // Para tipos admin, no bloqueamos por sesión local si la cookie está presente
         const session = await getSharedSession();
-        if (!session?.id && type !== 'cart') return;
+        const isAdminType = type.startsWith('admin_');
+
+        if (!isAdminType && !session?.id && type !== 'cart') return;
 
         try {
+            // Lógica ADMIN: Usar API para mayor fiabilidad y saltar RLS
+            if (isAdminType) {
+                const res = await fetch('/api/admin/counts');
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log(`[HeaderCounter] Count for ${type}:`, data);
+                    if (type === 'admin_orders') setLocalCount(data.pending_orders);
+                    else if (type === 'admin_returns') setLocalCount(data.active_returns);
+                    else if (type === 'admin_inquiries') setLocalCount(data.pending_inquiries);
+                    return;
+                } else {
+                    console.error(`[HeaderCounter] API Error for ${type}:`, res.status);
+                }
+            }
+
             if (type === 'favorite' && session?.id) {
                 const { count: c } = await supabase.from('favorites').select('*', { count: 'exact', head: true }).eq('user_id', session.id);
                 if (c !== null) setFavoriteCount(c);
@@ -65,11 +83,17 @@ export default function HeaderCounter({ type, dark }: Props) {
         let timer: any;
         const debouncedRefresh = () => {
             clearTimeout(timer);
-            timer = setTimeout(fetchData, 4000); // 4 segundos de cooldown
+            timer = setTimeout(fetchData, 4000); // Cooldown
         };
 
-        const channel = supabase.channel(`sync-v3-${type}`)
-            .on('postgres_changes', { event: '*', schema: 'public' }, debouncedRefresh)
+        // Escuchar cambios según el tipo
+        const table = (type === 'admin_orders' || type === 'admin_returns') ? 'orders' :
+            (type === 'inquiry' || type === 'admin_inquiries') ? 'product_inquiries' :
+                (type === 'notification' || type === 'coupon_notification') ? 'notifications' :
+                    (type === 'favorite') ? 'favorites' : '*';
+
+        const channel = supabase.channel(`sync-v6-${type}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table }, debouncedRefresh)
             .subscribe();
 
         return () => {
@@ -103,11 +127,16 @@ export default function HeaderCounter({ type, dark }: Props) {
         inquiry: 'bg-orange-500 border-white',
         notification: 'bg-red-600 border-white',
         coupon_notification: 'bg-red-600 border-white',
+        admin_orders: 'bg-brand-gold border-white',
+        admin_returns: 'bg-red-500 border-white',
+        admin_inquiries: 'bg-orange-500 border-white',
         badge: ''
     };
 
+    const isBadgeType = (type as string) === 'badge';
+
     return (
-        <span className={`absolute -top-1 -right-1 ${styles[type]} text-white text-[9px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center font-black border-2 transition-all duration-300 ${isAnimating ? 'scale-125' : 'scale-100'} z-50`}>
+        <span className={`${isBadgeType ? '' : 'absolute -top-1 -right-1'} ${styles[type]} text-white text-[9px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center font-black border-2 transition-all duration-300 ${isAnimating ? 'scale-125' : 'scale-100'} z-50`}>
             {displayCount}
         </span>
     );

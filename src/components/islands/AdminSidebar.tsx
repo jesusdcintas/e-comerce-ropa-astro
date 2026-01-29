@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import HeaderCounter from './HeaderCounter';
 
 interface Category {
     id: number;
@@ -10,11 +11,20 @@ interface Category {
 interface Props {
     categories: Category[];
     pendingCount?: number;
+    newOrdersCount?: number;
+    newReturnsCount?: number;
     currentPath?: string;
     currentCategory?: string | null;
 }
 
-export default function AdminSidebar({ categories, pendingCount = 0, currentPath = '', currentCategory = null }: Props) {
+export default function AdminSidebar({
+    categories,
+    pendingCount = 0,
+    newOrdersCount = 0,
+    newReturnsCount = 0,
+    currentPath = '',
+    currentCategory = null
+}: Props) {
     const [isProductsOpen, setIsProductsOpen] = useState(currentPath.startsWith('/admin/products'));
     const [openCategories, setOpenCategories] = useState<number[]>([]);
     const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -191,12 +201,31 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                 <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Pedidos</span>
             </a>
 
+            {/* Envíos */}
+            <a href="/admin/shipping" className={`${navLinkClass} ${isActive('/admin/shipping') ? activeClass : inactiveClass} justify-between group`} title={isCollapsed ? "Gestión de Envíos" : ""}>
+                <div className="flex items-center">
+                    <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/shipping') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1m-6 0a1 1 0 001 1h1" />
+                    </svg>
+                    <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Envíos</span>
+                </div>
+                <div className="relative h-5 w-5">
+                    <HeaderCounter type="admin_orders" />
+                </div>
+            </a>
+
             {/* Devoluciones */}
-            <a href="/admin/orders/returns" className={`${navLinkClass} ${isActive('/admin/orders/returns') ? activeClass : inactiveClass}`} title={isCollapsed ? "Gestión de Devoluciones" : ""}>
-                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/orders/returns') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
-                </svg>
-                <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Devoluciones</span>
+            <a href="/admin/orders/returns" className={`${navLinkClass} ${isActive('/admin/orders/returns') ? activeClass : inactiveClass} justify-between group`} title={isCollapsed ? "Gestión de Devoluciones" : ""}>
+                <div className="flex items-center">
+                    <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/orders/returns') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                    </svg>
+                    <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Devoluciones</span>
+                </div>
+                <div className="relative h-5 w-5">
+                    <HeaderCounter type="admin_returns" />
+                </div>
             </a>
 
             {/* Clientes */}
@@ -215,11 +244,9 @@ export default function AdminSidebar({ categories, pendingCount = 0, currentPath
                     </svg>
                     <span className="sidebar-text overflow-hidden transition-all duration-300">Consultas Clientes</span>
                 </div>
-                {pendingCount > 0 && (
-                    <span className={`${isCollapsed ? 'absolute top-1 right-1' : ''} flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold text-[10px] font-black text-white shadow-lg shadow-brand-gold/20 animate-bounce`}>
-                        {pendingCount}
-                    </span>
-                )}
+                <div className="relative h-5 w-5">
+                    <HeaderCounter type="admin_inquiries" />
+                </div>
             </a>
 
             {/* Gestión de Cupones */}

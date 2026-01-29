@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         const { data: order, error: orderError } = await supabaseAdmin
             .from("orders")
-            .select("user_id, status")
+            .select("user_id, status, shipping_status")
             .eq("id", numericOrderId)
             .single();
 
@@ -45,6 +45,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         // 2. Solo permitir cancelar si está en estado 'pending' o 'paid'
+        // Y además, si logística permite cancelar (solo si está 'pending')
+        if (order.shipping_status && order.shipping_status !== "pending") {
+            return new Response(JSON.stringify({
+                error: "No se puede cancelar un pedido que ya ha sido enviado o está en reparto."
+            }), { status: 400 });
+        }
+
         const cancellableStatuses = ["pending", "paid"];
         if (!cancellableStatuses.includes(order.status)) {
             return new Response(JSON.stringify({

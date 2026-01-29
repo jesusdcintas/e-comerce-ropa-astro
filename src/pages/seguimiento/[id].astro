@@ -15,96 +15,100 @@ if (error || !order) {
     return Astro.redirect("/404");
 }
 
-// Lógica de simulación realista
-const createdDate = new Date(order.created_at);
-const status = order.status;
+// Mapeos de estados para el nuevo modelo dual
+const shippingStatus = order.shipping_status || "pending"; // Estado logístico
+const orderStatus = order.status; // Estado comercial (paid, processing, completed...)
 
-// Generar eventos simulados basados en el estado real
 const events = [];
+const createdDate = new Date(order.created_at);
 
-// Evento 1: Recibido (Siempre ocurre el día de creación)
+// Evento 1: Pago Confirmado (Comienzo comercial)
 events.push({
-    title: "Pedido Recibido",
-    description: "Hemos recibido tu pedido y estamos verificando los detalles.",
+    title: "Pago Confirmado",
+    description:
+        "Tu pago ha sido validado y el pedido está en cola de gestión.",
     date: createdDate,
     time: createdDate.toLocaleTimeString("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
     }),
     completed: true,
-    icon: "check",
+    icon: "payment",
 });
 
-// Evento 2: Procesado (Ocurre inmediatamente tras el pago)
-if (status !== "pending") {
-    const processDate = new Date(createdDate);
+// Evento 2: Pedido en Proceso (Commercial Processing)
+if (order.processing_at || ["processing", "completed"].includes(orderStatus)) {
+    const rawDate = order.processing_at || order.created_at;
+    const date = new Date(rawDate);
     events.push({
-        title: "Pago Confirmado",
-        description: "Tu pago ha sido validado correctamente.",
-        date: processDate,
-        time: processDate.toLocaleTimeString("es-ES", {
+        title: "En Proceso",
+        description:
+            "Tu selección ha sido verificada y está siendo gestionada por nuestro equipo.",
+        date: date,
+        time: date.toLocaleTimeString("es-ES", {
             hour: "2-digit",
             minute: "2-digit",
         }),
-        completed: true,
-        icon: "payment",
-    });
-}
-
-// Evento 3: Almacén (Ahora mucho más rápido: 8 horas después)
-if (["paid", "shipped", "delivered"].includes(status)) {
-    const warehouseDate = new Date(createdDate);
-    warehouseDate.setHours(warehouseDate.getHours() + 8);
-    events.push({
-        title: "Preparación completada",
-        description:
-            "Tu paquete ha sido embalado y está listo para la recogida.",
-        date: warehouseDate,
-        time: "15:30",
-        completed: ["shipped", "delivered"].includes(status),
+        completed: !!order.processing_at,
         icon: "warehouse",
     });
 }
 
-// Evento 4: Envío (Ahora a las 20 horas de la compra para cumplir las 24/48h)
-if (status === "shipped" || status === "delivered") {
-    const shippingDate = new Date(createdDate);
-    shippingDate.setHours(shippingDate.getHours() + 20);
+// Evento 3: En Tránsito (Shipping Shipped)
+if (
+    order.shipped_at ||
+    ["shipped", "in_delivery", "delivered"].includes(shippingStatus)
+) {
+    const rawDate = order.shipped_at || order.created_at;
+    const date = new Date(rawDate);
     events.push({
         title: "En Tránsito",
-        description: `El paquete ha salido de nuestra central logística en Madrid. Transportista: ${order.carrier_name || "FashionStore Priority"}.`,
-        date: shippingDate,
-        time: "09:20",
-        completed: true,
+        description: `El paquete ha salido de nuestra central logística. Transportista: ${order.carrier_name || "FashionStore Priority"}.`,
+        date: date,
+        time: date.toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+        }),
+        completed: !!order.shipped_at,
         icon: "truck",
     });
-
-    // Si está enviado pero no entregado, añadimos una actualización realista de "en tránsito"
-    if (status === "shipped") {
-        const transitDate = new Date();
-        transitDate.setMinutes(transitDate.getMinutes() - 45); // Hace 45 min
-        events.push({
-            title: "En movimiento",
-            description:
-                "El paquete se encuentra en el centro de distribución regional.",
-            date: transitDate,
-            time: "En curso",
-            completed: false,
-            icon: "location",
-        });
-    }
 }
 
-// Evento 5: Entrega
-if (status === "delivered") {
-    const deliveryDate = new Date(order.updated_at);
+// Evento 4: En Reparto (Shipping In Delivery)
+if (
+    order.in_delivery_at ||
+    ["in_delivery", "delivered"].includes(shippingStatus)
+) {
+    const rawDate = order.in_delivery_at || order.created_at;
+    const date = new Date(rawDate);
+    events.push({
+        title: "En Reparto",
+        description:
+            "El paquete está en el vehículo de reparto cara a su entrega final.",
+        date: date,
+        time: date.toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+        }),
+        completed: !!order.in_delivery_at,
+        icon: "delivery",
+    });
+}
+
+// Evento 5: Entregado (Shipping Delivered)
+if (order.delivered_at || shippingStatus === "delivered") {
+    const rawDate = order.delivered_at || order.updated_at;
+    const date = new Date(rawDate);
     events.push({
         title: "Entregado",
         description:
-            "El paquete ha sido entregado en la dirección indicada. ¡Disfruta de tu compra!",
-        date: deliveryDate,
-        time: "11:05",
-        completed: true,
+            "El paquete ha sido entregado. ¡Esperamos que disfrutes de tu compra!",
+        date: date,
+        time: date.toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+        }),
+        completed: !!order.delivered_at,
         icon: "home",
     });
 }
@@ -164,15 +168,17 @@ const trackingNumber =
                         class="text-slate-900 font-bold uppercase tracking-tight"
                     >
                         {
-                            status === "pending"
-                                ? "Procesando"
-                                : status === "paid"
-                                  ? "Preparando envío"
-                                  : status === "shipped"
-                                    ? "En tránsito"
-                                    : status === "delivered"
+                            shippingStatus === "pending"
+                                ? "En Proceso"
+                                : shippingStatus === "shipped"
+                                  ? "En tránsito"
+                                  : shippingStatus === "in_delivery"
+                                    ? "En reparto"
+                                    : shippingStatus === "delivered"
                                       ? "Entregado"
-                                      : "Cancelado"
+                                      : shippingStatus === "returned"
+                                        ? "Devuelto"
+                                        : "Incidencia"
                         }
                     </p>
                 </div>
@@ -304,6 +310,27 @@ const trackingNumber =
                                         <span class="absolute top-0 right-0 w-3 h-3 bg-brand-gold rounded-full animate-ping" />
                                     </div>
                                 )}
+                                {event.icon === "delivery" && (
+                                    <svg
+                                        class="w-6 h-6 animate-pulse"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2.5"
+                                            d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
+                                        />
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2.5"
+                                            d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1m-6 0a1 1 0 001 1h1"
+                                        />
+                                    </svg>
+                                )}
                                 {event.icon === "home" && (
                                     <svg
                                         class="w-6 h-6"
@@ -375,11 +402,6 @@ const trackingNumber =
                 <div
                     class="absolute inset-0 bg-gradient-to-br from-slate-900/80 to-transparent z-10 p-8 flex flex-col justify-end"
                 >
-                    <h4
-                        class="text-xs font-black uppercase tracking-widest text-brand-gold mb-2"
-                    >
-                        Simulación en tiempo real
-                    </h4>
                     <p class="text-white font-black text-xl italic font-serif">
                         Rastreado por <span class="text-brand-gold"
                             >FashionStore Priority</span

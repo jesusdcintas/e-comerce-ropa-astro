@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         // Verificar que el pedido pertenece al usuario
         const { data: order } = await supabase
             .from('orders')
-            .select('id, user_id, status')
+            .select('id, user_id, status, shipping_status')
             .eq('id', orderId)
             .single();
 
@@ -27,8 +27,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: 'Acceso denegado' }), { status: 403 });
         }
 
-        if (order.status !== 'delivered') {
-            return new Response(JSON.stringify({ error: 'Solo se pueden devolver pedidos entregados' }), { status: 400 });
+        if (order.status !== 'delivered' && order.shipping_status !== 'delivered') {
+            return new Response(JSON.stringify({ error: 'Solo se pueden devolver pedidos que ya hayan sido entregados (Estado: Entregado)' }), { status: 400 });
         }
 
         const result = await requestReturn(orderId, reason, itemsToReturn);

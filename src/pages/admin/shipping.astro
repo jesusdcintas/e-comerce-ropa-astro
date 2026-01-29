@@ -1,0 +1,649 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { supabase } from "../../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+const {
+    data: { user },
+} = await supabase.auth.getUser(accessToken);
+
+// Verificar si es admin
+if (!user || user.app_metadata?.role !== "admin") {
+    return Astro.redirect("/");
+}
+
+const period = Astro.url.searchParams.get("period") || "all";
+const shipping_status_filter = Astro.url.searchParams.get("shipping_status");
+const dateOffset = parseInt(Astro.url.searchParams.get("offset") || "0");
+
+// Lógica de fechas
+const now = new Date();
+let startDate = new Date();
+let endDate = new Date();
+let dateLabel = "Histórico";
+
+if (period === "week") {
+    const day = now.getDay() || 7;
+    startDate.setHours(0, 0, 0, 0);
+    startDate.setDate(now.getDate() - day + 1 + dateOffset * 7);
+    endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 7);
+    dateLabel = `Semana del ${startDate.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}`;
+} else if (period === "month") {
+    startDate = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
+    endDate = new Date(now.getFullYear(), now.getMonth() + dateOffset + 1, 1);
+    dateLabel = startDate.toLocaleDateString("es-ES", {
+        month: "long",
+        year: "numeric",
+    });
+} else if (period === "quarter") {
+    const currentQ = Math.floor(now.getMonth() / 3) + 1;
+    const targetQ = ((((currentQ - 1 + dateOffset) % 4) + 4) % 4) + 1;
+    const yearAdj = Math.floor((currentQ - 1 + dateOffset) / 4);
+    const targetYear = now.getFullYear() + yearAdj;
+
+    startDate = new Date(targetYear, (targetQ - 1) * 3, 1);
+    endDate = new Date(targetYear, targetQ * 3, 1);
+    dateLabel = `Trimestre ${targetQ} (${targetYear})`;
+} else if (period === "year") {
+    startDate = new Date(now.getFullYear() + dateOffset, 0, 1);
+    endDate = new Date(now.getFullYear() + dateOffset + 1, 0, 1);
+    dateLabel = `Año ${startDate.getFullYear()}`;
+}
+
+// Construcción de Query
+let query = supabase
+    .from("orders")
+    .select("*")
+    .neq("status", "cancelled")
+    .order("created_at", { ascending: false });
+
+if (period !== "all") {
+    query = query
+        .gte("created_at", startDate.toISOString())
+        .lt("created_at", endDate.toISOString());
+}
+
+if (shipping_status_filter) {
+    query = query.eq("shipping_status", shipping_status_filter);
+}
+
+const { data: orders, error } = await query;
+
+// Función para generar URLs con filtros preservados
+function getFilterUrl(newParams: Record<string, string | number>) {
+    const params = new URLSearchParams(Astro.url.searchParams);
+    Object.entries(newParams).forEach(([key, value]) => {
+        if (value === null) params.delete(key);
+        else params.set(key, value.toString());
+    });
+    return `?${params.toString()}`;
+}
+
+// Mapeos de estados del PEDIDO (Comercial)
+const orderStatusText: Record<string, string> = {
+    processing: "En Proceso",
+    completed: "Finalizado",
+    cancelled: "Cancelado",
+    refunded: "Reembolsado",
+};
+
+const orderStatusBadge: Record<string, string> = {
+    paid: "text-green-600 font-bold",
+    processing: "text-blue-600 font-bold",
+    completed: "text-slate-400 font-medium",
+    cancelled: "text-red-600 font-bold",
+    refunded: "text-red-400 font-bold",
+};
+
+// Mapeos de estados del ENVÍO (Logístico)
+const shippingStatusText: Record<string, string> = {
+    pending: "Pendiente",
+    shipped: "En Tránsito",
+    in_delivery: "En Reparto",
+    delivered: "Entregado",
+    returned: "Devuelto",
+    failed: "Incidencia",
+};
+
+const shippingStatusBadge: Record<string, string> = {
+    pending: "bg-slate-100 text-slate-500 border-slate-200",
+    shipped: "bg-blue-100 text-blue-600 border-blue-200",
+    in_delivery: "bg-orange-100 text-orange-600 border-orange-200",
+    delivered: "bg-green-100 text-green-600 border-green-200",
+    returned: "bg-red-100 text-red-600 border-red-200",
+    failed: "bg-red-50 text-red-500 border-red-100",
+};
+
+// Lógica de avance logístico
+const nextShippingStatus: Record<string, string> = {
+    pending: "shipped",
+    shipped: "in_delivery",
+    in_delivery: "delivered",
+};
+
+const nextShippingStatusText: Record<string, string> = {
+    pending: "Marcar Enviado",
+    shipped: "Marcar Reparto",
+    in_delivery: "Marcar Entregado",
+};
+
+// Prioridad para ordenación
+const shippingPriority: Record<string, number> = {
+    pending: 1,
+    shipped: 2,
+    in_delivery: 3,
+    delivered: 4,
+    returned: 5,
+    failed: 6,
+};
+---
+
+<AdminLayout title="Gestión de Envíos">
+    <div class="space-y-8">
+        <!-- Header -->
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-4"
+        >
+            <div>
+                <h2 class="text-3xl font-black text-slate-800 tracking-tight">
+                    CENTRAL DE <span class="text-brand-gold">LOGÍSTICA</span>
+                </h2>
+                <p
+                    class="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1"
+                >
+                    Gestión Profesional de Expediciones
+                </p>
+            </div>
+
+            <!-- Botones de Navegación Temporal (Filtro Superior) -->
+            <div
+                class="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-sm w-fit"
+            >
+                <a
+                    href={getFilterUrl({ period: "all", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "all" ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Todo</a
+                >
+                <a
+                    href={getFilterUrl({ period: "week", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "week" ? "bg-brand-gold text-white shadow-lg shadow-brand-gold/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Semana</a
+                >
+                <a
+                    href={getFilterUrl({ period: "month", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "month" ? "bg-brand-gold text-white shadow-lg shadow-brand-gold/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Mes</a
+                >
+                <a
+                    href={getFilterUrl({ period: "quarter", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "quarter" ? "bg-brand-gold text-white shadow-lg shadow-brand-gold/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Trimestre</a
+                >
+                <a
+                    href={getFilterUrl({ period: "year", offset: 0 })}
+                    class={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === "year" ? "bg-brand-gold text-white shadow-lg shadow-brand-gold/20" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                    >Año</a
+                >
+                <div class="h-8 w-px bg-slate-100 mx-2 hidden sm:block"></div>
+
+                <div class="relative group min-w-[180px]">
+                    <div
+                        class="absolute inset-y-0 left-3 flex items-center pointer-events-none group-hover:text-brand-gold transition-colors text-slate-400"
+                    >
+                        <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="3"
+                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <select
+                        id="shipping-status-filter"
+                        class="pl-9 pr-10 py-2.5 w-full bg-slate-50 border-none rounded-xl text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-brand-gold/20 cursor-pointer appearance-none text-slate-600 hover:bg-white hover:shadow-sm transition-all"
+                    >
+                        <option value="">TODOS LOS ESTADOS</option>
+                        {
+                            Object.entries(shippingStatusText).map(
+                                ([key, text]) => (
+                                    <option
+                                        value={key}
+                                        selected={
+                                            shipping_status_filter === key
+                                        }
+                                    >
+                                        {text.toUpperCase()}
+                                    </option>
+                                ),
+                            )
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- Acciones Masivas -->
+            <div
+                id="bulk-actions"
+                class="hidden flex items-center gap-3 bg-slate-900 p-2 pl-4 rounded-2xl border border-slate-800 shadow-2xl animate-in fade-in slide-in-from-top-4"
+            >
+                <span
+                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                >
+                    <span id="selected-count">0</span> Seleccionados
+                </span>
+                <div class="h-4 w-px bg-slate-700"></div>
+                <select
+                    id="bulk-status-select"
+                    class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl border-none outline-none focus:ring-2 focus:ring-brand-gold/50 cursor-pointer"
+                >
+                    <option value="">Logística: Cambiar a...</option>
+                    <option value="shipped">EN TRÁNSITO</option>
+                    <option value="in_delivery">EN REPARTO</option>
+                    <option value="delivered">ENTREGADO</option>
+                </select>
+                <button
+                    id="apply-bulk-btn"
+                    class="bg-brand-gold text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-lg active:scale-95"
+                >
+                    Aplicar
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla de Envíos -->
+        <div
+            class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden"
+        >
+            <div class="overflow-x-auto">
+                <table
+                    class="w-full text-left border-collapse"
+                    id="shipping-table"
+                >
+                    <thead>
+                        <tr class="border-b border-slate-50 bg-slate-50/50">
+                            <th class="px-6 py-5 w-10">
+                                <input
+                                    type="checkbox"
+                                    id="select-all"
+                                    class="w-4 h-4 rounded border-slate-300 text-brand-gold focus:ring-brand-gold cursor-pointer"
+                                />
+                            </th>
+                            <th
+                                class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-slate-900 transition-colors group/head"
+                                data-sort="id"
+                            >
+                                <div class="flex items-center gap-2">
+                                    Pedido
+                                    <svg
+                                        class="w-3 h-3 text-slate-300 group-hover/head:text-brand-gold transition-colors"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="3"
+                                            d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                                        ></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th
+                                class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                            >
+                                Cliente / Destino
+                            </th>
+                            <th
+                                class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
+                            >
+                                Pedido (Comercial)
+                            </th>
+                            <th
+                                class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-slate-900 transition-colors group/head text-center"
+                                data-sort="status"
+                            >
+                                <div
+                                    class="flex items-center justify-center gap-2"
+                                >
+                                    Envío (Logístico)
+                                    <svg
+                                        class="w-3 h-3 text-slate-300 group-hover/head:text-brand-gold transition-colors"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="3"
+                                            d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                                        ></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th
+                                class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right"
+                            >
+                                Acción Logística
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50" id="shipping-tbody">
+                        {
+                            orders?.map((order) => (
+                                <tr
+                                    class="hover:bg-slate-50/50 transition-colors group order-row"
+                                    data-id={order.id}
+                                    data-date={order.created_at}
+                                    data-status={
+                                        shippingPriority[
+                                            order.shipping_status || "pending"
+                                        ]
+                                    }
+                                    data-client={order.shipping_name.toLowerCase()}
+                                >
+                                    <td class="px-6 py-5">
+                                        <input
+                                            type="checkbox"
+                                            name="order-checkbox"
+                                            value={order.id}
+                                            class="w-4 h-4 rounded border-slate-300 text-brand-gold focus:ring-brand-gold cursor-pointer"
+                                        />
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-black text-slate-900 leading-tight">
+                                                #
+                                                {order.id
+                                                    .toString()
+                                                    .padStart(6, "0")}
+                                            </span>
+                                            <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">
+                                                {new Date(
+                                                    order.created_at,
+                                                ).toLocaleDateString("es-ES", {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                })}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-bold text-slate-700">
+                                                {order.shipping_name}
+                                            </span>
+                                            <span class="text-[10px] text-slate-400 mt-0.5">
+                                                {order.shipping_city},{" "}
+                                                {order.shipping_zip}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5 text-center">
+                                        <span
+                                            class={`text-[10px] uppercase tracking-tighter ${orderStatusBadge[order.status]}`}
+                                        >
+                                            {orderStatusText[order.status]}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-5 text-center">
+                                        <span
+                                            class={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${shippingStatusBadge[order.shipping_status || "pending"]}`}
+                                        >
+                                            {
+                                                shippingStatusText[
+                                                    order.shipping_status ||
+                                                        "pending"
+                                                ]
+                                            }
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-5 text-right">
+                                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {nextShippingStatus[
+                                                order.shipping_status ||
+                                                    "pending"
+                                            ] && (
+                                                <button
+                                                    data-order-id={order.id}
+                                                    data-next-status={
+                                                        nextShippingStatus[
+                                                            order.shipping_status ||
+                                                                "pending"
+                                                        ]
+                                                    }
+                                                    class="quick-advance-btn bg-slate-900 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-brand-gold transition-all"
+                                                >
+                                                    {
+                                                        nextShippingStatusText[
+                                                            order.shipping_status ||
+                                                                "pending"
+                                                        ]
+                                                    }
+                                                </button>
+                                            )}
+                                            <a
+                                                href={`/admin/orders/${order.id}`}
+                                                class="p-2 text-slate-400 hover:text-brand-gold transition-colors"
+                                                title="Ver Detalles"
+                                            >
+                                                <svg
+                                                    class="w-5 h-5"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                                    />
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                    />
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script is:inline>
+        // 0. Lógica de Filtros
+        const statusFilter = document.getElementById("shipping-status-filter");
+        statusFilter?.addEventListener("change", (e) => {
+            const val = e.target.value;
+            const params = new URLSearchParams(window.location.search);
+            if (val) params.set("shipping_status", val);
+            else params.delete("shipping_status");
+            params.set("offset", "0");
+            window.location.search = params.toString();
+        });
+
+        // 1. Selección Individual y Masiva
+        const selectAll = document.getElementById("select-all");
+        const checkboxes = document.getElementsByName("order-checkbox");
+        const bulkActions = document.getElementById("bulk-actions");
+        const selectedCount = document.getElementById("selected-count");
+        const tbody = document.getElementById("shipping-tbody");
+
+        function updateBulkUI() {
+            const checked = Array.from(checkboxes).filter((cb) => cb.checked);
+            selectedCount.textContent = checked.length;
+            if (checked.length > 0) {
+                bulkActions.classList.remove("hidden");
+                bulkActions.classList.add("flex");
+            } else {
+                bulkActions.classList.remove("flex");
+                bulkActions.classList.add("hidden");
+            }
+        }
+
+        selectAll?.addEventListener("change", (e) => {
+            checkboxes.forEach((cb) => (cb.checked = e.target.checked));
+            updateBulkUI();
+        });
+
+        // Event delegation for checkboxes (needed for sorting)
+        tbody?.addEventListener("change", (e) => {
+            if (e.target.name === "order-checkbox") {
+                updateBulkUI();
+            }
+        });
+
+        // 2. Lógica de Ordenación
+        const headers = document.querySelectorAll("[data-sort]");
+        let currentSort = { key: "date", desc: true };
+
+        headers.forEach((header) => {
+            header.addEventListener("click", () => {
+                const key = header.dataset.sort;
+                const rows = Array.from(tbody.querySelectorAll(".order-row"));
+
+                // Determinar dirección
+                if (currentSort.key === key) {
+                    currentSort.desc = !currentSort.desc;
+                } else {
+                    currentSort.key = key;
+                    currentSort.desc = key === "id" || key === "date"; // Por defecto desc para números/fechas
+                }
+
+                // Ordenar
+                rows.sort((a, b) => {
+                    let valA, valB;
+                    if (key === "id") {
+                        valA = parseInt(a.dataset.id);
+                        valB = parseInt(b.dataset.id);
+                    } else if (key === "date") {
+                        valA = new Date(a.dataset.date).getTime();
+                        valB = new Date(b.dataset.date).getTime();
+                    } else if (key === "status") {
+                        valA = parseInt(a.dataset.status);
+                        valB = parseInt(b.dataset.status);
+                    } else {
+                        valA = a.dataset.client;
+                        valB = b.dataset.client;
+                    }
+                    if (valA < valB) return currentSort.desc ? 1 : -1;
+                    if (valA > valB) return currentSort.desc ? -1 : 1;
+                    return 0;
+                });
+
+                // Re-inyectar filas
+                tbody.innerHTML = "";
+                rows.forEach((row) => tbody.appendChild(row));
+
+                // Actualizar UI de iconos (opcional: podrías girar el SVG aquí)
+            });
+        });
+
+        const statusLabels = {
+            pending: "PENDIENTE",
+            shipped: "EN TRÁNSITO",
+            in_delivery: "EN REPARTO",
+            delivered: "ENTREGADO",
+            returned: "DEVUELTO",
+            failed: "INCIDENCIA",
+        };
+
+        // 3. Avance Rápido (Individual)
+        tbody?.addEventListener("click", async (e) => {
+            const btn = e.target.closest(".quick-advance-btn");
+            if (!btn) return;
+
+            const orderId = btn.dataset.orderId;
+            const shipping_status = btn.dataset.nextStatus;
+            const label =
+                statusLabels[shipping_status] || shipping_status.toUpperCase();
+
+            window.showCustomModal({
+                title: "Actualizar Logística",
+                message: `Vas a marcar el envío #${orderId.padStart(6, "0")} como "${label}". Esto enviará el aviso al cliente y podría cerrar comercialmente el pedido si se marca como ENTREGADO.`,
+                type: "confirm",
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch(
+                            "/api/admin/orders/update-status",
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    id: orderId,
+                                    shipping_status,
+                                }),
+                            },
+                        );
+                        if (res.ok) window.location.reload();
+                    } catch (err) {
+                        console.error(err);
+                    }
+                },
+            });
+        });
+
+        // 4. Aplicar Masivo
+        document
+            .getElementById("apply-bulk-btn")
+            ?.addEventListener("click", async () => {
+                const shipping_status =
+                    document.getElementById("bulk-status-select").value;
+                if (!shipping_status) return;
+
+                const label =
+                    statusLabels[shipping_status] ||
+                    shipping_status.toUpperCase();
+                const selectedIds = Array.from(checkboxes)
+                    .filter((cb) => cb.checked)
+                    .map((cb) => cb.value);
+
+                window.showCustomModal({
+                    title: "Actualización Logística Masiva",
+                    message: `¿Estás seguro de actualizar ${selectedIds.length} envíos a "${label}"?`,
+                    type: "confirm",
+                    onConfirm: async () => {
+                        try {
+                            const res = await fetch(
+                                "/api/admin/orders/bulk-update-status",
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        ids: selectedIds,
+                                        shipping_status,
+                                    }),
+                                },
+                            );
+                            if (res.ok) window.location.reload();
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    },
+                });
+            });
+    </script>
+</AdminLayout>

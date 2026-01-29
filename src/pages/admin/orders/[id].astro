@@ -40,17 +40,48 @@ function formatDate(dateStr: string) {
 
 const statusBadge: Record<string, string> = {
     paid: "bg-green-100 text-green-600 border-green-200",
-    shipped: "bg-blue-100 text-blue-600 border-blue-200",
-    delivered: "bg-purple-100 text-purple-600 border-purple-200",
+    processing: "bg-blue-100 text-blue-600 border-blue-200",
+    completed: "bg-slate-100 text-slate-500 border-slate-200",
     cancelled: "bg-red-100 text-red-600 border-red-200",
+    refunded: "bg-red-50 text-red-400 border-red-100",
 };
 
 const statusText: Record<string, string> = {
     paid: "Pagado",
-    shipped: "Enviado",
-    delivered: "Entregado",
+    processing: "En Proceso",
+    completed: "Finalizado (Comercialmente Cerrado)",
     cancelled: "Cancelado",
+    refunded: "Reembolsado",
 };
+
+const shippingStatusBadge: Record<string, string> = {
+    pending: "bg-slate-100 text-slate-500 border-slate-200",
+    shipped: "bg-blue-100 text-blue-600 border-blue-200",
+    in_delivery: "bg-orange-100 text-orange-600 border-orange-200",
+    delivered: "bg-green-100 text-green-600 border-green-200",
+    returned: "bg-red-100 text-red-600 border-red-200",
+    failed: "bg-red-50 text-red-500 border-red-100",
+};
+
+const shippingStatusText: Record<string, string> = {
+    pending: "Pendiente de Envío",
+    shipped: "En Tránsito",
+    in_delivery: "En Reparto",
+    delivered: "Entregado",
+    returned: "Devuelto",
+    failed: "Incidencia",
+};
+
+function formatFullDate(date: string | null) {
+    if (!date) return "—";
+    return new Date(date).toLocaleString("es-ES", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
 ---
 
 <AdminLayout
@@ -102,24 +133,56 @@ const statusText: Record<string, string> = {
                 </div>
             </div>
 
-            <div class="flex flex-col gap-2 items-end">
-                <span
-                    class="text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] mb-1"
-                    >Estado de Gestión</span
-                >
-                <select
-                    id="order-status-select"
-                    data-order-id={order.id}
-                    class={`px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border-2 cursor-pointer focus:ring-4 focus:ring-brand-gold/10 outline-none transition-all ${statusBadge[order.status]}`}
-                >
-                    {
-                        Object.entries(statusText).map(([key, text]) => (
-                            <option value={key} selected={order.status === key}>
-                                {text.toUpperCase()}
-                            </option>
-                        ))
-                    }
-                </select>
+            <div class="flex flex-wrap gap-4 items-end">
+                <div class="flex flex-col gap-2">
+                    <span
+                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1"
+                        >Control Comercial</span
+                    >
+                    <select
+                        id="order-status-select"
+                        data-order-id={order.id}
+                        class={`px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 cursor-pointer focus:ring-4 focus:ring-brand-gold/10 outline-none transition-all ${statusBadge[order.status]}`}
+                    >
+                        {
+                            Object.entries(statusText).map(([key, text]) => (
+                                <option
+                                    value={key}
+                                    selected={order.status === key}
+                                >
+                                    {text.toUpperCase()}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <span
+                        class="text-[10px] font-black text-brand-gold uppercase tracking-widest mb-1"
+                        >Control Logístico</span
+                    >
+                    <select
+                        id="shipping-status-select"
+                        data-order-id={order.id}
+                        class={`px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 cursor-pointer focus:ring-4 focus:ring-brand-gold/10 outline-none transition-all ${shippingStatusBadge[order.shipping_status || "pending"]}`}
+                    >
+                        {
+                            Object.entries(shippingStatusText).map(
+                                ([key, text]) => (
+                                    <option
+                                        value={key}
+                                        selected={
+                                            (order.shipping_status ||
+                                                "pending") === key
+                                        }
+                                    >
+                                        {text.toUpperCase()}
+                                    </option>
+                                ),
+                            )
+                        }
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -230,6 +293,76 @@ const statusText: Record<string, string> = {
 
             <!-- Right: Customer Info -->
             <div class="space-y-6">
+                <!-- Trazabilidad Logística -->
+                <div
+                    class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6 relative overflow-hidden"
+                >
+                    <div>
+                        <h3
+                            class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"
+                        >
+                            Trazabilidad Real
+                        </h3>
+                        <p
+                            class="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest"
+                        >
+                            Historial de Hitos
+                        </p>
+                    </div>
+
+                    <div class="space-y-4 relative z-10 text-[10px]">
+                        <div
+                            class={`flex items-center justify-between p-3 rounded-xl border ${order.created_at ? "bg-green-50/50 border-green-100" : "bg-slate-50 border-slate-100"}`}
+                        >
+                            <span class="font-black text-slate-700 uppercase"
+                                >Pago Confirmado</span
+                            >
+                            <span class="font-bold text-slate-500"
+                                >{formatFullDate(order.created_at)}</span
+                            >
+                        </div>
+                        <div
+                            class={`flex items-center justify-between p-3 rounded-xl border ${order.processing_at ? "bg-blue-50/50 border-blue-100" : "bg-slate-50 border-slate-100 opacity-50"}`}
+                        >
+                            <span class="font-black text-slate-700 uppercase"
+                                >En Proceso</span
+                            >
+                            <span class="font-bold text-slate-500"
+                                >{formatFullDate(order.processing_at)}</span
+                            >
+                        </div>
+                        <div
+                            class={`flex items-center justify-between p-3 rounded-xl border ${order.shipped_at ? "bg-blue-50/50 border-blue-100" : "bg-slate-50 border-slate-100 opacity-50"}`}
+                        >
+                            <span class="font-black text-slate-700 uppercase"
+                                >En Tránsito</span
+                            >
+                            <span class="font-bold text-slate-500"
+                                >{formatFullDate(order.shipped_at)}</span
+                            >
+                        </div>
+                        <div
+                            class={`flex items-center justify-between p-3 rounded-xl border ${order.in_delivery_at ? "bg-orange-50/50 border-orange-100" : "bg-slate-50 border-slate-100 opacity-50"}`}
+                        >
+                            <span class="font-black text-slate-700 uppercase"
+                                >En Reparto</span
+                            >
+                            <span class="font-bold text-slate-500"
+                                >{formatFullDate(order.in_delivery_at)}</span
+                            >
+                        </div>
+                        <div
+                            class={`flex items-center justify-between p-3 rounded-xl border ${order.delivered_at ? "bg-green-50/70 border-green-100" : "bg-slate-50 border-slate-100 opacity-50"}`}
+                        >
+                            <span class="font-black text-slate-700 uppercase"
+                                >Entregado</span
+                            >
+                            <span class="font-bold text-slate-500"
+                                >{formatFullDate(order.delivered_at)}</span
+                            >
+                        </div>
+                    </div>
+                </div>
                 <!-- Customer Card -->
                 <div
                     class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6 relative overflow-hidden"
@@ -347,34 +480,23 @@ const statusText: Record<string, string> = {
                     }
                 </div>
             </div>
-        </div>
-    </div>
 
-    <script is:inline>
-        const statusSelect = document.getElementById("order-status-select");
+            <script is:inline>
+                const statusSelect = document.getElementById(
+                    "order-status-select",
+                );
+                const shippingSelect = document.getElementById(
+                    "shipping-status-select",
+                );
 
-        statusSelect?.addEventListener("change", async (e) => {
-            const newStatus = e.target.value;
-            const orderId = statusSelect.dataset.orderId;
-
-            window.showCustomModal({
-                title: "Cambiar Estado",
-                message: `¿Estás seguro de cambiar el estado a "${newStatus.toUpperCase()}"?`,
-                type: "confirm",
-                onConfirm: async () => {
-                    statusSelect.disabled = true;
-                    statusSelect.style.opacity = "0.5";
-
+                async function updateStatus(payload) {
                     try {
                         const res = await fetch(
                             "/api/admin/orders/update-status",
                             {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                    id: orderId,
-                                    status: newStatus,
-                                }),
+                                body: JSON.stringify(payload),
                             },
                         );
 
@@ -397,11 +519,53 @@ const statusText: Record<string, string> = {
                         });
                         window.location.reload();
                     }
-                },
-                onCancel: () => {
-                    window.location.reload();
-                },
-            });
-        });
-    </script>
+                }
+
+                const statusLabels = {
+                    paid: "PAGADO",
+                    processing: "EN PROCESO",
+                    completed: "FINALIZADO",
+                    cancelled: "CANCELADO",
+                    refunded: "REEMBOLSADO",
+                };
+
+                const shippingLabels = {
+                    pending: "PENDIENTE",
+                    shipped: "EN TRÁNSITO",
+                    in_delivery: "EN REPARTO",
+                    delivered: "ENTREGADO",
+                    returned: "DEVUELTO",
+                    failed: "INCIDENCIA",
+                };
+
+                statusSelect?.addEventListener("change", (e) => {
+                    const status = e.target.value;
+                    const id = statusSelect.dataset.orderId;
+                    const label = statusLabels[status] || status.toUpperCase();
+                    window.showCustomModal({
+                        title: "Actualizar Pedido",
+                        message: `Vas a cambiar el estado comercial a "${label}".`,
+                        type: "confirm",
+                        onConfirm: () => updateStatus({ id, status }),
+                        onCancel: () => window.location.reload(),
+                    });
+                });
+
+                shippingSelect?.addEventListener("change", (e) => {
+                    const shipping_status = e.target.value;
+                    const id = shippingSelect.dataset.orderId;
+                    const label =
+                        shippingLabels[shipping_status] ||
+                        shipping_status.toUpperCase();
+                    window.showCustomModal({
+                        title: "Actualizar Logística",
+                        message: `Vas a cambiar el estado del envío a "${label}". Esto enviará notificaciones y podría cerrar el pedido si marcas como ENTREGADO.`,
+                        type: "confirm",
+                        onConfirm: () => updateStatus({ id, shipping_status }),
+                        onCancel: () => window.location.reload(),
+                    });
+                });
+            </script>
+        </div>
+    </div>
 </AdminLayout>

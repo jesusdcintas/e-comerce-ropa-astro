@@ -200,16 +200,17 @@ const { data: recentCancellations } = await supabase
 
 const statusBadge: Record<string, string> = {
     paid: "bg-green-50 text-green-600",
-    shipped: "bg-blue-50 text-blue-600",
-    delivered: "bg-purple-50 text-purple-600",
+    processing: "bg-blue-50 text-blue-600",
+    completed: "bg-slate-50 text-slate-500",
     cancelled: "bg-red-50 text-red-600",
+    refunded: "bg-red-50 text-red-400",
 };
 
 const statusText: Record<string, string> = {
-    paid: "Pagado",
-    shipped: "Enviado",
-    delivered: "Entregado",
+    processing: "En Proceso",
+    completed: "Finalizado",
     cancelled: "Cancelado",
+    refunded: "Reembolsado",
 };
 ---
 

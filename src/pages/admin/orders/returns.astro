@@ -237,6 +237,7 @@ const returnStatusText: Record<string, string> = {
 </AdminLayout>
 
 <script>
+    import { showModal } from "../../../stores/modalStore";
     import { addToast } from "../../../stores/toastStore";
 
     document.querySelectorAll(".btn-confirm-receipt").forEach((btn) => {
@@ -244,45 +245,41 @@ const returnStatusText: Record<string, string> = {
             const b = btn as HTMLButtonElement;
             const orderId = b.dataset.orderId;
 
-            const returnInfo =
-                b.closest("tr")?.querySelector(".italic")?.textContent || "";
-            const amountTotal =
-                b
-                    .closest("tr")
-                    ?.querySelector("td p")
-                    ?.textContent?.split(":")[1]
-                    ?.trim() || "0€";
+            showModal({
+                title: "Confirmar Recepción",
+                message:
+                    "¿Confirmas la recepción física de los artículos de este pedido? Se emitirá el reembolso correspondiente a los artículos solicitados.",
+                type: "confirm",
+                confirmText: "Confirmar y Reembolsar",
+                onConfirm: async () => {
+                    try {
+                        b.disabled = true;
+                        b.innerText = "Procesando...";
 
-            if (
-                !confirm(
-                    `¿Confirmas la recepción física de los artículos de este pedido? \n\nSe emitirá el reembolso correspondiente a los artículos solicitados.`,
-                )
-            )
-                return;
+                        const res = await fetch(
+                            "/api/admin/orders/return/confirm",
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ orderId }),
+                            },
+                        );
 
-            try {
-                b.disabled = true;
-                b.innerText = "Procesando...";
+                        if (!res.ok)
+                            throw new Error("Error al confirmar la devolución");
 
-                const res = await fetch("/api/admin/orders/return/confirm", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ orderId }),
-                });
-
-                if (!res.ok)
-                    throw new Error("Error al confirmar la devolución");
-
-                addToast(
-                    "Devolución procesada con éxito. Reembolso emitido y stock actualizado.",
-                    "success",
-                );
-                setTimeout(() => window.location.reload(), 1500);
-            } catch (err) {
-                addToast("Error al procesar la devolución.", "error");
-                b.disabled = false;
-                b.innerText = "Confirmar y Reembolsar";
-            }
+                        addToast(
+                            "Devolución procesada con éxito. Reembolso emitido y stock actualizado.",
+                            "success",
+                        );
+                        setTimeout(() => window.location.reload(), 1500);
+                    } catch (err) {
+                        addToast("Error al procesar la devolución.", "error");
+                        b.disabled = false;
+                        b.innerText = "Confirmar y Reembolsar";
+                    }
+                },
+            });
         });
     });
 </script>

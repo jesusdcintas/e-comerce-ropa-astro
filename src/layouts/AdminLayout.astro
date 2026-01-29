@@ -23,6 +23,19 @@ const { count: pendingCount } = await supabase
     .from("product_inquiries")
     .select("*", { count: "exact", head: true })
     .eq("status", "pending");
+
+// Obtener conteo de nuevos pedidos (Pagados pero aún no procesados/enviados)
+const { count: newOrdersCount } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "paid")
+    .eq("shipping_status", "pending");
+
+// Obtener conteo de nuevas solicitudes de devolución
+const { count: newReturnsCount } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("return_status", "requested");
 ---
 
 <!doctype html>
@@ -108,6 +121,8 @@ const { count: pendingCount } = await supabase
                     client:load
                     categories={categories || []}
                     pendingCount={pendingCount || 0}
+                    newOrdersCount={newOrdersCount || 0}
+                    newReturnsCount={newReturnsCount || 0}
                     currentPath={currentPath}
                     currentCategory={Astro.url.searchParams.get("category")}
                 />

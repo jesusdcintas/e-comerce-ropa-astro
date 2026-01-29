@@ -296,14 +296,16 @@ const { data: cupones } = await supabase
         </form>
     </div>
 
-    <script is:inline>
-        const form = document.getElementById("popup-form");
+    <script>
+        import { showModal } from "../../../stores/modalStore";
+
+        const form = document.getElementById("popup-form") as HTMLFormElement;
         const actionType = document.getElementById("action-type");
         const urlContainer = document.getElementById("url-container");
         const couponContainer = document.getElementById("coupon-container");
 
         actionType?.addEventListener("change", (e) => {
-            const val = e.target.value;
+            const val = (e.target as HTMLSelectElement).value;
             urlContainer?.classList.toggle("hidden", val !== "enlace");
             couponContainer?.classList.toggle("hidden", val !== "cupon");
         });
@@ -312,26 +314,26 @@ const { data: cupones } = await supabase
             e.preventDefault();
             const formData = new FormData(form);
 
-            const action = formData.get("tipo_accion");
+            const action = formData.get("tipo_accion") as string;
             const valor_accion =
                 action === "enlace"
-                    ? formData.get("valor_accion_url")
+                    ? (formData.get("valor_accion_url") as string)
                     : action === "cupon"
-                      ? formData.get("valor_accion_cupon")
+                      ? (formData.get("valor_accion_cupon") as string)
                       : "";
 
             const data = {
-                titulo: formData.get("titulo"),
-                contenido: formData.get("contenido"),
-                imagen_url: formData.get("imagen_url"),
+                titulo: formData.get("titulo") as string,
+                contenido: formData.get("contenido") as string,
+                imagen_url: formData.get("imagen_url") as string,
                 tipo_accion: action,
                 valor_accion,
-                fecha_inicio: formData.get("fecha_inicio"),
-                fecha_fin: formData.get("fecha_fin") || null,
+                fecha_inicio: formData.get("fecha_inicio") as string,
+                fecha_fin: (formData.get("fecha_fin") as string) || null,
                 configuracion: {
-                    color_fondo: formData.get("color_fondo"),
-                    color_texto: formData.get("color_texto"),
-                    delay_segundos: parseInt(formData.get("delay")),
+                    color_fondo: formData.get("color_fondo") as string,
+                    color_texto: formData.get("color_texto") as string,
+                    delay_segundos: parseInt(formData.get("delay") as string),
                     mostrar_una_vez: formData.get("once") === "on",
                 },
             };
@@ -344,14 +346,28 @@ const { data: cupones } = await supabase
                 });
 
                 if (res.ok) {
-                    alert("¡Pop-up creado con éxito!");
-                    window.location.href = "/admin/popups";
+                    showModal({
+                        title: "¡Éxito!",
+                        message: "¡Pop-up creado con éxito!",
+                        type: "info",
+                        onConfirm: () => {
+                            window.location.href = "/admin/popups";
+                        },
+                    });
                 } else {
                     const err = await res.json();
-                    alert("Error: " + err.error);
+                    showModal({
+                        title: "Error",
+                        message: "No se pudo crear el pop-up: " + err.error,
+                        type: "alert",
+                    });
                 }
             } catch (err) {
-                alert("Error de conexión");
+                showModal({
+                    title: "Error de Conexión",
+                    message: "Hubo un problema al conectar con el servidor.",
+                    type: "alert",
+                });
             }
         });
     </script>

@@ -125,11 +125,17 @@ export async function cancelOrder(orderId: string | number) {
         // 5. Enviar email de notificación al cliente
         try {
             console.log("[cancelOrder] Enviando email de cancelación.");
-            const { sendOrderCancelledEmail, sendRefundInvoiceEmail } = await import("./emails");
+            const { sendOrderCancelledEmail, sendRefundInvoiceEmail, sendAdminOrderCancelledNotification } = await import("./emails");
 
             await sendOrderCancelledEmail({
                 ...order,
                 payment_status: refundProcessed ? 'paid' : order.payment_status
+            });
+
+            // Notificar al admin de la cancelación
+            await sendAdminOrderCancelledNotification({
+                ...order,
+                payment_status: refundProcessed ? 'refunded' : order.payment_status
             });
 
             if (refundProcessed) {
@@ -168,8 +174,7 @@ export async function requestReturn(orderId: string | number, reason: string, it
             return_tracking_id: returnTrackingId,
             return_requested_at: new Date().toISOString()
         })
-        .eq("id", orderId)
-        .eq("status", "delivered");
+        .eq("id", orderId);
 
     if (error) throw error;
 
@@ -202,8 +207,14 @@ export async function requestReturn(orderId: string | number, reason: string, it
     try {
         const { data: order } = await supabaseAdmin.from("orders").select("*").eq("id", orderId).single();
         if (order) {
-            const { sendReturnRequestedEmail } = await import("./emails");
+            const { sendReturnRequestedEmail, sendAdminReturnRequestedNotification } = await import("./emails");
             await sendReturnRequestedEmail(order);
+            // Notificar al admin de la devolución
+            await sendAdminReturnRequestedNotification({
+                ...order,
+                return_reason: reason,
+                return_tracking_id: returnTrackingId
+            });
         }
     } catch (e) {
         console.error("Error sending return request email:", e);
@@ -323,3 +334,4 @@ export async function processReturnRefund(orderId: string | number) {
         throw err;
     }
 }
+

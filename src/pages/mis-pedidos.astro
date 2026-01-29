@@ -57,17 +57,33 @@ function formatDate(dateStr: string) {
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   paid: "bg-green-100 text-green-800",
-  shipped: "bg-blue-100 text-blue-800",
-  delivered: "bg-gray-100 text-gray-800",
+  processing: "bg-blue-100 text-blue-800",
+  completed: "bg-slate-100 text-slate-500",
   cancelled: "bg-red-100 text-red-800",
+  refunded: "bg-red-50 text-red-400",
 };
 
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
   paid: "Pagado",
-  shipped: "Enviado",
-  delivered: "Entregado",
+  processing: "En Proceso",
+  completed: "Finalizado",
   cancelled: "Cancelado",
+  refunded: "Reembolsado",
+};
+
+const shippingStatusPriority: Record<string, number> = {
+  pending: 1,
+  shipped: 2,
+  in_delivery: 3,
+  delivered: 4,
+};
+
+const trackerStepPriority: Record<string, number> = {
+  pending: 1,
+  shipped: 2,
+  in_delivery: 3,
+  delivered: 4,
 };
 ---
 
@@ -212,30 +228,31 @@ const statusLabels: Record<string, string> = {
                       class="absolute top-1/2 left-0 h-0.5 bg-brand-gold -translate-y-1/2 transition-all duration-1000"
                       style={{
                         width:
-                          order.status === "paid" || order.status === "pending"
-                            ? "0%"
-                            : order.status === "shipped"
-                              ? "50%"
-                              : "100%",
+                          order.shipping_status === "shipped"
+                            ? "33%"
+                            : order.shipping_status === "in_delivery"
+                              ? "66%"
+                              : order.shipping_status === "delivered"
+                                ? "100%"
+                                : "0%",
                       }}
                     />
 
-                    {/* Estados */}
+                    {/* Estados logísticos */}
                     {[
-                      { key: "paid", label: "Pagado", icon: "💳" },
-                      { key: "shipped", label: "Enviado", icon: "📦" },
+                      { key: "pending", label: "En Proceso", icon: "📦" },
+                      { key: "shipped", label: "Enviado", icon: "🚚" },
+                      { key: "in_delivery", label: "En Reparto", icon: "🛵" },
                       { key: "delivered", label: "Entregado", icon: "🏠" },
                     ].map((step, idx) => {
-                      const isCompleted =
-                        order.status === "delivered" ||
-                        (order.status === "shipped" &&
-                          step.key !== "delivered") ||
-                        ((order.status === "paid" ||
-                          order.status === "pending") &&
-                          step.key === "paid");
-                      const isActive =
-                        order.status === step.key ||
-                        (order.status === "pending" && step.key === "paid");
+                      const currentShippingStatus =
+                        order.shipping_status || "pending";
+                      const currentPriority =
+                        shippingStatusPriority[currentShippingStatus] || 1;
+                      const thisStepPriority = trackerStepPriority[step.key];
+
+                      const isCompleted = currentPriority >= thisStepPriority;
+                      const isActive = currentPriority === thisStepPriority;
 
                       return (
                         <div class="relative z-10 flex flex-col items-center">
@@ -338,10 +355,13 @@ const statusLabels: Record<string, string> = {
               {/* Footer / Acciones */}
               <div class="px-6 py-4 bg-gray-50/30 border-t border-gray-100 flex flex-wrap justify-between items-center gap-4">
                 <div class="flex gap-4">
-                  {(order.status === "pending" || order.status === "paid") && (
+                  {(order.status === "pending" ||
+                    order.status === "paid" ||
+                    order.status === "processing") && (
                     <button
-                      class="btn-cancel-order text-xs font-bold text-red-400 hover:text-red-600 transition-colors uppercase tracking-widest flex items-center gap-1"
+                      class="btn-cancel-order text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-widest flex items-center gap-1 bg-red-50/50 px-3 py-1.5 rounded-lg border border-red-100/50"
                       data-order-id={order.id}
+                      data-shipping-status={order.shipping_status || "pending"}
                     >
                       <svg
                         class="w-3 h-3"
@@ -360,8 +380,9 @@ const statusLabels: Record<string, string> = {
                     </button>
                   )}
 
-                  {(order.status === "delivered" ||
-                    order.status === "shipped") &&
+                  {order.status !== "cancelled" &&
+                    order.status !== "refunded" &&
+                    order.shipping_status === "delivered" &&
                     (order.return_status === "none" ||
                       order.return_status === "refunded") &&
                     order.order_items?.some(
@@ -369,10 +390,13 @@ const statusLabels: Record<string, string> = {
                         i.quantity > (i.return_refunded_quantity || 0),
                     ) && (
                       <button
-                        class="btn-request-return text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-widest flex items-center gap-1"
+                        class="btn-request-return text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors uppercase tracking-widest flex items-center gap-1 bg-slate-100/50 px-3 py-1.5 rounded-lg border border-slate-200/50"
                         data-order-id={order.id}
                         data-order-label={order.id.toString().padStart(6, "0")}
                         data-order-status={order.status}
+                        data-shipping-status={
+                          order.shipping_status || "pending"
+                        }
                         data-items-json={JSON.stringify(
                           order.order_items || [],
                         )}
@@ -1022,10 +1046,11 @@ const statusLabels: Record<string, string> = {
   document.querySelectorAll(".btn-request-return").forEach((btn) => {
     btn.addEventListener("click", () => {
       const b = btn as HTMLButtonElement;
-      const status = b.dataset.orderStatus;
       const orderId = b.dataset.orderId || "";
+      const shippingStatus = b.dataset.shippingStatus;
 
-      if (status === "shipped") {
+      // Si el pedido está en tránsito, avisamos que no se puede devolver aún
+      if (shippingStatus === "shipped" || shippingStatus === "in_delivery") {
         showModal({
           title: "Envío en curso",
           message:
@@ -1170,7 +1195,16 @@ const statusLabels: Record<string, string> = {
         }),
       });
 
-      if (!res.ok) throw new Error("No se pudo procesar la solicitud");
+      const errorData = await res.json();
+      if (!res.ok) {
+        addToast(
+          errorData.error || "No se pudo procesar la solicitud",
+          "error",
+        );
+        btnConfirmReturnRequest.innerText = "Confirmar Devolución";
+        (btnConfirmReturnRequest as HTMLButtonElement).disabled = false;
+        return;
+      }
 
       const allCheckboxes = document.querySelectorAll(".item-checkbox");
       let isComplete = selectedCheckboxes.length === allCheckboxes.length;
@@ -1198,8 +1232,8 @@ const statusLabels: Record<string, string> = {
         "success",
       );
       setTimeout(() => window.location.reload(), 1500);
-    } catch (err) {
-      addToast("Error al solicitar devolución.", "error");
+    } catch (err: any) {
+      addToast(err.message || "Error al solicitar devolución.", "error");
       btnConfirmReturnRequest.innerText = "Confirmar Devolución";
       (btnConfirmReturnRequest as HTMLButtonElement).disabled = false;
     }
@@ -1398,6 +1432,17 @@ const statusLabels: Record<string, string> = {
     button.addEventListener("click", async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
       const orderId = btn.dataset.orderId;
+      const shippingStatus = btn.dataset.shippingStatus;
+
+      if (shippingStatus && shippingStatus !== "pending") {
+        showModal({
+          title: "Cancelación no permitida",
+          message:
+            "No puedes cancelar este pedido porque ya ha sido procesado por nuestro departamento de logística y está de camino a su destino. Si ya no deseas el paquete, podrás solicitar una devolución una vez lo recibas.",
+          type: "info",
+        });
+        return;
+      }
 
       showModal({
         title: "Cancelar Pedido",

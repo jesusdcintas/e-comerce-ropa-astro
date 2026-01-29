@@ -35,16 +35,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: 'Solo los administradores pueden realizar acciones masivas' }), { status: 403 });
         }
 
-        const { ids, status } = await request.json();
+        const { ids, status, shipping_status } = await request.json();
 
-        if (!ids || !Array.isArray(ids) || ids.length === 0 || !status) {
+        if (!ids || !Array.isArray(ids) || ids.length === 0 || (!status && !shipping_status)) {
             return new Response(JSON.stringify({ error: 'IDs y estado requeridos' }), { status: 400 });
         }
 
         const numericIds = ids.map(id => Number(id));
 
         if (status === 'cancelled') {
-            // Para cancelaciones, procesamos uno por uno para asegurar stock y reembolsos
             const results = [];
             for (const id of numericIds) {
                 try {
@@ -56,33 +55,55 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             }
             return new Response(JSON.stringify({ success: true, results }), { status: 200 });
         } else {
-            // Obtener datos de los pedidos para notificar
             const { data: ordersToNotify } = await supabaseAdmin
                 .from('orders')
                 .select('*')
                 .in('id', numericIds);
 
-            // Cambio de estado normal (envío, entregado, etc.) - Acción masiva
+            // Preparar actualización con timestamps
+            const updateData: any = {
+                updated_at: new Date().toISOString()
+            };
+
+            if (status) updateData.status = status;
+            if (shipping_status) updateData.shipping_status = shipping_status;
+
+            // Regla: Si marcamos como entregado masivamente, cerramos pedidos
+            if (shipping_status === 'delivered') {
+                updateData.status = 'completed';
+            }
+
+            // Timestamps logísticos
+            const now = new Date().toISOString();
+            if (shipping_status === 'shipped') updateData.shipped_at = now;
+            if (shipping_status === 'in_delivery') updateData.in_delivery_at = now;
+            if (shipping_status === 'delivered') updateData.delivered_at = now;
+
+            // Timestamps comerciales
+            if (status === 'processing') updateData.processing_at = now;
+
             const { error } = await supabaseAdmin
                 .from('orders')
-                .update({
-                    status,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .in('id', numericIds);
 
             if (error) throw error;
 
-            // Enviar notificaciones masivas (background-ish)
+            // Enviar notificaciones masivas
             if (ordersToNotify) {
-                const { sendOrderShippedEmail, sendOrderDeliveredEmail } = await import('../../../../lib/emails');
+                const {
+                    sendOrderProcessingEmail,
+                    sendOrderShippedEmail,
+                    sendOrderInDeliveryEmail,
+                    sendOrderDeliveredEmail
+                } = await import('../../../../lib/emails');
+
                 for (const order of ordersToNotify) {
                     try {
-                        if (status === 'shipped') {
-                            await sendOrderShippedEmail(order);
-                        } else if (status === 'delivered') {
-                            await sendOrderDeliveredEmail(order);
-                        }
+                        if (status === 'processing') await sendOrderProcessingEmail(order);
+                        if (shipping_status === 'shipped') await sendOrderShippedEmail(order);
+                        if (shipping_status === 'in_delivery') await sendOrderInDeliveryEmail(order);
+                        if (shipping_status === 'delivered') await sendOrderDeliveredEmail(order);
                     } catch (emailErr) {
                         console.error(`Error notifying order ${order.id}:`, emailErr);
                     }

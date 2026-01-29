@@ -76,7 +76,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       await supabase.from('orders').update({ ticket_number }).eq('id', order_id);
 
-      const { sendOrderReceiptEmail } = await import('../../../lib/emails');
+      const { sendOrderReceiptEmail, sendAdminNewOrderNotification } = await import('../../../lib/emails');
       const items = items_json ? JSON.parse(items_json) : [];
 
       const orderWithShipping = {
@@ -90,6 +90,10 @@ export const POST: APIRoute = async ({ request }) => {
 
       await sendOrderReceiptEmail(orderWithShipping, items);
       console.log('📧 Ticket enviado automáticamente');
+
+      // Notificar al admin
+      await sendAdminNewOrderNotification(orderWithShipping, items);
+      console.log('🔔 Admin notificado de nueva venta');
 
       // 3. Finalizar uso de cupón si aplica
       if (cupon_id && user_id && order_id) {

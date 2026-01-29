@@ -469,6 +469,53 @@ export const sendOrderCancelledEmail = async (order: any) => {
 };
 
 /**
+ * Envía email de notificación cuando el pedido está siendo preparado
+ */
+export const sendOrderProcessingEmail = async (order: any) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const to = order.shipping_email;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #0f172a; padding: 50px 20px; text-align: center;">
+        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 15px;">Atención al Detalle</div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">Preparación <span style="color: #d4af37;">Completada</span></h1>
+      </div>
+      <div style="padding: 40px; text-align: center;">
+        <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+          Hola <strong>${order.shipping_name}</strong>,<br>
+          Nuestro equipo ha finalizado la revisión y el embalaje de tu pedido <strong>#${order.id.toString().padStart(6, '0')}</strong>. Tu selección ya está lista para ser recogida por el transportista.
+        </p>
+
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; margin-bottom: 35px; border: 1px solid #e2e8f0;">
+          <p style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a;">Próximo paso: Envío y Entrega</p>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #64748b;">Te notificaremos en cuanto el paquete abandone nuestras instalaciones.</p>
+        </div>
+
+        <p style="margin-top: 40px; font-size: 11px; color: #94a3b8; line-height: 1.5; border-top: 1px solid #f1f5f9; pt-30;">
+          Gracias por elegir Fashion Store.<br>
+          Cuidamos cada detalle para que tu experiencia sea única.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `Estamos preparando tu pedido - Fashion Store`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
+  sendSmtpEmail.to = [{ email: to, name: order.shipping_name }];
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending processing notification:', error);
+    return { success: false, error };
+  }
+};
+
+/**
  * Envía email de notificación cuando el pedido ha sido enviado
  */
 export const sendOrderShippedEmail = async (order: any) => {
@@ -479,17 +526,17 @@ export const sendOrderShippedEmail = async (order: any) => {
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
       <div style="background-color: #0f172a; padding: 50px 20px; text-align: center;">
-        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 15px;">Tu pedido está en camino</div>
-        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">¡Ya ha <span style="color: #d4af37;">Salido</span>!</h1>
+        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 15px;">Logística en Marcha</div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">Tu pedido ya está en <span style="color: #d4af37;">Camino</span></h1>
       </div>
       <div style="padding: 40px; text-align: center;">
         <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
           Hola <strong>${order.shipping_name}</strong>,<br>
-          Grandes noticias. Tu pedido <strong>#${order.id.toString().padStart(6, '0')}</strong> ha sido entregado a nuestro transportista y ya está de camino a tu dirección.
+          Grandes noticias. Tu pedido <strong>#${order.id.toString().padStart(6, '0')}</strong> ha sido procesado y ya está viajando hacia tu dirección.
         </p>
 
         <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; margin-bottom: 35px; border: 1px solid #e2e8f0;">
-          <p style="margin: 0; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 15px;">Seguimiento en tiempo real</p>
+          <p style="margin: 0; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 15px;">Portal de Seguimiento</p>
           <a href="${trackingUrl}" style="display: inline-block; background-color: #d4af37; color: #ffffff; padding: 18px 45px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 10px 20px -5px rgba(212, 175, 55, 0.4);">Rastrear mi Paquete</a>
         </div>
 
@@ -497,17 +544,12 @@ export const sendOrderShippedEmail = async (order: any) => {
           <strong>Transportista:</strong> ${order.carrier_name || 'FashionStore Priority'}<br>
           <strong>Nº Seguimiento:</strong> ${order.tracking_number || `FS-${order.id}-2026`}
         </p>
-
-        <p style="margin-top: 40px; font-size: 11px; color: #94a3b8; line-height: 1.5; border-top: 1px solid #f1f5f9; pt-30;">
-          Gracias por confiar en Fashion Store.<br>
-          Pronto disfrutarás de tu selección.
-        </p>
       </div>
     </div>
   `;
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.subject = `¡Tu pedido #${order.id.toString().padStart(6, '0')} está en camino! - Fashion Store`;
+  sendSmtpEmail.subject = `Tu pedido ya está en camino - Fashion Store`;
   sendSmtpEmail.htmlContent = html;
   sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
   sendSmtpEmail.to = [{ email: to, name: order.shipping_name }];
@@ -517,6 +559,54 @@ export const sendOrderShippedEmail = async (order: any) => {
     return { success: true };
   } catch (error) {
     console.error('Error sending shipment notification:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Envía email de notificación cuando el pedido está en reparto (último tramo)
+ */
+export const sendOrderInDeliveryEmail = async (order: any) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@10489692.brevosend.com';
+  const to = order.shipping_email;
+  const trackingUrl = `${import.meta.env.PUBLIC_SITE_URL || 'https://fashionstore-cintas.netlify.app'}/seguimiento/${order.id}`;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #0f172a; padding: 50px 20px; text-align: center;">
+        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 15px;">Última Milla</div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">Tu pedido se entrega <span style="color: #d4af37;">Hoy</span></h1>
+      </div>
+      <div style="padding: 40px; text-align: center;">
+        <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+          Hola <strong>${order.shipping_name}</strong>,<br>
+          Tu pedido <strong>#${order.id.toString().padStart(6, '0')}</strong> ya está en el vehículo de reparto. Nuestro transportista lo entregará en tu dirección a lo largo del día de hoy.
+        </p>
+
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; margin-bottom: 35px; border: 1px solid #e2e8f0;">
+          <p style="margin: 0; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 15px;">Localización en vivo</p>
+          <a href="${trackingUrl}" style="display: inline-block; background-color: #d4af37; color: #ffffff; padding: 18px 45px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 10px 20px -5px rgba(212, 175, 55, 0.4);">Seguir Repartidor</a>
+        </div>
+
+        <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+          Estimamos la entrega entre las <strong>09:00 y las 20:00</strong>.<br>
+          Por favor, asegúrate de que haya alguien disponible para la recepción.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `Tu pedido se entrega hoy - Fashion Store`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
+  sendSmtpEmail.to = [{ email: to, name: order.shipping_name }];
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending delivery notification:', error);
     return { success: false, error };
   }
 };
@@ -532,20 +622,20 @@ export const sendOrderDeliveredEmail = async (order: any) => {
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
       <div style="background-color: #16a34a; padding: 50px 20px; text-align: center;">
         <div style="color: #ffffff; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; opacity: 0.8; margin-bottom: 15px;">Entrega Completada</div>
-        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">¡Recibido con <span style="color: #ffffff; opacity: 0.7;">Éxito</span>!</h1>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #ffffff;">Pedido entregado</h1>
       </div>
       <div style="padding: 40px; text-align: center;">
         <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
           Hola <strong>${order.shipping_name}</strong>,<br>
-          Nos consta que tu pedido <strong>#${order.id.toString().padStart(6, '0')}</strong> ya ha sido entregado.
+          Nos complace informarte que tu pedido <strong>#${order.id.toString().padStart(6, '0')}</strong> ha sido entregado correctamente.
         </p>
 
         <div style="background-color: #f0fdf4; padding: 30px; border-radius: 20px; margin-bottom: 35px; border: 1px solid #dcfce7;">
-           <p style="margin: 0; font-size: 14px; font-weight: 700; color: #166534;">Esperamos que te encante tu nueva adquisición.</p>
+           <p style="margin: 0; font-size: 14px; font-weight: 700; color: #166534;">Esperamos que disfrutes de tu compra.</p>
         </div>
 
         <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-bottom: 30px;">
-          Si tienes cualquier duda o el producto no es lo que esperabas, recuerda que puedes gestionar tu devolución desde tu perfil de cliente.
+          Adjunto encontrarás el recibo oficial de tu pedido. Si necesitas gestionar cualquier devolución, puedes hacerlo desde tu panel de cliente.
         </p>
 
         <div style="margin-top: 40px;">
@@ -556,7 +646,7 @@ export const sendOrderDeliveredEmail = async (order: any) => {
   `;
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.subject = `¡Tu pedido #${order.id.toString().padStart(6, '0')} ha sido entregado! - Fashion Store`;
+  sendSmtpEmail.subject = `Pedido entregado - Fashion Store`;
   sendSmtpEmail.htmlContent = html;
   sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
   sendSmtpEmail.to = [{ email: to, name: order.shipping_name }];
@@ -1208,4 +1298,135 @@ export const sendRefundInvoiceEmail = async (order: any, refundAmount: number) =
   }
 };
 
+/**
+ * Notifica al administrador de un nuevo pedido realizado
+ */
+export const sendAdminNewOrderNotification = async (order: any, items: any[]) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
+  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
 
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #f1f5f9; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #0f172a; padding: 40px; text-align: center;">
+        <div style="color: #d4af37; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking: 0.2em; margin-bottom: 10px;">Gestión de Ventas</div>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff;">¡Nuevo Pedido <span style="color: #d4af37;">Recibido</span>!</h1>
+      </div>
+      <div style="padding: 40px;">
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+          <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: #0f172a;">Pedido #${order.id.toString().padStart(6, '0')}</p>
+          <p style="margin: 0; font-size: 12px; color: #64748b;">Cliente: ${order.shipping_name} (${order.shipping_email})</p>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b;">Total: <strong>${(order.total_amount / 100).toFixed(2)}€</strong></p>
+          <div style="height: 1px; background: #e2e8f0; margin: 15px 0;"></div>
+          <p style="margin: 0 0 5px 0; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Artículos:</p>
+          <ul style="margin: 0; padding: 0; list-style: none; font-size: 12px; color: #0f172a;">
+            ${items.map(item => `<li>• ${item.product_name} (Talla: ${item.size || item.product_size}) x${item.quantity}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <div style="text-align: center;">
+          <a href="https://fashionstore-cintas.netlify.app/admin" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 18px 40px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;">Ir al Panel de Control</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `🔔 [VENTA] Nuevo pedido #${order.id.toString().padStart(6, '0')} - Fashion Store`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store Alerts', email: from };
+  sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
+
+  try {
+    console.log(`[EMAILS] Intentando enviar notificación de nuevo pedido a admin: ${adminEmail}`);
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('[EMAILS] Notificación de nuevo pedido enviada con éxito');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAILS] Error enviando alerta de nuevo pedido a admin:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Notifica al administrador de una cancelación de pedido
+ */
+export const sendAdminOrderCancelledNotification = async (order: any) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
+  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #fee2e2; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #ef4444; padding: 40px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff;">Pedido Cancelado</h1>
+      </div>
+      <div style="padding: 40px;">
+        <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+          El pedido <strong>#${order.id.toString().padStart(6, '0')}</strong> de <strong>${order.shipping_name}</strong> ha sido cancelado por el cliente.
+        </p>
+        <div style="background-color: #fef2f2; padding: 20px; border-radius: 16px; border: 1px solid #fee2e2; margin: 20px 0;">
+          <p style="margin: 0; font-size: 13px; color: #991b1b;">Se ha procesado automáticamente la restauración del stock.</p>
+          ${order.payment_status === 'refunded' ? '<p style="margin: 5px 0 0 0; font-size: 13px; color: #991b1b; font-weight: bold;">⚠️ Reembolso de Stripe emitido.</p>' : ''}
+        </div>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `❌ [CANCELADO] Pedido #${order.id.toString().padStart(6, '0')}`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store Alerts', email: from };
+  sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
+
+  try {
+    console.log(`[EMAILS] Intentando enviar notificación de cancelación a admin: ${adminEmail}`);
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('[EMAILS] Notificación de cancelación enviada con éxito');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAILS] Error enviando alerta de cancelación a admin:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Notifica al administrador de una nueva solicitud de devolución
+ */
+export const sendAdminReturnRequestedNotification = async (order: any) => {
+  const from = import.meta.env.EMAIL_FROM || 'jdcintas.dam@gmail.com';
+  const adminEmail = import.meta.env.ADMIN_EMAIL || from;
+
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 24px; border: 1px solid #fef3c7; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #d4af37; padding: 40px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff;">Nueva Solicitud de Devolución</h1>
+      </div>
+      <div style="padding: 40px;">
+        <div style="background-color: #fffbeb; padding: 30px; border-radius: 20px; border: 1px solid #fef3c7;">
+          <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: #0f172a;">Pedido #${order.id.toString().padStart(6, '0')}</p>
+          <p style="margin: 0; font-size: 12px; color: #64748b;">Cliente: ${order.shipping_name}</p>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b;">Motivo: <strong>${order.return_reason || 'No especificado'}</strong></p>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b;">ID Seguimiento de Retorno: <strong>${order.return_tracking_id}</strong></p>
+        </div>
+        <div style="text-align: center; margin-top: 30px;">
+          <a href="https://fashionstore-cintas.netlify.app/admin" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 18px 40px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 12px; text-transform: uppercase;">Revisar Devolución</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = `🔄 [DEVOLUCIÓN] Solicitud para pedido #${order.id.toString().padStart(6, '0')}`;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store Alerts', email: from };
+  sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
+
+  try {
+    console.log(`[EMAILS] Intentando enviar notificación de devolución a admin: ${adminEmail}`);
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('[EMAILS] Notificación de devolución enviada con éxito');
+    return { success: true };
+  } catch (error) {
+    console.error('[EMAILS] Error enviando alerta de devolución a admin:', error);
+    return { success: false, error };
+  }
+};

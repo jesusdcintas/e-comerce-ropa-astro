@@ -25,17 +25,18 @@ const dateOffset = parseInt(Astro.url.searchParams.get("offset") || "0");
 const isAsc = orderParams === "asc";
 
 const statusText = {
-    paid: "Pagado",
-    shipped: "Enviado",
-    delivered: "Entregado",
+    processing: "En Proceso",
+    completed: "Finalizado",
     cancelled: "Cancelado",
+    refunded: "Reembolsado",
 };
 
 const statusBadge = {
     paid: "bg-green-100 text-green-600 border-green-200",
-    shipped: "bg-blue-100 text-blue-600 border-blue-200",
-    delivered: "bg-purple-100 text-purple-600 border-purple-200",
+    processing: "bg-blue-100 text-blue-600 border-blue-200",
+    completed: "bg-slate-100 text-slate-500 border-slate-200",
     cancelled: "bg-red-100 text-red-600 border-red-200",
+    refunded: "bg-red-50 text-red-400 border-red-100",
 };
 
 // Lógica de fechas
@@ -549,23 +550,13 @@ const periodLabels = {
                                         </div>
                                     </td>
                                     <td class="px-8 py-6">
-                                        <select
-                                            data-order-id={order.id}
-                                            class={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border-2 cursor-pointer focus:ring-4 focus:ring-brand-gold/10 outline-none transition-all status-selector ${statusBadge[order.status as keyof typeof statusBadge]}`}
+                                        <span
+                                            class={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border-2 transition-all ${statusBadge[order.status as keyof typeof statusBadge]}`}
                                         >
-                                            {Object.entries(statusText).map(
-                                                ([key, text]) => (
-                                                    <option
-                                                        value={key}
-                                                        selected={
-                                                            order.status === key
-                                                        }
-                                                    >
-                                                        {text.toUpperCase()}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
+                                            {statusText[
+                                                order.status as keyof typeof statusText
+                                            ] || order.status.toUpperCase()}
+                                        </span>
                                     </td>
                                     <td class="px-8 py-6">
                                         <div class="flex -space-x-3 overflow-hidden">
@@ -723,63 +714,7 @@ const periodLabels = {
             window.location.search = params.toString();
         });
 
-        const selectors = document.querySelectorAll(".status-selector");
-
-        selectors.forEach((select) => {
-            select.addEventListener("change", async (e) => {
-                const newStatus = e.target.value;
-                const orderId = select.dataset.orderId;
-                const orderLabel = orderId.toString().padStart(6, "0");
-
-                window.showCustomModal({
-                    title: "Actualizar Estado",
-                    message: `¿Estás seguro de cambiar el estado del pedido #${orderLabel} a "${newStatus.toUpperCase()}"?`,
-                    type: "confirm",
-                    onConfirm: async () => {
-                        select.disabled = true;
-                        select.style.opacity = "0.5";
-
-                        try {
-                            const res = await fetch(
-                                "/api/admin/orders/update-status",
-                                {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        id: orderId,
-                                        status: newStatus,
-                                    }),
-                                },
-                            );
-
-                            if (res.ok) {
-                                window.location.reload();
-                            } else {
-                                const err = await res.json();
-                                window.showCustomModal({
-                                    title: "Error de Actualización",
-                                    message: "Error: " + err.error,
-                                    type: "alert",
-                                });
-                                window.location.reload();
-                            }
-                        } catch (err) {
-                            window.showCustomModal({
-                                title: "Error de Conexión",
-                                message: "No se pudo conectar con el servidor.",
-                                type: "alert",
-                            });
-                            window.location.reload();
-                        }
-                    },
-                    onCancel: () => {
-                        window.location.reload();
-                    },
-                });
-            });
-        });
+        // Lógica para el filtro y reporte se mantiene
 
         // Lógica para filas clicables
         function initClickableRows() {
