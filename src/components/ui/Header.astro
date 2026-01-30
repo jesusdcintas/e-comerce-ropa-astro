@@ -564,6 +564,29 @@ const isAccount =
       >
       {user && <HeaderCounter client:load type="notification" />}
     </button>
+
+    <!-- Admin Panel (solo para admins) -->
+    {user?.app_metadata?.role === "admin" && (
+      <a
+        href="/admin"
+        class={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all ${isAdmin ? "text-slate-900 scale-105" : "text-slate-400 active:scale-95"}`}
+      >
+        <svg
+          class="w-6 h-6"
+          fill={isAdmin ? "currentColor" : "none"}
+          stroke="currentColor"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+        >
+          <path d="M3 3h18v18H3z"></path>
+          <path d="M9 9h6v6H9z"></path>
+        </svg>
+        <span
+          class={`text-[9.5px] font-black uppercase tracking-widest ${isAdmin ? "opacity-100" : "opacity-70"}`}
+          >Admin</span
+        >
+      </a>
+    )}
   </div>
 </nav>
 

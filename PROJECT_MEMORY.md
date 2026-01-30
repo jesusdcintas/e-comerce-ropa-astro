@@ -98,7 +98,6 @@
 - [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
-- [x] **Recuperar contraseña (Fix)**: Corregido flujo de recuperación de contraseña en producción. Se solucionó el error de "Cross-site POST" desactivando `checkOrigin` en Astro y se forzó la URL de redirección correcta (`SITE_URL`) para evitar enlaces a `localhost`.
 - [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
 
 
