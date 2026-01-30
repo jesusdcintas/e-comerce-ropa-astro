@@ -100,6 +100,7 @@
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
 - [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
 - [x] **Compras sin iniciar sesión**: Permitir a los usuarios realizar pedidos sin tener una cuenta creada.
+- Recuperar contraseña desde movil falla. Y enlace desde web y servidor (http://localhost:3000/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired) https://lswokdjpfmsxczkeyvft.supabase.co/auth/v1/verify?token=4aa0ce6e51f921fab8383ec0bab23360d8dbd57c8027683f6e144cad&type=recovery&redirect_to=http://localhost:3000
 
 
 ## Sistema de Cupones 2.0 (Reglas del Negocio)

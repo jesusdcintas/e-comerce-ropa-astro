@@ -13,7 +13,7 @@ if (Astro.request.method === "POST") {
         if (!email) throw new Error("El email es obligatorio");
 
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${Astro.url.origin}/reset-password`,
+            redirectTo: `${Astro.site}reset-password`,
         });
 
         if (error) throw error;
