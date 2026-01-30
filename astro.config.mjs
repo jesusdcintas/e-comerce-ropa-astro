@@ -12,6 +12,9 @@ const SITE_URL = process.env.SITE_URL || 'http://cintasfashionstore.victoriafp.o
 export default defineConfig({
   site: SITE_URL,
   output: 'server',
+  security: {
+    checkOrigin: false
+  },
   vite: {
     plugins: [tailwindcss()]
   },

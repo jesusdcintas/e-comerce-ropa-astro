@@ -12,8 +12,22 @@ if (Astro.request.method === "POST") {
 
         if (!email) throw new Error("El email es obligatorio");
 
+        // Obtenemos la URL base de forma robusta
+        const siteUrl =
+            import.meta.env.SITE_URL ||
+            "http://cintasfashionstore.victoriafp.online";
+        const cleanUrl = siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`;
+        const redirectTo = `${cleanUrl}reset-password`;
+
+        console.log(
+            "Enviando recuperación a:",
+            email,
+            "con redirect a:",
+            redirectTo,
+        );
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${Astro.site}reset-password`,
+            redirectTo: redirectTo,
         });
 
         if (error) throw error;
