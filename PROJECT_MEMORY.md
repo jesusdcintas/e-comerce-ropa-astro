@@ -98,9 +98,8 @@
 - [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
+- [x] **Recuperar contraseña (Fix)**: Corregido flujo de recuperación de contraseña en producción. Se solucionó el error de "Cross-site POST" desactivando `checkOrigin` en Astro y se forzó la URL de redirección correcta (`SITE_URL`) para evitar enlaces a `localhost`.
 - [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
-- [x] **Compras sin iniciar sesión**: Permitir a los usuarios realizar pedidos sin tener una cuenta creada.
-- Recuperar contraseña desde movil falla. Y enlace desde web y servidor (http://localhost:3000/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired) https://lswokdjpfmsxczkeyvft.supabase.co/auth/v1/verify?token=4aa0ce6e51f921fab8383ec0bab23360d8dbd57c8027683f6e144cad&type=recovery&redirect_to=http://localhost:3000
 
 
 ## Sistema de Cupones 2.0 (Reglas del Negocio)
@@ -130,7 +129,8 @@
 - **Logística**: El administrador solo interviene para marcar el envío real. El sistema gestiona proactivamente la última milla y la confirmación de entrega para maximizar el engagement y minimizar la ansiedad del cliente.
 
 ## Última actualización
-2026-01-29 (Check-in Actual): Refinamiento del motor de Business Intelligence. Optimización de reportes PDF trimestrales para auditoría fiscal (A4 layout), implementación del sistema de filtrado dinámico por estados en el Admin y simplificación del flujo operativo eliminando estados redundantes. Rediseño premium de la barra de herramientas de gestión de pedidos.
+2026-01-30 (Check-in Actual): Resolución definitiva del flujo de recuperación de contraseña. Implementación de `security.checkOrigin: false` en `astro.config.mjs` para permitir envíos desde dispositivos móviles tras proxy inverso y forzado de `SITE_URL` en el proceso de `resetPasswordForEmail`.
+2026-01-29: Refinamiento del motor de Business Intelligence. Optimización de reportes PDF trimestrales para auditoría fiscal (A4 layout), implementación del sistema de filtrado dinámico por estados en el Admin y simplificación del flujo operativo eliminando estados redundantes. Rediseño premium de la barra de herramientas de gestión de pedidos.
 2026-01-28: Rediseño premium de la sección de perfil, implementación de borrado de cuenta seguro con estándares profesionales de re-autenticación y validación de estado de pedidos previa a la baja. Confirmación del flujo de "Guest Checkout" para compras sin registro.
 
 2026-01-29 (EMAILS) - Incidencia y resolución:
