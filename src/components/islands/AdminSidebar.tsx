@@ -283,7 +283,7 @@ export default function AdminSidebar({
 
             {/* Ver Tienda Pública */}
             <div className="mt-auto pt-10">
-                <a href={import.meta.env.SITE_URL} target="_blank" className="flex items-center px-4 py-3 text-xs font-semibold text-slate-500 hover:text-white border-t border-white/5 group transition-colors" title={isCollapsed ? "Ver Tienda" : ""}>
+                <a href="/" target="_blank" className="flex items-center px-4 py-3 text-xs font-semibold text-slate-500 hover:text-white border-t border-white/5 group transition-colors" title={isCollapsed ? "Ver Tienda" : ""}>
                     <span className="sidebar-text transition-all duration-300">Ver Tienda en Vivo</span>
                     <svg className={`h-4 w-4 transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform ${!isCollapsed ? 'ml-2' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
