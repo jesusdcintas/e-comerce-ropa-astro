@@ -26,6 +26,7 @@ const pathname = Astro.url.pathname;
 const isHome = pathname === "/";
 const isCatalogo = pathname.startsWith("/catalogo");
 const isOfertas = pathname.startsWith("/ofertas");
+const isAdmin = pathname.startsWith("/admin");
 const isAccount =
   pathname.startsWith("/mi-cuenta") ||
   pathname.startsWith("/mensajes") ||
