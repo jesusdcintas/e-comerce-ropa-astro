@@ -40,6 +40,7 @@ const { data: profile } = await supabaseAuth
 
 const userName = profile?.name || user.user_metadata?.name || "";
 const userEmail = user.email || "";
+const newsletterSubscribed = profile?.newsletter_subscribed || false;
 
 // Datos de facturación de la base de datos
 const billingInfo = {
@@ -505,6 +506,61 @@ const billingInfo = {
       </div>
     </div>
 
+    <!-- Preferencias de Newsletter -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <svg
+          class="w-6 h-6 mr-2 text-brand-gold"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          ></path>
+        </svg>
+        Preferencias de Newsletter
+      </h2>
+      <p class="text-sm text-gray-500 mb-6">
+        Recibe ofertas exclusivas, novedades y contenido especial directamente en tu correo.
+      </p>
+
+      <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+        <div>
+          <p class="font-semibold text-slate-800">Suscripción a Newsletter</p>
+          <p class="text-sm text-slate-500" id="newsletter-status-text">
+            {newsletterSubscribed ? "Estás suscrito a nuestra newsletter" : "No estás suscrito actualmente"}
+          </p>
+        </div>
+        <button
+          id="newsletter-toggle-btn"
+          data-subscribed={newsletterSubscribed.toString()}
+          class={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2 ${
+            newsletterSubscribed ? 'bg-brand-gold' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            id="newsletter-toggle-dot"
+            class={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
+              newsletterSubscribed ? 'translate-x-7' : 'translate-x-1'
+            }`}
+          ></span>
+        </button>
+      </div>
+
+      <div
+        id="newsletter-msg"
+        class="hidden mt-4 text-sm p-3 rounded-md"
+      ></div>
+
+      <p class="text-xs text-gray-400 mt-4">
+        Puedes darte de baja en cualquier momento. Tu email ({userEmail}) no se compartirá con terceros.
+      </p>
+    </div>
+
     <!-- Gestión de Sesión & Zona de Peligro -->
     <div class="mt-24 pt-12 border-t border-slate-100">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -900,5 +956,60 @@ const billingInfo = {
         }
       },
     });
+  });
+
+  // Newsletter Toggle
+  const newsletterBtn = document.getElementById("newsletter-toggle-btn");
+  const newsletterDot = document.getElementById("newsletter-toggle-dot");
+  const newsletterStatusText = document.getElementById("newsletter-status-text");
+  const newsletterMsg = document.getElementById("newsletter-msg");
+
+  newsletterBtn?.addEventListener("click", async () => {
+    newsletterBtn.setAttribute("disabled", "true");
+    
+    try {
+      const res = await fetch("/api/newsletter/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const isSubscribed = data.subscribed;
+        
+        // Actualizar visual del toggle
+        if (isSubscribed) {
+          newsletterBtn.classList.remove("bg-gray-300");
+          newsletterBtn.classList.add("bg-brand-gold");
+          newsletterDot?.classList.remove("translate-x-1");
+          newsletterDot?.classList.add("translate-x-7");
+          if (newsletterStatusText) newsletterStatusText.textContent = "Estás suscrito a nuestra newsletter";
+        } else {
+          newsletterBtn.classList.remove("bg-brand-gold");
+          newsletterBtn.classList.add("bg-gray-300");
+          newsletterDot?.classList.remove("translate-x-7");
+          newsletterDot?.classList.add("translate-x-1");
+          if (newsletterStatusText) newsletterStatusText.textContent = "No estás suscrito actualmente";
+        }
+        
+        newsletterBtn.setAttribute("data-subscribed", isSubscribed.toString());
+        
+        // Mostrar mensaje de éxito
+        if (newsletterMsg) {
+          newsletterMsg.textContent = data.message;
+          newsletterMsg.className = `mt-4 text-sm p-3 rounded-md ${isSubscribed ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`;
+          newsletterMsg.classList.remove("hidden");
+          setTimeout(() => newsletterMsg.classList.add("hidden"), 4000);
+        }
+        
+        addToast(data.message, "success");
+      } else {
+        addToast(data.error || "Error al actualizar preferencia", "error");
+      }
+    } catch (error: any) {
+      addToast("Error de conexión", "error");
+    } finally {
+      newsletterBtn.removeAttribute("disabled");
+    }
   });
 </script>

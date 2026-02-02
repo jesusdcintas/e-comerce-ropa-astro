@@ -60,6 +60,19 @@ export async function validateCoupon(
         };
     }
 
+    // Verificación adicional: cupón solo para suscriptores newsletter
+    const { data: newsletterCheck } = await supabaseAdmin.rpc('check_newsletter_requirement', {
+        p_coupon_id: result.coupon_id,
+        p_user_id: userId && userId !== "" ? userId : null
+    });
+
+    if (newsletterCheck === false) {
+        return {
+            valid: false,
+            message: 'Este cupón es exclusivo para suscriptores de nuestra newsletter. Puedes suscribirte desde "Mi Cuenta".'
+        };
+    }
+
     return {
         valid: true,
         discount: result.discount_percent,

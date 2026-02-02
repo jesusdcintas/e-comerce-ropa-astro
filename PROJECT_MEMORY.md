@@ -53,6 +53,13 @@
 - [x] **Marketing & Conversión**:
   - [x] Pop-ups configurables (Newsletter/Descuento) con interruptor de visibilidad.
   - [x] Newsletter funcional con suscripción y registro en base de datos.
+  - [x] **Sistema Newsletter 2.0** (Solo usuarios registrados):
+    - [x] Newsletter como propiedad del usuario (`profiles.newsletter_subscribed`), no tabla externa.
+    - [x] Toggle simple en "Mi Cuenta" para activar/desactivar.
+    - [x] Panel admin completo (`/admin/newsletter`) para crear y enviar campañas.
+    - [x] Envío por lotes en segundo plano con tracking de estado (pending/sent/failed).
+    - [x] Cupones exclusivos para suscriptores (`cupones.solo_newsletter`).
+    - [x] Validación en backend: cupón newsletter solo usable si usuario está suscrito.
   - [x] **Controles Globales**: Interruptores maestros para Ofertas Flash, Novedades y Pop-ups vinculados directamente a la base de datos para control en tiempo real desde el Dashboard.
   - [x] **Modo Mantenimiento**: Bloqueo global de la tienda para clientes mientras se mantiene el acceso para administradores.
 - [x] **Visualización Premium**:

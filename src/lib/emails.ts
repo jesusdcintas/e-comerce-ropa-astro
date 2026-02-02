@@ -1448,3 +1448,87 @@ export const sendAdminReturnRequestedNotification = async (order: any) => {
     return { success: false, error };
   }
 };
+
+/**
+ * Envía un email de newsletter a un suscriptor
+ * Usado por el sistema de campañas masivas
+ */
+export const sendNewsletterEmail = async (
+  email: string,
+  nombre: string,
+  subject: string,
+  contentHtml: string,
+  campaignId?: string
+): Promise<{ success: boolean; error?: any }> => {
+  const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
+
+  // Wrapper HTML con diseño premium y opción de baja
+  const html = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8fafc;">
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 0; overflow: hidden; background-color: #ffffff;">
+        
+        <!-- Header Premium -->
+        <div style="background-color: #0f172a; padding: 40px 30px; text-align: center;">
+          <div style="margin-bottom: 15px;">
+            <span style="font-size: 28px; font-weight: 900; color: #ffffff; letter-spacing: -1px;">FASHION</span>
+            <span style="font-size: 28px; font-weight: 900; color: #d4af37; letter-spacing: -1px;">STORE</span>
+          </div>
+          <p style="margin: 0; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px;">Newsletter Exclusiva</p>
+        </div>
+        
+        <!-- Contenido Principal -->
+        <div style="padding: 40px 30px;">
+          <p style="margin: 0 0 20px 0; font-size: 16px; color: #64748b;">
+            Hola <strong style="color: #0f172a;">${nombre || 'Cliente'}</strong>,
+          </p>
+          
+          <!-- Contenido dinámico de la campaña -->
+          <div style="color: #334155; font-size: 15px; line-height: 1.7;">
+            ${contentHtml}
+          </div>
+        </div>
+        
+        <!-- Footer con opción de baja -->
+        <div style="background-color: #f8fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0 0 15px 0; font-size: 12px; color: #94a3b8;">
+            © 2026 Fashion Store. Calidad premium para gente auténtica.
+          </p>
+          <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+            Recibes este email porque estás suscrito a nuestra newsletter.<br>
+            <a href="https://fashionstore.com/mi-cuenta" style="color: #d4af37; text-decoration: underline;">Gestionar preferencias</a> · 
+            <a href="https://fashionstore.com/mi-cuenta" style="color: #64748b; text-decoration: underline;">Darse de baja</a>
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = subject;
+  sendSmtpEmail.htmlContent = html;
+  sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
+  sendSmtpEmail.to = [{ email: email, name: nombre || 'Suscriptor' }];
+  
+  // Headers personalizados para tracking
+  if (campaignId) {
+    sendSmtpEmail.headers = {
+      'X-Campaign-ID': campaignId
+    };
+  }
+
+  try {
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`[NEWSLETTER] Email enviado a: ${email}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error(`[NEWSLETTER] Error enviando a ${email}:`, error);
+    return { success: false, error };
+  }
+};

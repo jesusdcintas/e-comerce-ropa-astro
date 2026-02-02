@@ -1,0 +1,491 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+
+if (!accessToken) {
+    return Astro.redirect("/login");
+}
+
+const supabaseAdmin = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+);
+
+// Verificar admin
+const { data: { user } } = await supabaseAdmin.auth.getUser(accessToken);
+if (!user) return Astro.redirect("/login");
+
+const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+if (profile?.role !== "admin") return Astro.redirect("/");
+
+// Obtener campañas existentes
+const { data: campaigns } = await supabaseAdmin
+    .from("newsletter_campaigns")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+// Obtener conteo de suscriptores activos
+const { count: subscriberCount } = await supabaseAdmin
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("newsletter_subscribed", true);
+
+const statusColors: Record<string, string> = {
+    draft: "bg-gray-100 text-gray-700",
+    scheduled: "bg-blue-100 text-blue-700",
+    sending: "bg-yellow-100 text-yellow-700",
+    sent: "bg-green-100 text-green-700",
+    cancelled: "bg-red-100 text-red-700"
+};
+
+const statusLabels: Record<string, string> = {
+    draft: "Borrador",
+    scheduled: "Programada",
+    sending: "Enviando...",
+    sent: "Enviada",
+    cancelled: "Cancelada"
+};
+---
+
+<AdminLayout title="Newsletter">
+    <div class="p-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-2">
+                    <span class="w-6 h-px bg-brand-gold"></span>
+                    Marketing
+                </div>
+                <h1 class="text-3xl font-black text-slate-800 tracking-tight">
+                    Campañas de <span class="text-brand-gold italic font-serif">Newsletter</span>
+                </h1>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Stats -->
+                <div class="bg-white rounded-2xl px-6 py-3 border border-slate-200 shadow-sm">
+                    <p class="text-xs text-slate-500 font-medium">Suscriptores Activos</p>
+                    <p class="text-2xl font-black text-brand-gold">{subscriberCount || 0}</p>
+                </div>
+
+                <!-- New Campaign Button -->
+                <button
+                    id="new-campaign-btn"
+                    class="bg-brand-gold hover:bg-amber-500 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-colors shadow-lg"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Nueva Campaña
+                </button>
+            </div>
+        </div>
+
+        <!-- Campaigns Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="campaigns-grid">
+            {campaigns && campaigns.length > 0 ? (
+                campaigns.map((campaign) => (
+                    <div 
+                        class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
+                        data-campaign-id={campaign.id}
+                    >
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <span class={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[campaign.status]}`}>
+                                    {statusLabels[campaign.status]}
+                                </span>
+                                {campaign.status === 'draft' && (
+                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            class="edit-campaign-btn p-1.5 rounded-lg hover:bg-slate-100"
+                                            data-id={campaign.id}
+                                            title="Editar"
+                                        >
+                                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                            </svg>
+                                        </button>
+                                        <button 
+                                            class="delete-campaign-btn p-1.5 rounded-lg hover:bg-red-50"
+                                            data-id={campaign.id}
+                                            title="Eliminar"
+                                        >
+                                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <h3 class="font-bold text-slate-800 text-lg mb-2 line-clamp-2">{campaign.subject}</h3>
+                            <p class="text-sm text-slate-500 line-clamp-2 mb-4">
+                                {campaign.content_preview || campaign.subject}
+                            </p>
+
+                            <div class="flex items-center gap-4 text-xs text-slate-400">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    {new Date(campaign.created_at).toLocaleDateString('es-ES')}
+                                </span>
+                                
+                                {campaign.status === 'sent' && (
+                                    <>
+                                        <span class="flex items-center gap-1 text-green-600">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            {campaign.total_sent} enviados
+                                        </span>
+                                        {campaign.total_errors > 0 && (
+                                            <span class="flex items-center gap-1 text-red-500">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                {campaign.total_errors} errores
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {campaign.status === 'draft' && (
+                            <div class="border-t border-slate-100 p-4 bg-slate-50 flex gap-3">
+                                <button
+                                    class="test-send-btn flex-1 py-2 px-4 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-white transition-colors"
+                                    data-id={campaign.id}
+                                >
+                                    Enviar Prueba
+                                </button>
+                                <button
+                                    class="send-campaign-btn flex-1 py-2 px-4 rounded-lg bg-brand-gold text-white text-sm font-bold hover:bg-amber-500 transition-colors"
+                                    data-id={campaign.id}
+                                >
+                                    Enviar a Todos
+                                </button>
+                            </div>
+                        )}
+
+                        {campaign.status === 'sending' && (
+                            <div class="border-t border-slate-100 p-4 bg-yellow-50">
+                                <div class="flex items-center gap-2 text-sm text-yellow-700">
+                                    <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Enviando {campaign.total_sent || 0} de {campaign.total_recipients}...
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))
+            ) : (
+                <div class="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-200">
+                    <svg class="w-16 h-16 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                    <h3 class="text-lg font-bold text-slate-600 mb-2">No hay campañas aún</h3>
+                    <p class="text-slate-400 mb-4">Crea tu primera campaña de newsletter</p>
+                    <button
+                        id="empty-new-campaign-btn"
+                        class="bg-brand-gold hover:bg-amber-500 text-white px-6 py-3 rounded-xl font-bold text-sm inline-flex items-center gap-2 transition-colors"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Crear Campaña
+                    </button>
+                </div>
+            )}
+        </div>
+    </div>
+
+    <!-- Modal Nueva/Editar Campaña -->
+    <div id="campaign-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="modal-backdrop"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+            <div class="p-6 border-b border-slate-100">
+                <h2 class="text-xl font-bold text-slate-800" id="modal-title">Nueva Campaña</h2>
+            </div>
+            
+            <form id="campaign-form" class="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
+                <input type="hidden" id="campaign-id" value="">
+                
+                <div>
+                    <label for="campaign-subject" class="block text-sm font-semibold text-slate-700 mb-2">
+                        Asunto del Email *
+                    </label>
+                    <input
+                        type="text"
+                        id="campaign-subject"
+                        required
+                        placeholder="Ej: ¡Nuevas ofertas exclusivas para ti!"
+                        class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors"
+                    >
+                </div>
+
+                <div>
+                    <label for="campaign-preview" class="block text-sm font-semibold text-slate-700 mb-2">
+                        Texto de Preview (opcional)
+                    </label>
+                    <input
+                        type="text"
+                        id="campaign-preview"
+                        placeholder="Extracto que aparece antes de abrir el email"
+                        class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors"
+                    >
+                </div>
+
+                <div>
+                    <label for="campaign-content" class="block text-sm font-semibold text-slate-700 mb-2">
+                        Contenido del Email (HTML) *
+                    </label>
+                    <textarea
+                        id="campaign-content"
+                        required
+                        rows="10"
+                        placeholder="<p>¡Hola!</p><p>Te traemos las mejores ofertas...</p>"
+                        class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors font-mono text-sm"
+                    ></textarea>
+                    <p class="text-xs text-slate-400 mt-1">Puedes usar HTML básico: &lt;p&gt;, &lt;strong&gt;, &lt;a href=""&gt;, &lt;img&gt;, etc.</p>
+                </div>
+            </form>
+
+            <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button
+                    type="button"
+                    id="cancel-modal-btn"
+                    class="px-6 py-3 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-white transition-colors"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    form="campaign-form"
+                    class="px-6 py-3 rounded-xl bg-brand-gold text-white font-bold hover:bg-amber-500 transition-colors"
+                >
+                    Guardar Campaña
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Enviar Prueba -->
+    <div id="test-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="test-modal-backdrop"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">Enviar Email de Prueba</h2>
+            <input type="hidden" id="test-campaign-id" value="">
+            <div class="mb-6">
+                <label for="test-email" class="block text-sm font-medium text-slate-700 mb-2">Email de prueba</label>
+                <input
+                    type="email"
+                    id="test-email"
+                    required
+                    placeholder="tu@email.com"
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold"
+                >
+            </div>
+            <div class="flex gap-3">
+                <button
+                    id="cancel-test-btn"
+                    class="flex-1 py-3 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-50"
+                >
+                    Cancelar
+                </button>
+                <button
+                    id="confirm-test-btn"
+                    class="flex-1 py-3 rounded-xl bg-brand-gold text-white font-bold hover:bg-amber-500"
+                >
+                    Enviar Prueba
+                </button>
+            </div>
+        </div>
+    </div>
+</AdminLayout>
+
+<script>
+    import { addToast } from '../../../stores/toastStore';
+
+    const modal = document.getElementById('campaign-modal');
+    const testModal = document.getElementById('test-modal');
+    const form = document.getElementById('campaign-form') as HTMLFormElement;
+    
+    // Abrir modal nueva campaña
+    document.getElementById('new-campaign-btn')?.addEventListener('click', openNewCampaignModal);
+    document.getElementById('empty-new-campaign-btn')?.addEventListener('click', openNewCampaignModal);
+
+    function openNewCampaignModal() {
+        (document.getElementById('modal-title') as HTMLElement).textContent = 'Nueva Campaña';
+        (document.getElementById('campaign-id') as HTMLInputElement).value = '';
+        (document.getElementById('campaign-subject') as HTMLInputElement).value = '';
+        (document.getElementById('campaign-preview') as HTMLInputElement).value = '';
+        (document.getElementById('campaign-content') as HTMLTextAreaElement).value = '';
+        modal?.classList.remove('hidden');
+    }
+
+    // Cerrar modales
+    document.getElementById('cancel-modal-btn')?.addEventListener('click', () => modal?.classList.add('hidden'));
+    document.getElementById('modal-backdrop')?.addEventListener('click', () => modal?.classList.add('hidden'));
+    document.getElementById('cancel-test-btn')?.addEventListener('click', () => testModal?.classList.add('hidden'));
+    document.getElementById('test-modal-backdrop')?.addEventListener('click', () => testModal?.classList.add('hidden'));
+
+    // Guardar campaña
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const id = (document.getElementById('campaign-id') as HTMLInputElement).value;
+        const subject = (document.getElementById('campaign-subject') as HTMLInputElement).value;
+        const content_preview = (document.getElementById('campaign-preview') as HTMLInputElement).value;
+        const content_html = (document.getElementById('campaign-content') as HTMLTextAreaElement).value;
+
+        try {
+            const res = await fetch('/api/admin/newsletter/campaigns', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, subject, content_preview, content_html })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                addToast(id ? 'Campaña actualizada' : 'Campaña creada', 'success');
+                location.reload();
+            } else {
+                addToast(data.error || 'Error al guardar', 'error');
+            }
+        } catch (err) {
+            addToast('Error de conexión', 'error');
+        }
+    });
+
+    // Editar campaña
+    document.querySelectorAll('.edit-campaign-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = (e.currentTarget as HTMLElement).dataset.id;
+            
+            const res = await fetch(`/api/admin/newsletter/campaigns?id=${id}`);
+            const campaign = await res.json();
+
+            (document.getElementById('modal-title') as HTMLElement).textContent = 'Editar Campaña';
+            (document.getElementById('campaign-id') as HTMLInputElement).value = campaign.id;
+            (document.getElementById('campaign-subject') as HTMLInputElement).value = campaign.subject;
+            (document.getElementById('campaign-preview') as HTMLInputElement).value = campaign.content_preview || '';
+            (document.getElementById('campaign-content') as HTMLTextAreaElement).value = campaign.content_html;
+            modal?.classList.remove('hidden');
+        });
+    });
+
+    // Eliminar campaña
+    document.querySelectorAll('.delete-campaign-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = (e.currentTarget as HTMLElement).dataset.id;
+            
+            if (!confirm('¿Eliminar esta campaña? Esta acción no se puede deshacer.')) return;
+
+            try {
+                const res = await fetch('/api/admin/newsletter/campaigns', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    addToast('Campaña eliminada', 'success');
+                    location.reload();
+                } else {
+                    addToast(data.error || 'Error al eliminar', 'error');
+                }
+            } catch (err) {
+                addToast('Error de conexión', 'error');
+            }
+        });
+    });
+
+    // Enviar prueba
+    document.querySelectorAll('.test-send-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = (e.currentTarget as HTMLElement).dataset.id;
+            (document.getElementById('test-campaign-id') as HTMLInputElement).value = id || '';
+            testModal?.classList.remove('hidden');
+        });
+    });
+
+    document.getElementById('confirm-test-btn')?.addEventListener('click', async () => {
+        const campaignId = (document.getElementById('test-campaign-id') as HTMLInputElement).value;
+        const testEmail = (document.getElementById('test-email') as HTMLInputElement).value;
+
+        if (!testEmail) {
+            addToast('Introduce un email', 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/newsletter/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ campaignId, testEmail })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                addToast('Email de prueba enviado', 'success');
+                testModal?.classList.add('hidden');
+            } else {
+                addToast(data.error || 'Error al enviar', 'error');
+            }
+        } catch (err) {
+            addToast('Error de conexión', 'error');
+        }
+    });
+
+    // Enviar campaña a todos
+    document.querySelectorAll('.send-campaign-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = (e.currentTarget as HTMLElement).dataset.id;
+            const subscriberCount = parseInt(document.querySelector('.text-brand-gold.text-2xl')?.textContent || '0');
+            
+            if (!confirm(`¿Enviar esta campaña a ${subscriberCount} suscriptores? Esta acción no se puede deshacer.`)) return;
+
+            (e.currentTarget as HTMLButtonElement).disabled = true;
+            (e.currentTarget as HTMLButtonElement).textContent = 'Enviando...';
+
+            try {
+                const res = await fetch('/api/admin/newsletter/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ campaignId: id })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    addToast(`Iniciando envío a ${data.totalRecipients} suscriptores`, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    addToast(data.error || 'Error al iniciar envío', 'error');
+                    (e.currentTarget as HTMLButtonElement).disabled = false;
+                    (e.currentTarget as HTMLButtonElement).textContent = 'Enviar a Todos';
+                }
+            } catch (err) {
+                addToast('Error de conexión', 'error');
+                (e.currentTarget as HTMLButtonElement).disabled = false;
+                (e.currentTarget as HTMLButtonElement).textContent = 'Enviar a Todos';
+            }
+        });
+    });
+</script>
