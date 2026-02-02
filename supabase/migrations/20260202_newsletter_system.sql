@@ -71,10 +71,10 @@ ALTER TABLE newsletter_campaigns ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins_Full_Access_Campaigns" ON newsletter_campaigns
     FOR ALL
     USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+        (SELECT (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
     )
     WITH CHECK (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+        (SELECT (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
     );
 
 -- 7. RLS para newsletter_sends  
@@ -83,10 +83,10 @@ ALTER TABLE newsletter_sends ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins_Full_Access_Sends" ON newsletter_sends
     FOR ALL
     USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+        (SELECT (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
     )
     WITH CHECK (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+        (SELECT (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
     );
 
 -- Los usuarios pueden ver sus propios envíos (opcional, para historial)

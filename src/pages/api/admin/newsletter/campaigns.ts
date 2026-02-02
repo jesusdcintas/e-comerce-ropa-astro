@@ -24,13 +24,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
             return new Response(JSON.stringify({ error: "Sesión inválida" }), { status: 401 });
         }
 
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profile?.role !== 'admin') {
+        if (user.app_metadata?.role !== 'admin') {
             return new Response(JSON.stringify({ error: "Solo administradores" }), { status: 403 });
         }
 
@@ -90,13 +84,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Sesión inválida" }), { status: 401 });
         }
 
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profile?.role !== 'admin') {
+        if (user.app_metadata?.role !== 'admin') {
             return new Response(JSON.stringify({ error: "Solo administradores" }), { status: 403 });
         }
 
@@ -145,13 +133,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Sesión inválida" }), { status: 401 });
         }
 
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profile?.role !== 'admin') {
+        if (user.app_metadata?.role !== 'admin') {
             return new Response(JSON.stringify({ error: "Solo administradores" }), { status: 403 });
         }
 
@@ -211,13 +193,7 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Sesión inválida" }), { status: 401 });
         }
 
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profile?.role !== 'admin') {
+        if (user.app_metadata?.role !== 'admin') {
             return new Response(JSON.stringify({ error: "Solo administradores" }), { status: 403 });
         }
 
