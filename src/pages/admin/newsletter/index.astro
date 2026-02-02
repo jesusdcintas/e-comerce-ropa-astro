@@ -1,5 +1,6 @@
 ---
 import AdminLayout from "../../../layouts/AdminLayout.astro";
+import NewsletterImageUploader from "../../../components/functional/NewsletterImageUploader";
 import { createClient } from "@supabase/supabase-js";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
@@ -211,11 +212,13 @@ const statusLabels: Record<string, string> = {
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
             <div class="p-6 border-b border-slate-100">
                 <h2 class="text-xl font-bold text-slate-800" id="modal-title">Nueva Campaña</h2>
+                <p class="text-sm text-slate-500 mt-1">Rellena los campos y nosotros nos encargamos del diseño</p>
             </div>
             
-            <form id="campaign-form" class="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
+            <form id="campaign-form" class="p-6 space-y-5 overflow-y-auto max-h-[60vh]">
                 <input type="hidden" id="campaign-id" value="">
                 
+                <!-- Asunto -->
                 <div>
                     <label for="campaign-subject" class="block text-sm font-semibold text-slate-700 mb-2">
                         Asunto del Email *
@@ -227,32 +230,106 @@ const statusLabels: Record<string, string> = {
                         placeholder="Ej: ¡Nuevas ofertas exclusivas para ti!"
                         class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors"
                     >
+                    <p class="text-xs text-slate-400 mt-1">Lo que verá el cliente en su bandeja de entrada</p>
                 </div>
 
+                <!-- Preview -->
                 <div>
                     <label for="campaign-preview" class="block text-sm font-semibold text-slate-700 mb-2">
-                        Texto de Preview (opcional)
+                        Texto de Preview
                     </label>
                     <input
                         type="text"
                         id="campaign-preview"
-                        placeholder="Extracto que aparece antes de abrir el email"
+                        placeholder="Extracto corto que aparece junto al asunto"
+                        maxlength="100"
                         class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors"
                     >
                 </div>
 
+                <hr class="border-slate-100">
+
+                <!-- Título -->
                 <div>
-                    <label for="campaign-content" class="block text-sm font-semibold text-slate-700 mb-2">
-                        Contenido del Email (HTML) *
+                    <label for="campaign-title" class="block text-sm font-semibold text-slate-700 mb-2">
+                        Título Principal *
                     </label>
-                    <textarea
-                        id="campaign-content"
+                    <input
+                        type="text"
+                        id="campaign-title"
                         required
-                        rows="10"
-                        placeholder="<p>¡Hola!</p><p>Te traemos las mejores ofertas...</p>"
-                        class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors font-mono text-sm"
-                    ></textarea>
-                    <p class="text-xs text-slate-400 mt-1">Puedes usar HTML básico: &lt;p&gt;, &lt;strong&gt;, &lt;a href=""&gt;, &lt;img&gt;, etc.</p>
+                        placeholder="Ej: Novedades de Temporada"
+                        class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors text-lg font-medium"
+                    >
+                </div>
+
+                <!-- Bloques de texto -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">
+                        Contenido (párrafos) *
+                    </label>
+                    <div id="text-blocks-container" class="space-y-3">
+                        <div class="text-block-item flex gap-2">
+                            <textarea
+                                class="text-block-input flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors resize-none"
+                                rows="3"
+                                placeholder="Escribe un párrafo..."
+                                required
+                            ></textarea>
+                            <button type="button" class="remove-block-btn p-2 text-slate-400 hover:text-red-500 transition-colors self-start mt-2 hidden">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        id="add-block-btn"
+                        class="mt-3 text-sm text-brand-gold hover:text-amber-600 font-medium flex items-center gap-1"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Añadir otro párrafo
+                    </button>
+                </div>
+
+                <!-- Imagen (Cloudinary) -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">
+                        Imagen Destacada
+                    </label>
+                    <div id="image-uploader-container">
+                        <NewsletterImageUploader client:load />
+                    </div>
+                    <input type="hidden" id="campaign-image" value="">
+                </div>
+
+                <!-- CTA (opcional) -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="campaign-cta-text" class="block text-sm font-semibold text-slate-700 mb-2">
+                            Texto del Botón
+                        </label>
+                        <input
+                            type="text"
+                            id="campaign-cta-text"
+                            placeholder="Ej: Ver Ofertas"
+                            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors"
+                        >
+                    </div>
+                    <div>
+                        <label for="campaign-cta-url" class="block text-sm font-semibold text-slate-700 mb-2">
+                            URL del Botón
+                        </label>
+                        <input
+                            type="url"
+                            id="campaign-cta-url"
+                            placeholder="https://fashionstore.com/ofertas"
+                            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-colors"
+                        >
+                    </div>
                 </div>
             </form>
 
@@ -315,6 +392,61 @@ const statusLabels: Record<string, string> = {
     const modal = document.getElementById('campaign-modal');
     const testModal = document.getElementById('test-modal');
     const form = document.getElementById('campaign-form') as HTMLFormElement;
+    const textBlocksContainer = document.getElementById('text-blocks-container');
+    
+    // Función para añadir un bloque de texto
+    function addTextBlock(content = '') {
+        const blockDiv = document.createElement('div');
+        blockDiv.className = 'text-block flex gap-2';
+        blockDiv.innerHTML = `
+            <textarea 
+                class="text-block-input flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-gold resize-none" 
+                rows="3" 
+                placeholder="Escribe un párrafo..."
+            >${content}</textarea>
+            <button type="button" class="remove-block-btn self-start p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar párrafo">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </button>
+        `;
+        
+        blockDiv.querySelector('.remove-block-btn')?.addEventListener('click', () => {
+            // Mantener al menos un bloque
+            if (textBlocksContainer && textBlocksContainer.querySelectorAll('.text-block').length > 1) {
+                blockDiv.remove();
+            } else {
+                addToast('Debe haber al menos un párrafo', 'error');
+            }
+        });
+        
+        textBlocksContainer?.appendChild(blockDiv);
+    }
+    
+    // Botón añadir bloque
+    document.getElementById('add-block-btn')?.addEventListener('click', () => addTextBlock());
+    
+    // Función para obtener todos los bloques de texto
+    function getTextBlocks(): string[] {
+        const blocks: string[] = [];
+        document.querySelectorAll('.text-block-input').forEach((textarea) => {
+            const value = (textarea as HTMLTextAreaElement).value.trim();
+            if (value) blocks.push(value);
+        });
+        return blocks;
+    }
+    
+    // Función para limpiar y establecer bloques
+    function setTextBlocks(blocks: string[]) {
+        if (textBlocksContainer) {
+            textBlocksContainer.innerHTML = '';
+            if (blocks && blocks.length > 0) {
+                blocks.forEach(block => addTextBlock(block));
+            } else {
+                addTextBlock('');
+            }
+        }
+    }
     
     // Abrir modal nueva campaña
     document.getElementById('new-campaign-btn')?.addEventListener('click', openNewCampaignModal);
@@ -325,7 +457,11 @@ const statusLabels: Record<string, string> = {
         (document.getElementById('campaign-id') as HTMLInputElement).value = '';
         (document.getElementById('campaign-subject') as HTMLInputElement).value = '';
         (document.getElementById('campaign-preview') as HTMLInputElement).value = '';
-        (document.getElementById('campaign-content') as HTMLTextAreaElement).value = '';
+        (document.getElementById('campaign-title') as HTMLInputElement).value = '';
+        (document.getElementById('campaign-image') as HTMLInputElement).value = '';
+        (document.getElementById('campaign-cta-text') as HTMLInputElement).value = '';
+        (document.getElementById('campaign-cta-url') as HTMLInputElement).value = '';
+        setTextBlocks(['']);
         modal?.classList.remove('hidden');
     }
 
@@ -342,13 +478,31 @@ const statusLabels: Record<string, string> = {
         const id = (document.getElementById('campaign-id') as HTMLInputElement).value;
         const subject = (document.getElementById('campaign-subject') as HTMLInputElement).value;
         const content_preview = (document.getElementById('campaign-preview') as HTMLInputElement).value;
-        const content_html = (document.getElementById('campaign-content') as HTMLTextAreaElement).value;
+        const content_title = (document.getElementById('campaign-title') as HTMLInputElement).value;
+        const content_blocks = getTextBlocks();
+        const content_image_url = (document.getElementById('campaign-image') as HTMLInputElement).value;
+        const content_cta_text = (document.getElementById('campaign-cta-text') as HTMLInputElement).value;
+        const content_cta_url = (document.getElementById('campaign-cta-url') as HTMLInputElement).value;
+
+        if (content_blocks.length === 0) {
+            addToast('Añade al menos un párrafo de contenido', 'error');
+            return;
+        }
 
         try {
             const res = await fetch('/api/admin/newsletter/campaigns', {
                 method: id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, subject, content_preview, content_html })
+                body: JSON.stringify({ 
+                    id, 
+                    subject, 
+                    content_preview, 
+                    content_title,
+                    content_blocks,
+                    content_image_url: content_image_url || null,
+                    content_cta_text: content_cta_text || null,
+                    content_cta_url: content_cta_url || null
+                })
             });
 
             const data = await res.json();
@@ -376,7 +530,11 @@ const statusLabels: Record<string, string> = {
             (document.getElementById('campaign-id') as HTMLInputElement).value = campaign.id;
             (document.getElementById('campaign-subject') as HTMLInputElement).value = campaign.subject;
             (document.getElementById('campaign-preview') as HTMLInputElement).value = campaign.content_preview || '';
-            (document.getElementById('campaign-content') as HTMLTextAreaElement).value = campaign.content_html;
+            (document.getElementById('campaign-title') as HTMLInputElement).value = campaign.content_title || '';
+            (document.getElementById('campaign-image') as HTMLInputElement).value = campaign.content_image_url || '';
+            (document.getElementById('campaign-cta-text') as HTMLInputElement).value = campaign.content_cta_text || '';
+            (document.getElementById('campaign-cta-url') as HTMLInputElement).value = campaign.content_cta_url || '';
+            setTextBlocks(campaign.content_blocks || ['']);
             modal?.classList.remove('hidden');
         });
     });

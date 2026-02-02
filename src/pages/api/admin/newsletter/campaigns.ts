@@ -88,18 +88,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Solo administradores" }), { status: 403 });
         }
 
-        const { subject, content_html, content_preview } = await request.json();
+        const { subject, content_preview, content_title, content_blocks, content_image_url, content_cta_text, content_cta_url } = await request.json();
 
-        if (!subject || !content_html) {
-            return new Response(JSON.stringify({ error: "Asunto y contenido son requeridos" }), { status: 400 });
+        if (!subject || !content_title || !content_blocks || content_blocks.length === 0) {
+            return new Response(JSON.stringify({ error: "Asunto, título y al menos un párrafo son requeridos" }), { status: 400 });
         }
 
         const { data: campaign, error } = await supabaseAdmin
             .from('newsletter_campaigns')
             .insert({
                 subject,
-                content_html,
                 content_preview: content_preview || subject.substring(0, 100),
+                content_title,
+                content_blocks,
+                content_image_url,
+                content_cta_text,
+                content_cta_url,
                 status: 'draft',
                 created_by: user.id
             })
@@ -137,7 +141,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Solo administradores" }), { status: 403 });
         }
 
-        const { id, subject, content_html, content_preview } = await request.json();
+        const { id, subject, content_preview, content_title, content_blocks, content_image_url, content_cta_text, content_cta_url } = await request.json();
 
         if (!id) {
             return new Response(JSON.stringify({ error: "ID de campaña requerido" }), { status: 400 });
@@ -158,8 +162,12 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
             .from('newsletter_campaigns')
             .update({
                 subject,
-                content_html,
                 content_preview,
+                content_title,
+                content_blocks,
+                content_image_url,
+                content_cta_text,
+                content_cta_url,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)

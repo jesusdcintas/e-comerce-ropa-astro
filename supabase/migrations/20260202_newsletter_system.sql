@@ -28,8 +28,12 @@ WHERE LOWER(p.email) = LOWER(ns.email)
 CREATE TABLE IF NOT EXISTS newsletter_campaigns (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     subject TEXT NOT NULL,
-    content_html TEXT NOT NULL,
-    content_preview TEXT, -- Extracto para vista previa
+    content_preview TEXT, -- Extracto para vista previa en bandeja de entrada
+    content_title TEXT, -- Título principal del email
+    content_blocks TEXT[], -- Array de párrafos de texto
+    content_image_url TEXT, -- Imagen destacada (opcional)
+    content_cta_text TEXT, -- Texto del botón CTA (opcional)
+    content_cta_url TEXT, -- URL del botón CTA (opcional)
     status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'cancelled')),
     scheduled_at TIMESTAMPTZ,
     started_at TIMESTAMPTZ,

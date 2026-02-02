@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
-import { sendNewsletterEmail } from "../../../../lib/emails";
+import { sendNewsletterEmail, type NewsletterContent } from "../../../../lib/emails";
 
 const supabaseAdmin = createClient(
     import.meta.env.PUBLIC_SUPABASE_URL,
@@ -10,6 +10,19 @@ const supabaseAdmin = createClient(
 
 const BATCH_SIZE = 10; // Emails por lote
 const DELAY_BETWEEN_BATCHES = 1000; // 1 segundo entre lotes
+
+/**
+ * Construye el objeto de contenido estructurado desde la campaña
+ */
+function buildNewsletterContent(campaign: any): NewsletterContent {
+    return {
+        title: campaign.content_title || '',
+        blocks: campaign.content_blocks || [],
+        imageUrl: campaign.content_image_url,
+        ctaText: campaign.content_cta_text,
+        ctaUrl: campaign.content_cta_url
+    };
+}
 
 /**
  * API para enviar campañas de newsletter
@@ -51,13 +64,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Campaña no encontrada" }), { status: 404 });
         }
 
+        // Construir contenido estructurado
+        const content = buildNewsletterContent(campaign);
+
         // 4. Si es test, enviar solo a testEmail
         if (testEmail) {
             const result = await sendNewsletterEmail(
                 testEmail,
                 'Test User',
                 campaign.subject,
-                campaign.content_html,
+                content,
                 campaign.id
             );
 
@@ -112,7 +128,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         // 9. Procesar envíos en segundo plano (no bloqueante)
         // En producción real usarías un job queue, aquí hacemos async
-        processNewsletterBatch(campaignId, campaign.subject, campaign.content_html, subscribers);
+        processNewsletterBatch(campaignId, campaign.subject, content, subscribers);
 
         return new Response(JSON.stringify({
             success: true,
@@ -134,7 +150,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 async function processNewsletterBatch(
     campaignId: string,
     subject: string,
-    contentHtml: string,
+    content: NewsletterContent,
     subscribers: Array<{ user_id: string; email: string; nombre: string }>
 ) {
     let totalSent = 0;
@@ -152,7 +168,7 @@ async function processNewsletterBatch(
                         sub.email,
                         sub.nombre || 'Cliente',
                         subject,
-                        contentHtml,
+                        content,
                         campaignId
                     );
 

@@ -57,9 +57,11 @@
     - [x] Newsletter como propiedad del usuario (`profiles.newsletter_subscribed`), no tabla externa.
     - [x] Toggle simple en "Mi Cuenta" para activar/desactivar.
     - [x] Panel admin completo (`/admin/newsletter`) para crear y enviar campañas.
+    - [x] **Editor simplificado para admin no-técnico**: Solo campos estructurados (Asunto, Preview, Título, Bloques de texto, Imagen opcional, Botón CTA). El HTML se genera automáticamente con diseño premium.
     - [x] Envío por lotes en segundo plano con tracking de estado (pending/sent/failed).
     - [x] Cupones exclusivos para suscriptores (`cupones.solo_newsletter`).
     - [x] Validación en backend: cupón newsletter solo usable si usuario está suscrito.
+    - [x] RLS corregida: políticas usan `auth.jwt() -> 'app_metadata' ->> 'role'` en lugar de `profiles.role`.
   - [x] **Controles Globales**: Interruptores maestros para Ofertas Flash, Novedades y Pop-ups vinculados directamente a la base de datos para control en tiempo real desde el Dashboard.
   - [x] **Modo Mantenimiento**: Bloqueo global de la tienda para clientes mientras se mantiene el acceso para administradores.
 - [x] **Visualización Premium**:

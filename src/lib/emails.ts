@@ -1450,6 +1450,70 @@ export const sendAdminReturnRequestedNotification = async (order: any) => {
 };
 
 /**
+ * Genera HTML de newsletter desde campos estructurados
+ * Usado para convertir los datos simples del admin en un email formateado
+ */
+export interface NewsletterContent {
+  title: string;
+  blocks: string[];
+  imageUrl?: string | null;
+  ctaText?: string | null;
+  ctaUrl?: string | null;
+}
+
+export const generateNewsletterHtml = (content: NewsletterContent): string => {
+  let html = '';
+  
+  // Título principal
+  if (content.title) {
+    html += `<h1 style="margin: 0 0 25px 0; font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1.3;">${escapeHtml(content.title)}</h1>`;
+  }
+  
+  // Imagen destacada
+  if (content.imageUrl) {
+    html += `
+      <div style="margin: 25px 0; text-align: center;">
+        <img src="${escapeHtml(content.imageUrl)}" alt="" style="max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 0 auto;">
+      </div>
+    `;
+  }
+  
+  // Bloques de texto (párrafos)
+  if (content.blocks && content.blocks.length > 0) {
+    content.blocks.forEach(block => {
+      if (block.trim()) {
+        html += `<p style="margin: 0 0 18px 0; font-size: 15px; color: #334155; line-height: 1.7;">${escapeHtml(block)}</p>`;
+      }
+    });
+  }
+  
+  // Botón CTA
+  if (content.ctaText && content.ctaUrl) {
+    html += `
+      <div style="text-align: center; margin: 35px 0 20px 0;">
+        <a href="${escapeHtml(content.ctaUrl)}" style="display: inline-block; background-color: #d4af37; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 16px 40px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">
+          ${escapeHtml(content.ctaText)}
+        </a>
+      </div>
+    `;
+  }
+  
+  return html;
+};
+
+// Helper para escapar HTML y prevenir XSS
+const escapeHtml = (text: string): string => {
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return text.replace(/[&<>"']/g, char => htmlEntities[char] || char);
+};
+
+/**
  * Envía un email de newsletter a un suscriptor
  * Usado por el sistema de campañas masivas
  */
@@ -1457,10 +1521,15 @@ export const sendNewsletterEmail = async (
   email: string,
   nombre: string,
   subject: string,
-  contentHtml: string,
+  content: NewsletterContent | string,
   campaignId?: string
 ): Promise<{ success: boolean; error?: any }> => {
   const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
+  
+  // Generar HTML desde contenido estructurado o usar HTML directo
+  const contentHtml = typeof content === 'string' 
+    ? content 
+    : generateNewsletterHtml(content);
 
   // Wrapper HTML con diseño premium y opción de baja
   const html = `
