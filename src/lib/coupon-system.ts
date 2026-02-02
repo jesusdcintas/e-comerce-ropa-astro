@@ -174,6 +174,14 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
             dateLimit.setDate(dateLimit.getDate() - (regra.periodo_dias || 30));
             const { data: profiles } = await supabaseAdmin.from('profiles').select('id').lte('created_at', dateLimit.toISOString());
             eligibleUserIds = profiles?.map(p => p.id) || [];
+
+        } else if (regla.tipo_regla === 'newsletter') {
+            // Obtener todos los usuarios suscritosen a la newsletter
+            const { data: profiles } = await supabaseAdmin
+                .from('profiles')
+                .select('id')
+                .eq('newsletter_subscribed', true);
+            eligibleUserIds = profiles?.map(p => p.id) || [];
         }
     } else {
         // SEGURIDAD: Si es "todos", nunca notificar a no ser que sea un cupón crítico.

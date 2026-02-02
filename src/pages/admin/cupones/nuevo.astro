@@ -437,6 +437,9 @@ const { data: reglas } = await supabase
                                 <option value="gasto_periodo"
                                     >Gasto en los últimos X Días</option
                                 >
+                                <option value="newsletter"
+                                    >Suscrito a Newsletter</option
+                                >
                                 <option value="publico"
                                     >Cupón Público General</option
                                 >
@@ -765,6 +768,13 @@ const { data: reglas } = await supabase
                     "pointer-events-none",
                 );
                 if (labelValor) labelValor.innerText = "Gasto Acumulado (€)";
+            } else if (val === "newsletter" || val === "primera_compra" || val === "publico") {
+                periodContainer?.classList.add("hidden");
+                valueContainer?.classList.add(
+                    "opacity-20",
+                    "pointer-events-none",
+                );
+                if (labelValor) labelValor.innerText = "No aplica";
             } else {
                 periodContainer?.classList.add("hidden");
                 valueContainer?.classList.remove(
@@ -803,6 +813,8 @@ const { data: reglas } = await supabase
                                 tipo === "gasto_periodo" ||
                                 tipo === "gasto_total"
                                     ? Math.max(1, valor * 100)
+                                    : tipo === "newsletter"
+                                    ? 0
                                     : 1,
                             numero_minimo: 0,
                             periodo_dias: periodo,

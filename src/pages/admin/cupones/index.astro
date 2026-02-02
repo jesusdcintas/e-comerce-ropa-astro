@@ -1079,7 +1079,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 if (periodLabel)
                     periodLabel.innerText = "Días desde el registro";
                 if (valorLabel) valorLabel.innerText = "No aplica";
-            } else if (tipo === "primera_compra" || tipo === "publico") {
+            } else if (tipo === "primera_compra" || tipo === "publico" || tipo === "newsletter") {
                 periodContainer?.classList.add("hidden");
                 valorContainer?.classList.add(
                     "opacity-20",
@@ -1350,7 +1350,7 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                 if (periodLabel)
                     periodLabel.innerText = "Días desde el registro";
                 if (valorLabel) valorLabel.innerText = "No aplica";
-            } else if (tipo === "primera_compra" || tipo === "publico") {
+            } else if (tipo === "primera_compra" || tipo === "publico" || tipo === "newsletter") {
                 periodContainer?.classList.add("hidden");
                 valorContainer?.classList.add(
                     "opacity-20",
@@ -1746,6 +1746,9 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                 >
                                 <option value="gasto_total"
                                     >Gasto Histórico Total</option
+                                >
+                                <option value="newsletter"
+                                    >Suscrito a Newsletter</option
                                 >
                             </select>
                         </div>

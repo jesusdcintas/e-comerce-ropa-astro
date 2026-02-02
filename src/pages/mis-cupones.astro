@@ -126,6 +126,14 @@ if (coupons) {
             // Esta regla se valida en el checkout (es sobre el carrito actual),
             // pero para mostrarla en el perfil la damos por válida como "disponible"
             satisfies = true;
+        } else if (regla.tipo_regla === "newsletter") {
+            // Verificar si el usuario está suscrito a newsletter
+            const { data: profile } = await supabaseAdmin
+                .from("profiles")
+                .select("newsletter_subscribed")
+                .eq("id", user.id)
+                .single();
+            satisfies = profile?.newsletter_subscribed === true;
         }
 
         if (satisfies) {
