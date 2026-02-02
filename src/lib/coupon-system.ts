@@ -99,13 +99,8 @@ export async function validateCoupon(
 
         return {
             valid: true,
-            coupon: {
-                id: coupon.id,
-                codigo: coupon.codigo,
-                descuento_porcentaje: coupon.descuento_porcentaje,
-                es_publico: coupon.es_publico
-            },
-            discountAmount
+            couponId: coupon.id,
+            discount: coupon.descuento_porcentaje
         };
 
     } catch (error: any) {
