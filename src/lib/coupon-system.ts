@@ -241,5 +241,6 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
         }
     }
 
+    console.log(`[DISTRIBUTE] Completado: ${totalSent} de ${eligibleUserIds.length} usuarios notificados`);
     return { success: true, count: totalSent };
 }
