@@ -38,7 +38,7 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
                 .eq('id', ruleId)
                 .single();
 
-            if (reglaError || !regla) {
+            if (reglaError || !regra) {
                 const msg = reglaError?.message || 'Regla no encontrada';
                 console.error('[DISTRIBUTE] Error regla:', msg);
                 return { success: false, error: `Regla: ${msg}` };
