@@ -8,6 +8,57 @@ const supabaseAdmin = createClient(
 );
 
 /**
+ * Genera HTML a partir de bloques de contenido
+ */
+const generateNewsletterHtml = (
+    contentTitle: string,
+    contentBlocks: string[],
+    contentImageUrl: string | null,
+    contentCtaText: string | null,
+    contentCtaUrl: string | null
+): string => {
+    const blocks = contentBlocks.map(block => 
+        `<p style="margin: 16px 0; line-height: 1.6; color: #1f2937;">${block}</p>`
+    ).join('');
+
+    const imageHtml = contentImageUrl 
+        ? `<img src="${contentImageUrl}" alt="Newsletter" style="max-width: 100%; height: auto; margin: 20px 0; border-radius: 8px;" />`
+        : '';
+
+    const ctaHtml = contentCtaText && contentCtaUrl
+        ? `<div style="margin: 24px 0; text-align: center;">
+            <a href="${contentCtaUrl}" style="background-color: #d4af37; color: #000; padding: 12px 32px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+                ${contentCtaText}
+            </a>
+           </div>`
+        : '';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f3f4f6; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; }
+        h1 { font-size: 28px; color: #1f2937; margin: 0 0 24px 0; }
+        .divider { border-top: 2px solid #d4af37; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>${contentTitle}</h1>
+        <div class="divider"></div>
+        ${imageHtml}
+        ${blocks}
+        ${ctaHtml}
+    </div>
+</body>
+</html>
+    `;
+};
+
+/**
  * API CRUD para campañas de newsletter
  */
 
@@ -94,6 +145,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Asunto, título y al menos un párrafo son requeridos" }), { status: 400 });
         }
 
+        // Generar HTML desde los bloques de contenido
+        const contentHtml = generateNewsletterHtml(
+            content_title,
+            content_blocks,
+            content_image_url,
+            content_cta_text,
+            content_cta_url
+        );
+
         const { data: campaign, error } = await supabaseAdmin
             .from('newsletter_campaigns')
             .insert({
@@ -102,6 +162,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 content_title,
                 content_blocks,
                 content_image_url,
+                content_html: contentHtml,
                 content_cta_text,
                 content_cta_url,
                 status: 'draft',
@@ -158,6 +219,15 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "Solo se pueden editar campañas en borrador" }), { status: 400 });
         }
 
+        // Generar HTML desde los bloques de contenido
+        const contentHtml = generateNewsletterHtml(
+            content_title,
+            content_blocks,
+            content_image_url,
+            content_cta_text,
+            content_cta_url
+        );
+
         const { data: campaign, error } = await supabaseAdmin
             .from('newsletter_campaigns')
             .update({
@@ -166,6 +236,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
                 content_title,
                 content_blocks,
                 content_image_url,
+                content_html: contentHtml,
                 content_cta_text,
                 content_cta_url,
                 updated_at: new Date().toISOString()

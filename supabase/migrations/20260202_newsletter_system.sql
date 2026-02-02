@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS newsletter_campaigns (
     content_title TEXT, -- Título principal del email
     content_blocks TEXT[], -- Array de párrafos de texto
     content_image_url TEXT, -- Imagen destacada (opcional)
+    content_html TEXT, -- HTML compilado del email (generado desde content_blocks)
     content_cta_text TEXT, -- Texto del botón CTA (opcional)
     content_cta_url TEXT, -- URL del botón CTA (opcional)
     status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'cancelled')),
