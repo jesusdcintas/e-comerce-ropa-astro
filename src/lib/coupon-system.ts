@@ -1,235 +1,141 @@
-import { supabase } from './supabase';
-import { createClient } from '@supabase/supabase-js';
+// Version mejorada con mejor logging
+import { supabaseAdmin } from './supabase';
 import { sendCouponEmail } from './emails';
 
-// Cliente con privilegios para validaciones de servidor
-const supabaseAdmin = createClient(
-    import.meta.env.PUBLIC_SUPABASE_URL,
-    import.meta.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-export interface CouponValidation {
-    valid: boolean;
-    message?: string;
-    discount?: number;
-    couponId?: string;
-}
-
-/**
- * Valida un cupón para un usuario específico y un subtotal opcional usando el sistema RPC
- */
-export async function validateCoupon(
-    code: string,
-    userId: string,
-    subtotalCents?: number
-): Promise<CouponValidation> {
-    const { data, error } = await supabaseAdmin.rpc('rpc_validate_coupon', {
-        p_code: code.trim(),
-        p_cart_subtotal: subtotalCents || 0,
-        p_user_id: userId && userId !== "" ? userId : null
-    });
-
-    if (error) {
-        console.error('[ERROR] Error calling rpc_validate_coupon:', error);
-        return { valid: false, message: 'Error al validar el cupón' };
-    }
-
-    const result = data?.[0]; // El RPC devuelve una tabla, tomamos la primera fila
-
-    if (!result || !result.is_valid) {
-        let userMessage = result?.reason || 'Este código no es válido';
-
-        // Mapeo de errores técnicos a mensajes amigables
-        if (userMessage.toLowerCase().includes('regla')) {
-            if (userMessage.toLowerCase().includes('gasto')) {
-                userMessage = 'Este cupón requiere un gasto mínimo que aún no has alcanzado.';
-            } else if (userMessage.toLowerCase().includes('primera compra')) {
-                userMessage = 'Este cupón es exclusivo para nuevos clientes registrados.';
-            } else {
-                userMessage = 'No tienes este cupón asignado o no cumples los requisitos para usarlo.';
-            }
-        } else if (userMessage.toLowerCase().includes('no asignado')) {
-            userMessage = 'Este cupón no está asignado a tu cuenta.';
-        } else if (userMessage.toLowerCase().includes('agotado') || userMessage.toLowerCase().includes('usado')) {
-            userMessage = 'Este cupón ya ha sido utilizado o ha caducado.';
-        }
-
-        return {
-            valid: false,
-            message: userMessage
-        };
-    }
-
-    // Verificación adicional: cupón solo para suscriptores newsletter
-    const { data: newsletterCheck } = await supabaseAdmin.rpc('check_newsletter_requirement', {
-        p_coupon_id: result.coupon_id,
-        p_user_id: userId && userId !== "" ? userId : null
-    });
-
-    if (newsletterCheck === false) {
-        return {
-            valid: false,
-            message: 'Este cupón es exclusivo para suscriptores de nuestra newsletter. Puedes suscribirte desde "Mi Cuenta".'
-        };
-    }
-
-    return {
-        valid: true,
-        discount: result.discount_percent,
-        couponId: result.coupon_id
-    };
-}
-
-/**
- * Registra el uso final de un cupón tras un pedido exitoso usando el sistema RPC
- */
-export async function finalizeCouponUse(
-    orderId: string,
-    userId: string,
-    couponId: string,
-    discountApplied: number,
-    amountSaved: number
-) {
-    console.log('[DEBUG] Finalizando uso de cupón vía RPC:', { orderId, userId, couponId });
-
-    const { data, error } = await supabaseAdmin.rpc('rpc_consume_coupon', {
-        p_coupon_id: couponId,
-        p_order_id: parseInt(orderId),
-        p_user_id: userId && userId !== "" ? userId : null,
-        p_amount_saved: amountSaved
-    });
-
-    if (error) {
-        console.error('[ERROR] Error calling rpc_consume_coupon:', error);
-        return { success: false };
-    }
-
-    return { success: data };
-}
-
-/**
- * Distribuye un cupón ya existente a los usuarios que cumplen una regla específica.
- * Notifica SOLO a aquellos que el sistema de validación aceptaría.
- */
 export async function distributeCouponToSegment(couponId: string, ruleId: string) {
     let eligibleUserIds: string[] = [];
     let segmentName = 'Todos los clientes';
 
-    // 1. Obtener los datos del cupón para validación
-    const { data: cupom } = await supabaseAdmin
-        .from('cupones')
-        .select('*')
-        .eq('id', couponId)
-        .single();
+    try {
+        console.log(`[DISTRIBUTE] Iniciando distribución: cupón=${couponId}, regla=${ruleId}`);
 
-    if (!cupom) return { success: false, error: 'Cupón no encontrado' };
-
-    // 2. Determinar los usuarios aptos según la regla
-    if (ruleId && ruleId !== 'all') {
-        const { data: regra } = await supabaseAdmin
-            .from('reglas_cupones')
+        // 1. Obtener cupón
+        const { data: cupom, error: cupomError } = await supabaseAdmin
+            .from('cupones')
             .select('*')
-            .eq('id', ruleId)
+            .eq('id', couponId)
             .single();
 
-        if (!regra || !regra.activa) return { success: false, error: 'Regla no encontrada o inactiva' };
-        segmentName = regra.nombre;
+        if (cupomError || !cupom) {
+            const msg = cupomError?.message || 'Cupón no encontrado';
+            console.error('[DISTRIBUTE] Error cupón:', msg);
+            return { success: false, error: `Cupón: ${msg}` };
+        }
 
-        // --- Lógica de SEGMENTACIÓN PRECISA ---
-        const now = new Date();
+        console.log(`[DISTRIBUTE] ✓ Cupón: ${cupom.codigo}`);
 
-        if (regra.tipo_regla === 'compra_minima') {
-            // Esta regla es transaccional (del carrito actual). 
-            // Para "distribución", notificamos a los que han hecho pedidos pagados alguna vez.
-            const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
-            eligibleUserIds = [...new Set(orders?.map(o => o.user_id).filter(Boolean) as string[])];
+        // 2. Obtener regla
+        if (ruleId && ruleId !== 'all') {
+            const { data: regra, error: reglaError } = await supabaseAdmin
+                .from('reglas_cupones')
+                .select('*')
+                .eq('id', ruleId)
+                .single();
 
-        } else if (regra.tipo_regla === 'gasto_periodo' || regra.tipo_regla === 'gasto_total') {
-            const isPeriod = regra.tipo_regla === 'gasto_periodo';
-            let query = supabaseAdmin.from('orders').select('user_id, total_amount').in('status', ['paid', 'shipped', 'delivered']);
+            if (reglaError || !regla) {
+                const msg = reglaError?.message || 'Regla no encontrada';
+                console.error('[DISTRIBUTE] Error regla:', msg);
+                return { success: false, error: `Regla: ${msg}` };
+            }
 
-            if (isPeriod) {
+            if (!regra.activa) {
+                console.error('[DISTRIBUTE] Regla inactiva');
+                return { success: false, error: 'Regla inactiva' };
+            }
+
+            segmentName = regra.nombre;
+            console.log(`[DISTRIBUTE] ✓ Regla: ${regra.nombre} (tipo: ${regra.tipo_regla})`);
+
+            // Obtener usuarios según regla
+            if (regra.tipo_regla === 'newsletter') {
+                console.log('[DISTRIBUTE] Buscando suscriptores a newsletter...');
+                const { data: profiles, error: newsError } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id')
+                    .eq('newsletter_subscribed', true);
+
+                if (newsError) {
+                    console.error('[DISTRIBUTE] Error newsletter:', newsError.message);
+                    throw newsError;
+                }
+
+                eligibleUserIds = profiles?.map(p => p.id) || [];
+                console.log(`[DISTRIBUTE] ✓ Encontrados ${eligibleUserIds.length} suscriptores`);
+            } else if (regra.tipo_regla === 'primera_compra') {
+                const { data: profiles } = await supabaseAdmin.from('profiles').select('id');
+                const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
+                const usersWithOrders = new Set(orders?.map(o => o.user_id));
+                eligibleUserIds = profiles?.filter(p => !usersWithOrders.has(p.id)).map(p => p.id) || [];
+            } else if (regra.tipo_regla === 'compra_minima') {
+                const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
+                eligibleUserIds = [...new Set(orders?.map(o => o.user_id).filter(Boolean) as string[])];
+            } else if (regla.tipo_regla === 'gasto_total' || regla.tipo_regla === 'gasto_periodo') {
+                let query = supabaseAdmin.from('orders').select('user_id, total_amount').in('status', ['paid', 'shipped', 'delivered']);
+                if (regla.tipo_regla === 'gasto_periodo') {
+                    const dateLimit = new Date();
+                    dateLimit.setDate(dateLimit.getDate() - (regla.periodo_dias || 30));
+                    query = query.gte('created_at', dateLimit.toISOString());
+                }
+                const { data: stats } = await query;
+                const spendMap: Record<string, number> = {};
+                stats?.forEach(o => { if (o.user_id) spendMap[o.user_id] = (spendMap[o.user_id] || 0) + (o.total_amount || 0); });
+                eligibleUserIds = Object.entries(spendMap)
+                    .filter(([_, total]) => total >= (regla.monto_minimo || 0))
+                    .map(([id]) => id);
+            } else if (regla.tipo_regla === 'antiguedad') {
                 const dateLimit = new Date();
-                dateLimit.setDate(dateLimit.getDate() - (regra.periodo_dias || 30));
-                query = query.gte('created_at', dateLimit.toISOString());
+                dateLimit.setDate(dateLimit.getDate() - (regla.periodo_dias || 30));
+                const { data: profiles } = await supabaseAdmin.from('profiles').select('id').lte('created_at', dateLimit.toISOString());
+                eligibleUserIds = profiles?.map(p => p.id) || [];
             }
-
-            const { data: stats } = await query;
-            const spendMap: Record<string, number> = {};
-            stats?.forEach(o => { if (o.user_id) spendMap[o.user_id] = (spendMap[o.user_id] || 0) + (o.total_amount || 0); });
-
-            // FILTRO CRÍTICO: Asegurar que el monto_minimo se compare correctamente
-            eligibleUserIds = Object.entries(spendMap)
-                .filter(([_, total]) => total >= (regra.monto_minimo || 0))
-                .map(([id]) => id);
-
-        } else if (regra.tipo_regla === 'primera_compra') {
+        } else {
             const { data: profiles } = await supabaseAdmin.from('profiles').select('id');
-            const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
-            const usersWithOrders = new Set(orders?.map(o => o.user_id));
-            eligibleUserIds = profiles?.filter(p => !usersWithOrders.has(p.id)).map(p => p.id) || [];
-
-        } else if (regra.tipo_regla === 'antiguedad') {
-            const dateLimit = new Date();
-            dateLimit.setDate(dateLimit.getDate() - (regra.periodo_dias || 30));
-            const { data: profiles } = await supabaseAdmin.from('profiles').select('id').lte('created_at', dateLimit.toISOString());
-            eligibleUserIds = profiles?.map(p => p.id) || [];
-
-        } else if (regla.tipo_regla === 'newsletter') {
-            // Obtener todos los usuarios suscritosen a la newsletter
-            const { data: profiles } = await supabaseAdmin
-                .from('profiles')
-                .select('id')
-                .eq('newsletter_subscribed', true);
             eligibleUserIds = profiles?.map(p => p.id) || [];
         }
-    } else {
-        // SEGURIDAD: Si es "todos", nunca notificar a no ser que sea un cupón crítico.
-        // Pero para cumplir con la petición del admin, buscamos todos pero con precaución.
-        const { data: profiles } = await supabaseAdmin.from('profiles').select('id');
-        eligibleUserIds = profiles?.map(p => p.id) || [];
-    }
 
-    // 3. Filtrar de la lista a los que YA lo han usado o YA lo tienen asignado (evitar spam)
-    const { data: usedBy } = await supabaseAdmin.from('cupon_usos').select('user_id').eq('cupon_id', couponId);
-    const usedIds = new Set(usedBy?.map(u => u.user_id));
+        console.log(`[DISTRIBUTE] Candidatos: ${eligibleUserIds.length}`);
 
-    eligibleUserIds = eligibleUserIds.filter(uid => !usedIds.has(uid));
+        // Filtrar ya usados
+        const { data: usedBy } = await supabaseAdmin.from('cupon_usos').select('user_id').eq('cupon_id', couponId);
+        const usedIds = new Set(usedBy?.map(u => u.user_id));
+        eligibleUserIds = eligibleUserIds.filter(uid => !usedIds.has(uid));
 
-    console.log(`[DISTRIBUTE] Segmento: ${segmentName}. Usuarios elegibles finales: ${eligibleUserIds.length}`);
+        console.log(`[DISTRIBUTE] Después de filtrar: ${eligibleUserIds.length}`);
 
-    let totalSent = 0;
-    for (const userId of eligibleUserIds) {
-        try {
-            // Crear asignación si es privado
-            if (!cupom.es_publico) {
-                await supabaseAdmin.from('cupon_asignaciones').upsert({
-                    cupon_id: cupom.id,
-                    cliente_id: userId
-                }, { onConflict: 'cupon_id, cliente_id' });
+        let totalSent = 0;
+        for (const userId of eligibleUserIds) {
+            try {
+                if (!cupom.es_publico) {
+                    await supabaseAdmin.from('cupon_asignaciones').upsert({
+                        cupon_id: cupom.id,
+                        cliente_id: userId
+                    }, { onConflict: 'cupon_id, cliente_id' });
+                }
+
+                await supabaseAdmin.from('notifications').insert({
+                    user_id: userId,
+                    title: 'Beneficio Disponible 🎁',
+                    body: `¡Felicidades! Tienes disponible un cupón de ${cupom.descuento_porcentaje}%: ${cupom.codigo}`,
+                    type: 'coupon',
+                    metadata: { coupon_code: cupom.codigo }
+                });
+
+                const { data: profile } = await supabaseAdmin.from('profiles').select('email, nombre').eq('id', userId).single();
+                if (profile?.email) {
+                    await sendCouponEmail(profile.email, profile.nombre || 'Cliente', cupom);
+                }
+
+                totalSent++;
+            } catch (e: any) {
+                console.warn(`[DISTRIBUTE] Usuario ${userId}: ${e?.message}`);
             }
-
-            // Notificar por DB
-            await supabaseAdmin.from('notifications').insert({
-                user_id: userId,
-                title: 'Beneficio Disponible 🎁',
-                body: `¡Felicidades! Tienes disponible un cupón de ${cupom.descuento_porcentaje}%: ${cupom.codigo}`,
-                type: 'coupon',
-                metadata: { coupon_code: cupom.codigo }
-            });
-
-            // Email (Solo si es un cupón privado importante o la primera vez que se entera)
-            const { data: profile } = await supabaseAdmin.from('profiles').select('email, nombre').eq('id', userId).single();
-            if (profile?.email) {
-                await sendCouponEmail(profile.email, profile.nombre || 'Cliente', cupom);
-            }
-
-            totalSent++;
-        } catch (e) {
-            console.error(`[ERROR] Falló distribución para usuario ${userId}:`, e);
         }
-    }
 
-    console.log(`[DISTRIBUTE] Completado: ${totalSent} de ${eligibleUserIds.length} usuarios notificados`);
-    return { success: true, count: totalSent };
+        console.log(`[DISTRIBUTE] ✓ Completado: ${totalSent}/${eligibleUserIds.length}`);
+        return { success: true, count: totalSent };
+
+    } catch (error: any) {
+        console.error('[DISTRIBUTE] FATAL ERROR:', error);
+        return { success: false, error: error?.message || 'Error desconocido' };
+    }
 }
