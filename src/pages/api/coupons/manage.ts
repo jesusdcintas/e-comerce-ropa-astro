@@ -24,15 +24,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
         }
 
-        // Buscar el rol del usuario en la tabla profiles (más confiable que app_metadata)
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
+        // El rol está en app_metadata (viene del JWT)
+        const role = user?.app_metadata?.role || user?.user_metadata?.role;
 
-        if (profileError || !profile || profile.role !== 'admin') {
-            console.error('[AUTH ERROR] Access denied for user:', user.id, 'Profile role:', profile?.role);
+        if (role !== 'admin') {
+            console.error('[AUTH ERROR] Access denied for user:', user.id, 'Role found:', role);
             return new Response(JSON.stringify({ error: 'Prohibido: Solo administradores' }), { status: 403 });
         }
 
