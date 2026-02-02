@@ -75,22 +75,22 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
             } else if (regra.tipo_regla === 'compra_minima') {
                 const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
                 eligibleUserIds = [...new Set(orders?.map(o => o.user_id).filter(Boolean) as string[])];
-            } else if (regla.tipo_regla === 'gasto_total' || regla.tipo_regla === 'gasto_periodo') {
+            } else if (regra.tipo_regla === 'gasto_total' || regra.tipo_regla === 'gasto_periodo') {
                 let query = supabaseAdmin.from('orders').select('user_id, total_amount').in('status', ['paid', 'shipped', 'delivered']);
-                if (regla.tipo_regla === 'gasto_periodo') {
+                if (regra.tipo_regla === 'gasto_periodo') {
                     const dateLimit = new Date();
-                    dateLimit.setDate(dateLimit.getDate() - (regla.periodo_dias || 30));
+                    dateLimit.setDate(dateLimit.getDate() - (regra.periodo_dias || 30));
                     query = query.gte('created_at', dateLimit.toISOString());
                 }
                 const { data: stats } = await query;
                 const spendMap: Record<string, number> = {};
                 stats?.forEach(o => { if (o.user_id) spendMap[o.user_id] = (spendMap[o.user_id] || 0) + (o.total_amount || 0); });
                 eligibleUserIds = Object.entries(spendMap)
-                    .filter(([_, total]) => total >= (regla.monto_minimo || 0))
+                    .filter(([_, total]) => total >= (regra.monto_minimo || 0))
                     .map(([id]) => id);
-            } else if (regla.tipo_regla === 'antiguedad') {
+            } else if (regra.tipo_regla === 'antiguedad') {
                 const dateLimit = new Date();
-                dateLimit.setDate(dateLimit.getDate() - (regla.periodo_dias || 30));
+                dateLimit.setDate(dateLimit.getDate() - (regra.periodo_dias || 30));
                 const { data: profiles } = await supabaseAdmin.from('profiles').select('id').lte('created_at', dateLimit.toISOString());
                 eligibleUserIds = profiles?.map(p => p.id) || [];
             }
