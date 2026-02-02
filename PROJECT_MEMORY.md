@@ -95,10 +95,10 @@
 
 ## Pendientes (TODO)
 
-- [ ] **Atomicidad Real (RPC)**: Migrar la lógica de cancelación de `lib/orders.ts` a un Database Procedure (RPC) en Supabase para asegurar la atomicidad de la transacción (Status -> Stock -> Refund).
+- [x] **Atomicidad Real (RPC)**: Migrada la lógica de cancelación a `rpc_cancel_order` en Supabase. La función ejecuta en transacción atómica: valida estado → restaura stock (variants + products) → actualiza orders. Ver `supabase/migrations/20260202_rpc_cancel_order.sql`.
+- [x] **Bug Hero Slider (Safari/iOS)**: Corregida visibilidad de texto en Safari/iOS aplicando `translate3d`, prefijos `-webkit-`, `backface-visibility: hidden`, `will-change` y `@supports` para iOS. Ver estilos en `src/pages/index.astro`.
 - [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
-- [ ] **Bug Hero Slider**: Optimizar visibilidad de texto en navegadores Safari/iOS.
 
 
 ## Sistema de Cupones 2.0 (Reglas del Negocio)
@@ -128,6 +128,7 @@
 - **Logística**: El administrador solo interviene para marcar el envío real. El sistema gestiona proactivamente la última milla y la confirmación de entrega para maximizar el engagement y minimizar la ansiedad del cliente.
 
 ## Última actualización
+2026-02-02 (Check-in Actual): Corregido bug de visibilidad de texto en Hero Slider para Safari/iOS. Aplicados prefijos webkit, translate3d para GPU acceleration, backface-visibility hidden y @supports para iOS. También implementada atomicidad real para cancelación de pedidos mediante RPC `rpc_cancel_order` en Supabase.
 2026-01-30 (Check-in Actual): Resolución definitiva del flujo de recuperación de contraseña. Implementación de `security.checkOrigin: false` en `astro.config.mjs` para permitir envíos desde dispositivos móviles tras proxy inverso y forzado de `SITE_URL` en el proceso de `resetPasswordForEmail`.
 2026-01-29: Refinamiento del motor de Business Intelligence. Optimización de reportes PDF trimestrales para auditoría fiscal (A4 layout), implementación del sistema de filtrado dinámico por estados en el Admin y simplificación del flujo operativo eliminando estados redundantes. Rediseño premium de la barra de herramientas de gestión de pedidos.
 2026-01-28: Rediseño premium de la sección de perfil, implementación de borrado de cuenta seguro con estándares profesionales de re-autenticación y validación de estado de pedidos previa a la baja. Confirmación del flujo de "Guest Checkout" para compras sin registro.
