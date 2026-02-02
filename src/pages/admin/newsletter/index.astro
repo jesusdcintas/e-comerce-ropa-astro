@@ -388,6 +388,7 @@ const statusLabels: Record<string, string> = {
 
 <script>
     import { addToast } from '../../../stores/toastStore';
+    import { showModal } from '../../../stores/modalStore';
 
     const modal = document.getElementById('campaign-modal');
     const testModal = document.getElementById('test-modal');
@@ -544,26 +545,32 @@ const statusLabels: Record<string, string> = {
         btn.addEventListener('click', async (e) => {
             const id = (e.currentTarget as HTMLElement).dataset.id;
             
-            if (!confirm('¿Eliminar esta campaña? Esta acción no se puede deshacer.')) return;
+            showModal({
+                title: 'Eliminar Campaña',
+                message: '¿Eliminar esta campaña? Esta acción no se puede deshacer.',
+                type: 'delete',
+                confirmText: 'Eliminar',
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch('/api/admin/newsletter/campaigns', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id })
+                        });
 
-            try {
-                const res = await fetch('/api/admin/newsletter/campaigns', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
-                });
+                        const data = await res.json();
 
-                const data = await res.json();
-
-                if (data.success) {
-                    addToast('Campaña eliminada', 'success');
-                    location.reload();
-                } else {
-                    addToast(data.error || 'Error al eliminar', 'error');
+                        if (data.success) {
+                            addToast('Campaña eliminada', 'success');
+                            location.reload();
+                        } else {
+                            addToast(data.error || 'Error al eliminar', 'error');
+                        }
+                    } catch (err) {
+                        addToast('Error de conexión', 'error');
+                    }
                 }
-            } catch (err) {
-                addToast('Error de conexión', 'error');
-            }
+            });
         });
     });
 
@@ -609,35 +616,42 @@ const statusLabels: Record<string, string> = {
     document.querySelectorAll('.send-campaign-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const id = (e.currentTarget as HTMLElement).dataset.id;
+            const button = e.currentTarget as HTMLButtonElement;
             const subscriberCount = parseInt(document.querySelector('.text-brand-gold.text-2xl')?.textContent || '0');
             
-            if (!confirm(`¿Enviar esta campaña a ${subscriberCount} suscriptores? Esta acción no se puede deshacer.`)) return;
+            showModal({
+                title: 'Enviar Campaña',
+                message: `¿Enviar esta campaña a ${subscriberCount} suscriptores? Esta acción no se puede deshacer.`,
+                type: 'confirm',
+                confirmText: 'Enviar',
+                onConfirm: async () => {
+                    button.disabled = true;
+                    button.textContent = 'Enviando...';
 
-            (e.currentTarget as HTMLButtonElement).disabled = true;
-            (e.currentTarget as HTMLButtonElement).textContent = 'Enviando...';
+                    try {
+                        const res = await fetch('/api/admin/newsletter/send', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ campaignId: id })
+                        });
 
-            try {
-                const res = await fetch('/api/admin/newsletter/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ campaignId: id })
-                });
+                        const data = await res.json();
 
-                const data = await res.json();
-
-                if (data.success) {
-                    addToast(`Iniciando envío a ${data.totalRecipients} suscriptores`, 'success');
-                    setTimeout(() => location.reload(), 2000);
-                } else {
-                    addToast(data.error || 'Error al iniciar envío', 'error');
-                    (e.currentTarget as HTMLButtonElement).disabled = false;
-                    (e.currentTarget as HTMLButtonElement).textContent = 'Enviar a Todos';
+                        if (data.success) {
+                            addToast(`Iniciando envío a ${data.totalRecipients} suscriptores`, 'success');
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            addToast(data.error || 'Error al iniciar envío', 'error');
+                            button.disabled = false;
+                            button.textContent = 'Enviar a Todos';
+                        }
+                    } catch (err) {
+                        addToast('Error de conexión', 'error');
+                        button.disabled = false;
+                        button.textContent = 'Enviar a Todos';
+                    }
                 }
-            } catch (err) {
-                addToast('Error de conexión', 'error');
-                (e.currentTarget as HTMLButtonElement).disabled = false;
-                (e.currentTarget as HTMLButtonElement).textContent = 'Enviar a Todos';
-            }
+            });
         });
     });
 </script>
