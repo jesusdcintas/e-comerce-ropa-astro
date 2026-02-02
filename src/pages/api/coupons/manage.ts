@@ -16,13 +16,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
         }
 
-        // Verificar que el usuario sea realmente un admin usando el cliente normal
+        // Verificar que el usuario sea realmente un admin
         const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
 
-        const role = user?.app_metadata?.role || user?.user_metadata?.role;
+        if (authError || !user) {
+            console.error('[AUTH ERROR] Failed to get user:', authError?.message);
+            return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+        }
 
-        if (authError || !user || role !== 'admin') {
-            console.error('[AUTH ERROR] Access denied for user:', user?.id, 'Role found:', role);
+        // Buscar el rol del usuario en la tabla profiles (más confiable que app_metadata)
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError || !profile || profile.role !== 'admin') {
+            console.error('[AUTH ERROR] Access denied for user:', user.id, 'Profile role:', profile?.role);
             return new Response(JSON.stringify({ error: 'Prohibido: Solo administradores' }), { status: 403 });
         }
 
