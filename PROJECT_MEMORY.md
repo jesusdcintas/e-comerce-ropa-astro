@@ -58,6 +58,7 @@
 - [x] **Visualización Premium**:
   - [x] Precios originales tachados en carrito y checkout para resaltar el ahorro.
   - [x] Gestión de ofertas en lote (Bulk removal) desde el panel de administración.
+  - [x] Hero Slider: corregida visibilidad de texto en Safari/iOS (translate3d, -webkit-*, backface-visibility). Ver `src/pages/index.astro`.
 - [x] **Gestión de Pedidos & Post-Venta**:
   - [x] Historial de pedidos with estados optimizados (Pagado, Enviado, Entregado, Cancelado).
   - [x] **Flujo Simplificado**: Eliminación del estado "Pendiente" innecesario tras confirmar pago por Stripe.
@@ -68,6 +69,7 @@
     - Botón de **Cancelación automática** solo habilitado si el envío está 'Pendiente'.
   - [x] **Motor Cron-Ready**: Endpoint `/api/cron/advance-orders` para automatización total en Coolify.
   - [x] Lógica de restauración de stock y reembolso Stripe en cancelación.
+  - [x] Cancelación atómica (RPC): `rpc_cancel_order` en Supabase y actualización de `src/lib/orders.ts` para invocar la RPC.
   - [x] **Sistema de Seguimiento de Envíos (Branded Tracking)**:
     - [x] Seguimiento simunlado realista en `/seguimiento/[id]`.
     - [x] Interfaz premium con timeline y mapa.
@@ -95,10 +97,14 @@
 
 ## Pendientes (TODO)
 
-- [x] **Atomicidad Real (RPC)**: Migrada la lógica de cancelación a `rpc_cancel_order` en Supabase. La función ejecuta en transacción atómica: valida estado → restaura stock (variants + products) → actualiza orders. Ver `supabase/migrations/20260202_rpc_cancel_order.sql`.
-- [x] **Bug Hero Slider (Safari/iOS)**: Corregida visibilidad de texto en Safari/iOS aplicando `translate3d`, prefijos `-webkit-`, `backface-visibility: hidden`, `will-change` y `@supports` para iOS. Ver estilos en `src/pages/index.astro`.
-- [ ] **Hardening RLS (Seguridad)**: Reforzar y limpiar las políticas RLS en Supabase (especialmente en `orders`, `order_items` y `cupones`) para evitar inserciones cruzadas y corregir lógica de filtrado.
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
+
+### RLS Audit Completada (2026-02-02)
+- ✅ **3 políticas duplicadas eliminadas** (cupon_notificados, cupones, cupon_usos)
+- ✅ **4 políticas nuevas añadidas** (favorites admin override, order_items UPDATE/DELETE, orders UPDATE)
+- ✅ **55 políticas auditadas** en 19 tablas — todas con RLS activo
+- ✅ **Seguridad general: BUENA** — cobertura CRUD completa en tablas críticas
+- 📋 **Reporte detallado:** [supabase/RLS_FINAL_STATUS_20260202.md](supabase/RLS_FINAL_STATUS_20260202.md)
 
 
 ## Sistema de Cupones 2.0 (Reglas del Negocio)
