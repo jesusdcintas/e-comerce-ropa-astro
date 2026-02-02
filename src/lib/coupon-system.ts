@@ -201,18 +201,7 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
     let totalSent = 0;
     for (const userId of eligibleUserIds) {
         try {
-            // Opcional: Verificar si ya tiene una notificación reciente de este mismo cupón
-            const { data: existingNotif } = await supabaseAdmin
-                .from('notifications')
-                .select('id')
-                .eq('user_id', userId)
-                .eq('metadata->>coupon_code', cupom.codigo)
-                .is('is_read', false)
-                .maybeSingle();
-
-            if (existingNotif) continue; // No reenviar si tiene una notificación sin leer del mismo código
-
-            // 1. Crear asignación si es privado
+            // Crear asignación si es privado
             if (!cupom.es_publico) {
                 await supabaseAdmin.from('cupon_asignaciones').upsert({
                     cupon_id: cupom.id,
@@ -220,7 +209,7 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
                 }, { onConflict: 'cupon_id, cliente_id' });
             }
 
-            // 2. Notificar por DB
+            // Notificar por DB
             await supabaseAdmin.from('notifications').insert({
                 user_id: userId,
                 title: 'Beneficio Disponible 🎁',
@@ -229,7 +218,7 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
                 metadata: { coupon_code: cupom.codigo }
             });
 
-            // 3. Email (Solo si es un cupón privado importante o la primera vez que se entera)
+            // Email (Solo si es un cupón privado importante o la primera vez que se entera)
             const { data: profile } = await supabaseAdmin.from('profiles').select('email, nombre').eq('id', userId).single();
             if (profile?.email) {
                 await sendCouponEmail(profile.email, profile.nombre || 'Cliente', cupom);
