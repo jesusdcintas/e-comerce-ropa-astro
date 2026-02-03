@@ -38,9 +38,17 @@ const { data: profile } = await supabaseAuth
   .eq("id", user.id)
   .maybeSingle();
 
-const userName = profile?.name || user.user_metadata?.name || "";
+const userName = profile?.nombre || user.user_metadata?.name || "";
 const userEmail = user.email || "";
+const userPhone = profile?.telefono || "";
 const newsletterSubscribed = profile?.newsletter_subscribed || false;
+
+// Dirección de envío de user_metadata
+const shippingAddress = {
+  address: user.user_metadata?.address || "",
+  city: user.user_metadata?.city || "",
+  zip: user.user_metadata?.zip || "",
+};
 
 // Datos de facturación de la base de datos
 const billingInfo = {
@@ -71,7 +79,7 @@ const billingInfo = {
       </p>
     </div>
 
-    <!-- Información Personal -->
+    <!-- Información Personal y Dirección de Envío -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <h2 class="text-xl font-semibold mb-4 flex items-center">
         <svg
@@ -89,38 +97,148 @@ const billingInfo = {
         </svg>
         Información Personal
       </h2>
+      <p class="text-sm text-gray-500 mb-6">
+        Tu información de contacto y dirección de envío predeterminada.
+      </p>
 
-      <form id="profile-form" class="space-y-4">
-        <div>
-          <label for="name" class="block text-sm font-medium text-gray-700 mb-1"
-            >Nombre completo</label
-          >
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={userName}
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
-            placeholder="Tu nombre completo"
-          />
+      <form id="profile-form" class="space-y-6">
+        <!-- Datos de Contacto -->
+        <div class="space-y-4">
+          <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wide flex items-center gap-2">
+            <span class="w-2 h-2 bg-brand-blue rounded-full"></span>
+            Datos de Contacto
+          </h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="name" class="block text-sm font-medium text-gray-700 mb-1"
+                >Nombre completo</label
+              >
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={userName}
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+                placeholder="Tu nombre completo"
+              />
+            </div>
+
+            <div>
+              <label
+                for="phone"
+                class="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Teléfono
+                <span class="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                  </svg>
+                </span>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={userPhone}
+                  class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+                  placeholder="+34 600 123 456"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label
+              for="email"
+              class="block text-sm font-medium text-gray-700 mb-1">Email</label
+            >
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                </svg>
+              </span>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={userEmail}
+                disabled
+                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+              />
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              El email no se puede modificar por seguridad
+            </p>
+          </div>
         </div>
 
-        <div>
-          <label
-            for="email"
-            class="block text-sm font-medium text-gray-700 mb-1">Email</label
-          >
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={userEmail}
-            disabled
-            class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
-          />
-          <p class="text-xs text-gray-500 mt-1">
-            El email no se puede modificar
+        <!-- Divider -->
+        <div class="border-t border-gray-100"></div>
+
+        <!-- Dirección de Envío -->
+        <div class="space-y-4">
+          <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wide flex items-center gap-2">
+            <svg class="w-4 h-4 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Dirección de Envío Predeterminada
+          </h3>
+          <p class="text-xs text-gray-500 -mt-2">
+            Esta dirección se usará por defecto en tus pedidos.
           </p>
+
+          <div>
+            <label
+              for="address"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Calle y número</label
+            >
+            <input
+              type="text"
+              id="address"
+              name="address"
+              value={shippingAddress.address}
+              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+              placeholder="Ej: Calle Gran Vía, 12, 3ºB"
+            />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                for="city"
+                class="block text-sm font-medium text-gray-700 mb-1">Ciudad</label
+              >
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={shippingAddress.city}
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+                placeholder="Ej: Madrid"
+              />
+            </div>
+            <div>
+              <label
+                for="zip"
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Código Postal</label
+              >
+              <input
+                type="text"
+                id="zip"
+                name="zip"
+                value={shippingAddress.zip}
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+                placeholder="Ej: 28001"
+              />
+            </div>
+          </div>
         </div>
 
         <div
@@ -145,98 +263,6 @@ const billingInfo = {
       </form>
     </div>
 
-    <!-- Cambiar Contraseña -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-      <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <svg
-          class="w-6 h-6 mr-2 text-brand-blue"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-          ></path>
-        </svg>
-        Cambiar Contraseña
-      </h2>
-
-      <form id="password-form" class="space-y-4">
-        <div>
-          <label
-            for="current-password"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Contraseña actual</label
-          >
-          <input
-            type="password"
-            id="current-password"
-            name="current-password"
-            required
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
-            placeholder="Introduce tu contraseña actual"
-          />
-        </div>
-
-        <div>
-          <label
-            for="new-password"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Nueva contraseña</label
-          >
-          <input
-            type="password"
-            id="new-password"
-            name="new-password"
-            required
-            minlength="6"
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
-            placeholder="Mínimo 6 caracteres"
-          />
-        </div>
-
-        <div>
-          <label
-            for="confirm-password"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Confirmar contraseña</label
-          >
-          <input
-            type="password"
-            id="confirm-password"
-            name="confirm-password"
-            required
-            minlength="6"
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
-            placeholder="Repite la nueva contraseña"
-          />
-        </div>
-
-        <div
-          id="password-success-msg"
-          class="hidden text-green-600 text-sm bg-green-50 p-3 rounded-md"
-        >
-        </div>
-        <div
-          id="password-error-msg"
-          class="hidden text-red-600 text-sm bg-red-50 p-3 rounded-md"
-        >
-        </div>
-
-        <div class="pt-4">
-          <button
-            type="submit"
-            class="bg-brand-blue text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium"
-          >
-            Actualizar Contraseña
-          </button>
-        </div>
-      </form>
-    </div>
-
     <!-- Datos de Facturación -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <h2 class="text-xl font-semibold mb-4 flex items-center">
@@ -253,10 +279,10 @@ const billingInfo = {
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           ></path>
         </svg>
-        Información Tributaria / Facturación
+        Información de Facturación
       </h2>
       <p class="text-xs text-gray-500 mb-6">
-        Configura tus datos para que se autorellenen al solicitar una factura.
+        Datos para generar facturas. Se autorellenarán cuando solicites una.
       </p>
 
       <form id="billing-form" class="space-y-4">
@@ -362,102 +388,6 @@ const billingInfo = {
       </form>
     </div>
 
-    <!-- Dirección de Envío -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 class="text-xl font-semibold mb-6 flex items-center">
-        <svg
-          class="w-6 h-6 mr-2 text-brand-blue"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-          ></path>
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-        </svg>
-        Dirección de Envío Predeterminada
-      </h2>
-
-      <form id="address-form" class="space-y-4">
-        <div>
-          <label
-            for="address"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Calle y número</label
-          >
-          <input
-            type="text"
-            id="address"
-            name="address"
-            value={user.user_metadata?.address || ""}
-            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue"
-            placeholder="Ej: Calle Gran Vía, 12, 3ºB"
-          />
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              for="city"
-              class="block text-sm font-medium text-gray-700 mb-1">Ciudad</label
-            >
-            <input
-              type="text"
-              id="city"
-              name="city"
-              value={user.user_metadata?.city || ""}
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue"
-              placeholder="Ej: Madrid"
-            />
-          </div>
-          <div>
-            <label
-              for="zip"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Código Postal</label
-            >
-            <input
-              type="text"
-              id="zip"
-              name="zip"
-              value={user.user_metadata?.zip || ""}
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue"
-              placeholder="Ej: 28001"
-            />
-          </div>
-        </div>
-
-        <div
-          id="address-success-msg"
-          class="hidden text-green-600 text-sm bg-green-50 p-3 rounded-md"
-        >
-        </div>
-        <div
-          id="address-error-msg"
-          class="hidden text-red-600 text-sm bg-red-50 p-3 rounded-md"
-        >
-        </div>
-
-        <div class="pt-2">
-          <button
-            type="submit"
-            class="bg-brand-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors font-medium text-sm"
-          >
-            Actualizar Dirección
-          </button>
-        </div>
-      </form>
-    </div>
-
-
     <!-- Preferencias de Newsletter -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <h2 class="text-xl font-semibold mb-4 flex items-center">
@@ -511,6 +441,103 @@ const billingInfo = {
       <p class="text-xs text-gray-400 mt-4">
         Puedes darte de baja en cualquier momento. Tu email ({userEmail}) no se compartirá con terceros.
       </p>
+    </div>
+
+    <!-- Cambiar Contraseña -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <svg
+          class="w-6 h-6 mr-2 text-slate-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+          ></path>
+        </svg>
+        Cambiar Contraseña
+      </h2>
+      <p class="text-sm text-gray-500 mb-6">
+        Actualiza tu contraseña periódicamente para mantener tu cuenta segura.
+      </p>
+
+      <form id="password-form" class="space-y-4">
+        <div>
+          <label
+            for="current-password"
+            class="block text-sm font-medium text-gray-700 mb-1"
+            >Contraseña actual</label
+          >
+          <input
+            type="password"
+            id="current-password"
+            name="current-password"
+            required
+            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+            placeholder="Introduce tu contraseña actual"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label
+              for="new-password"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Nueva contraseña</label
+            >
+            <input
+              type="password"
+              id="new-password"
+              name="new-password"
+              required
+              minlength="6"
+              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+              placeholder="Mínimo 6 caracteres"
+            />
+          </div>
+
+          <div>
+            <label
+              for="confirm-password"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Confirmar contraseña</label
+            >
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirm-password"
+              required
+              minlength="6"
+              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-blue focus:border-brand-blue"
+              placeholder="Repite la nueva contraseña"
+            />
+          </div>
+        </div>
+
+        <div
+          id="password-success-msg"
+          class="hidden text-green-600 text-sm bg-green-50 p-3 rounded-md"
+        >
+        </div>
+        <div
+          id="password-error-msg"
+          class="hidden text-red-600 text-sm bg-red-50 p-3 rounded-md"
+        >
+        </div>
+
+        <div class="pt-4">
+          <button
+            type="submit"
+            class="bg-slate-800 text-white px-6 py-2 rounded-md hover:bg-slate-700 transition-colors font-medium"
+          >
+            Actualizar Contraseña
+          </button>
+        </div>
+      </form>
     </div>
 
     <!-- Gestión de Sesión & Zona de Peligro -->
@@ -652,48 +679,36 @@ const billingInfo = {
 
     const formData = new FormData(profileForm);
     const name = formData.get("name") as string;
-
-    const { error } = await supabase.auth.updateUser({
-      data: { name },
-    });
-
-    if (error) {
-      errorMsg.textContent = "Error al actualizar el perfil";
-      errorMsg.classList.remove("hidden");
-    } else {
-      successMsg.textContent = "Perfil actualizado correctamente";
-      successMsg.classList.remove("hidden");
-    }
-  });
-
-  // Guardar dirección
-  const addressForm = document.getElementById(
-    "address-form",
-  ) as HTMLFormElement;
-  const addressSuccessMsg = document.getElementById("address-success-msg")!;
-  const addressErrorMsg = document.getElementById("address-error-msg")!;
-
-  addressForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    addressSuccessMsg.classList.add("hidden");
-    addressErrorMsg.classList.add("hidden");
-
-    const formData = new FormData(addressForm);
+    const phone = formData.get("phone") as string;
     const address = formData.get("address") as string;
     const city = formData.get("city") as string;
     const zip = formData.get("zip") as string;
 
-    const { error } = await supabase.auth.updateUser({
-      data: { address, city, zip },
+    // Actualizar nombre y dirección en auth metadata
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { name, address, city, zip },
     });
 
-    if (error) {
-      addressErrorMsg.textContent = "Error al actualizar la dirección";
-      addressErrorMsg.classList.remove("hidden");
+    // Actualizar nombre y teléfono en profiles (usando nombres correctos de columnas)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    
+    let profileError = null;
+    if (user) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ nombre: name, telefono: phone })
+        .eq("id", user.id);
+      profileError = error;
+    }
+
+    if (authError || profileError) {
+      errorMsg.textContent = "Error al actualizar el perfil";
+      errorMsg.classList.remove("hidden");
     } else {
-      addressSuccessMsg.textContent =
-        "Dirección guardada para tus futuros pedidos";
-      addressSuccessMsg.classList.remove("hidden");
+      successMsg.textContent = "Información personal actualizada correctamente";
+      successMsg.classList.remove("hidden");
     }
   });
 
