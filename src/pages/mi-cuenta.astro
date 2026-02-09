@@ -43,11 +43,11 @@ const userEmail = user.email || "";
 const userPhone = profile?.telefono || "";
 const newsletterSubscribed = profile?.newsletter_subscribed || false;
 
-// Dirección de envío de user_metadata
+// Dirección de envío: Ahora desde la tabla profiles
 const shippingAddress = {
-  address: user.user_metadata?.address || "",
-  city: user.user_metadata?.city || "",
-  zip: user.user_metadata?.zip || "",
+  address: profile?.shipping_address || user.user_metadata?.address || "",
+  city: profile?.shipping_city || user.user_metadata?.city || "",
+  zip: profile?.shipping_zip || user.user_metadata?.zip || "",
 };
 
 // Datos de facturación de la base de datos
@@ -104,14 +104,18 @@ const billingInfo = {
       <form id="profile-form" class="space-y-6">
         <!-- Datos de Contacto -->
         <div class="space-y-4">
-          <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wide flex items-center gap-2">
+          <h3
+            class="text-sm font-semibold text-gray-800 uppercase tracking-wide flex items-center gap-2"
+          >
             <span class="w-2 h-2 bg-brand-blue rounded-full"></span>
             Datos de Contacto
           </h3>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label for="name" class="block text-sm font-medium text-gray-700 mb-1"
+              <label
+                for="name"
+                class="block text-sm font-medium text-gray-700 mb-1"
                 >Nombre completo</label
               >
               <input
@@ -133,9 +137,21 @@ const billingInfo = {
                 <span class="text-gray-400 font-normal">(opcional)</span>
               </label>
               <div class="relative">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                <span
+                  class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    ></path>
                   </svg>
                 </span>
                 <input
@@ -156,9 +172,21 @@ const billingInfo = {
               class="block text-sm font-medium text-gray-700 mb-1">Email</label
             >
             <div class="relative">
-              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+              <span
+                class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                  ></path>
                 </svg>
               </span>
               <input
@@ -181,10 +209,26 @@ const billingInfo = {
 
         <!-- Dirección de Envío -->
         <div class="space-y-4">
-          <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wide flex items-center gap-2">
-            <svg class="w-4 h-4 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          <h3
+            class="text-sm font-semibold text-gray-800 uppercase tracking-wide flex items-center gap-2"
+          >
+            <svg
+              class="w-4 h-4 text-brand-blue"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              ></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
             </svg>
             Dirección de Envío Predeterminada
           </h3>
@@ -212,7 +256,8 @@ const billingInfo = {
             <div>
               <label
                 for="city"
-                class="block text-sm font-medium text-gray-700 mb-1">Ciudad</label
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Ciudad</label
               >
               <input
                 type="text"
@@ -407,39 +452,41 @@ const billingInfo = {
         Preferencias de Newsletter
       </h2>
       <p class="text-sm text-gray-500 mb-6">
-        Recibe ofertas exclusivas, novedades y contenido especial directamente en tu correo.
+        Recibe ofertas exclusivas, novedades y contenido especial directamente
+        en tu correo.
       </p>
 
       <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
         <div>
           <p class="font-semibold text-slate-800">Suscripción a Newsletter</p>
           <p class="text-sm text-slate-500" id="newsletter-status-text">
-            {newsletterSubscribed ? "Estás suscrito a nuestra newsletter" : "No estás suscrito actualmente"}
+            {
+              newsletterSubscribed
+                ? "Estás suscrito a nuestra newsletter"
+                : "No estás suscrito actualmente"
+            }
           </p>
         </div>
         <button
           id="newsletter-toggle-btn"
           data-subscribed={newsletterSubscribed.toString()}
           class={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2 ${
-            newsletterSubscribed ? 'bg-brand-gold' : 'bg-gray-300'
+            newsletterSubscribed ? "bg-brand-gold" : "bg-gray-300"
           }`}
         >
           <span
             id="newsletter-toggle-dot"
             class={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
-              newsletterSubscribed ? 'translate-x-7' : 'translate-x-1'
-            }`}
-          ></span>
+              newsletterSubscribed ? "translate-x-7" : "translate-x-1"
+            }`}></span>
         </button>
       </div>
 
-      <div
-        id="newsletter-msg"
-        class="hidden mt-4 text-sm p-3 rounded-md"
-      ></div>
+      <div id="newsletter-msg" class="hidden mt-4 text-sm p-3 rounded-md"></div>
 
       <p class="text-xs text-gray-400 mt-4">
-        Puedes darte de baja en cualquier momento. Tu email ({userEmail}) no se compartirá con terceros.
+        Puedes darte de baja en cualquier momento. Tu email ({userEmail}) no se
+        compartirá con terceros.
       </p>
     </div>
 
@@ -684,21 +731,27 @@ const billingInfo = {
     const city = formData.get("city") as string;
     const zip = formData.get("zip") as string;
 
-    // Actualizar nombre y dirección en auth metadata
+    // Actualizar nombre y dirección en auth metadata (mantenemos por compatibilidad y caché rápido)
     const { error: authError } = await supabase.auth.updateUser({
       data: { name, address, city, zip },
     });
 
-    // Actualizar nombre y teléfono en profiles (usando nombres correctos de columnas)
+    // Actualizar tabla profiles con los campos de envío unificados
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    
+
     let profileError = null;
     if (user) {
       const { error } = await supabase
         .from("profiles")
-        .update({ nombre: name, telefono: phone })
+        .update({
+          nombre: name,
+          telefono: phone,
+          shipping_address: address,
+          shipping_city: city,
+          shipping_zip: zip,
+        })
         .eq("id", user.id);
       profileError = error;
     }
@@ -928,47 +981,52 @@ const billingInfo = {
   // Newsletter Toggle
   const newsletterBtn = document.getElementById("newsletter-toggle-btn");
   const newsletterDot = document.getElementById("newsletter-toggle-dot");
-  const newsletterStatusText = document.getElementById("newsletter-status-text");
+  const newsletterStatusText = document.getElementById(
+    "newsletter-status-text",
+  );
   const newsletterMsg = document.getElementById("newsletter-msg");
 
   newsletterBtn?.addEventListener("click", async () => {
     newsletterBtn.setAttribute("disabled", "true");
-    
+
     try {
       const res = await fetch("/api/newsletter/toggle", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       });
       const data = await res.json();
 
       if (data.success) {
         const isSubscribed = data.subscribed;
-        
+
         // Actualizar visual del toggle
         if (isSubscribed) {
           newsletterBtn.classList.remove("bg-gray-300");
           newsletterBtn.classList.add("bg-brand-gold");
           newsletterDot?.classList.remove("translate-x-1");
           newsletterDot?.classList.add("translate-x-7");
-          if (newsletterStatusText) newsletterStatusText.textContent = "Estás suscrito a nuestra newsletter";
+          if (newsletterStatusText)
+            newsletterStatusText.textContent =
+              "Estás suscrito a nuestra newsletter";
         } else {
           newsletterBtn.classList.remove("bg-brand-gold");
           newsletterBtn.classList.add("bg-gray-300");
           newsletterDot?.classList.remove("translate-x-7");
           newsletterDot?.classList.add("translate-x-1");
-          if (newsletterStatusText) newsletterStatusText.textContent = "No estás suscrito actualmente";
+          if (newsletterStatusText)
+            newsletterStatusText.textContent = "No estás suscrito actualmente";
         }
-        
+
         newsletterBtn.setAttribute("data-subscribed", isSubscribed.toString());
-        
+
         // Mostrar mensaje de éxito
         if (newsletterMsg) {
           newsletterMsg.textContent = data.message;
-          newsletterMsg.className = `mt-4 text-sm p-3 rounded-md ${isSubscribed ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`;
+          newsletterMsg.className = `mt-4 text-sm p-3 rounded-md ${isSubscribed ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`;
           newsletterMsg.classList.remove("hidden");
           setTimeout(() => newsletterMsg.classList.add("hidden"), 4000);
         }
-        
+
         addToast(data.message, "success");
       } else {
         addToast(data.error || "Error al actualizar preferencia", "error");

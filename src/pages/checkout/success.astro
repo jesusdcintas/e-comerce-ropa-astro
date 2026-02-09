@@ -125,11 +125,14 @@ if (sessionId) {
                 const cartSessionId =
                     Astro.cookies.get("cart_session_id")?.value;
                 if (cartSessionId) {
-                    await supabaseAdmin
-                        .rpc("confirm_cart_purchase", {
+                    const { error: cartError } = await supabaseAdmin.rpc(
+                        "confirm_cart_purchase",
+                        {
                             p_session_id: cartSessionId,
-                        })
-                        .catch(console.error);
+                        },
+                    );
+                    if (cartError)
+                        console.error("Error confirmando carrito:", cartError);
                 }
 
                 // 4. Finalizar cupón
@@ -143,6 +146,20 @@ if (sessionId) {
                         discountAmount,
                         discountAmount,
                     ).catch(console.error);
+                }
+
+                // 5. Actualizar perfil si el usuario está logueado y no tiene dirección guardada
+                if (userIdValue) {
+                    await supabaseAdmin
+                        .from("profiles")
+                        .update({
+                            shipping_address: metadata?.address || "",
+                            shipping_city: metadata?.city || "",
+                            shipping_zip: metadata?.zip || "",
+                            nombre: metadata?.customer_name || undefined, // Solo si no tiene uno
+                        })
+                        .eq("id", userIdValue)
+                        .is("shipping_address", null); // Solo si está vacía, para no sobrescribir manuales
                 }
             } else {
                 // El pedido ya existe (posiblemente creado por webhook o recarga)

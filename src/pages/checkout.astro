@@ -12,6 +12,16 @@ if (accessToken) {
     } = await supabase.auth.getUser(accessToken);
     user = authUser;
 }
+
+let profile = null;
+if (user) {
+    const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+    profile = data;
+}
 ---
 
 <BaseLayout title="Checkout - FashionStore">
@@ -33,12 +43,19 @@ if (accessToken) {
             <CheckoutFlow
                 client:load
                 initialEmail={user?.email || ""}
-                initialName={user?.user_metadata?.full_name ||
+                initialName={profile?.nombre ||
+                    user?.user_metadata?.full_name ||
                     user?.user_metadata?.name ||
                     ""}
-                initialAddress={user?.user_metadata?.address || ""}
-                initialCity={user?.user_metadata?.city || ""}
-                initialZip={user?.user_metadata?.zip || ""}
+                initialAddress={profile?.shipping_address ||
+                    user?.user_metadata?.address ||
+                    ""}
+                initialCity={profile?.shipping_city ||
+                    user?.user_metadata?.city ||
+                    ""}
+                initialZip={profile?.shipping_zip ||
+                    user?.user_metadata?.zip ||
+                    ""}
             />
         </div>
     </div>

@@ -63,11 +63,20 @@ const displayName =
     profile.email.split("@")[0];
 
 const address =
+    profile.shipping_address ||
     profile.billing_direccion ||
     authUser?.user_metadata?.address ||
     "No especificada";
-const city = profile.billing_ciudad || authUser?.user_metadata?.city || "";
-const zip = profile.billing_codigo_postal || authUser?.user_metadata?.zip || "";
+const city =
+    profile.shipping_city ||
+    profile.billing_ciudad ||
+    authUser?.user_metadata?.city ||
+    "";
+const zip =
+    profile.shipping_zip ||
+    profile.billing_codigo_postal ||
+    authUser?.user_metadata?.zip ||
+    "";
 
 const totalSpent =
     orders?.reduce(
@@ -129,13 +138,17 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                     {city}
                                 </p>
                                 {
-                                    profile.billing_direccion ? (
+                                    profile.shipping_address ? (
+                                        <span class="text-[8px] bg-green-50 text-green-600 px-2 py-0.5 rounded uppercase font-bold">
+                                            Dirección de Envío Guardada
+                                        </span>
+                                    ) : profile.billing_direccion ? (
                                         <span class="text-[8px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded uppercase font-bold">
                                             Datos de Facturación
                                         </span>
                                     ) : (
                                         <span class="text-[8px] bg-slate-50 text-slate-400 px-2 py-0.5 rounded uppercase font-bold">
-                                            Dirección de Envío
+                                            Sin dirección guardada
                                         </span>
                                     )
                                 }
@@ -323,11 +336,15 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                                     )}
                                                 </td>
                                                 <td class="px-6 py-5">
-                                                    {order.status === 'cancelled' ? (
+                                                    {order.status ===
+                                                    "cancelled" ? (
                                                         <span class="px-4 py-1.5 bg-red-50 text-red-500 border border-red-100 rounded-full text-[10px] font-black uppercase">
                                                             Cancelado
                                                         </span>
-                                                    ) : order.status === 'completed' || order.status === 'delivered' ? (
+                                                    ) : order.status ===
+                                                          "completed" ||
+                                                      order.status ===
+                                                          "delivered" ? (
                                                         <span class="px-4 py-1.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-full text-[10px] font-black uppercase">
                                                             Finalizado
                                                         </span>
