@@ -34,8 +34,11 @@ export const POST: APIRoute = async ({ request }) => {
     const body = await request.json();
     const { userId, items, couponCode, shippingAddress } = body;
 
+    console.log('🛍️ Checkout request:', { userId, itemsCount: items?.length, shippingAddress });
+
     // Validaciones básicas
     if (!userId) {
+      console.error('❌ Sin userId');
       return new Response(JSON.stringify({
         success: false,
         error: 'Usuario no autenticado',
@@ -197,12 +200,12 @@ export const POST: APIRoute = async ({ request }) => {
     const shippingCost = subtotal >= 5000 ? 0 : 495; // Gratis sobre 50€
     const totalAmount = subtotal - discountAmount + shippingCost;
 
-    // Crear pedido en estado pending (usando columnas reales del schema)
+    // Crear pedido en estado processing (el webhook lo cambiará a 'paid')
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         user_id: userId,
-        status: 'pending',
+        status: 'processing',
         total_amount: totalAmount,
         discount_amount: discountAmount,
         shipping_cost: shippingCost,
