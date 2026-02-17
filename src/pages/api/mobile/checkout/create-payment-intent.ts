@@ -220,11 +220,18 @@ export const POST: APIRoute = async ({ request }) => {
       .single();
 
     if (orderError || !order) {
-      console.error('Error creando pedido:', orderError);
+      console.error('❌ Error creando pedido:');
+      console.error('  Código:', orderError?.code);
+      console.error('  Mensaje:', orderError?.message);
+      console.error('  Detalles:', JSON.stringify(orderError?.details, null, 2));
+      console.error('  Línea:', orderError?.line);
+      console.error('  Request body:', { userId, shippingAddress });
       return new Response(JSON.stringify({
         success: false,
         error: 'Error al crear el pedido',
-        details: orderError?.message,
+        details: orderError?.message || 'Unknown error',
+        code: orderError?.code,
+        hint: orderError?.hint,
       }), {
         status: 500,
         headers,
