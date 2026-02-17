@@ -22,6 +22,7 @@ const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
 
 let orderCreated = false;
 let errorMsg = "";
+let isMobileApp = false;
 
 if (sessionId) {
     try {
@@ -30,6 +31,9 @@ if (sessionId) {
         if (session.payment_status === "paid") {
             const metadata = session.metadata;
             const items = JSON.parse(metadata?.items_json || "[]");
+            
+            // Detectar si viene de la app móvil
+            isMobileApp = metadata?.source === 'mobile_app';
 
             if (accessToken) {
                 await supabase.auth.setSession({
@@ -280,4 +284,13 @@ if (sessionId) {
 <script>
     localStorage.removeItem("cart");
     localStorage.removeItem("cart_session_id");
+</script>
+
+<script define:vars={{ isMobileApp }}>
+    // Si viene de la app móvil, redirigir al deep link después de 2 segundos
+    if (isMobileApp) {
+        setTimeout(() => {
+            window.location.href = 'fashionstore://checkout/success';
+        }, 2000);
+    }
 </script>

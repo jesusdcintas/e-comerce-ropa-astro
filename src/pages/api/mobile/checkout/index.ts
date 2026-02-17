@@ -122,17 +122,27 @@ export const POST: APIRoute = async ({ request }) => {
       quantity: item.quantity,
       price: item.price,
     }));
+    
+    // items_json para success.astro (formato simplificado)
+    const itemsJson = items.map((item: any) => ({
+      id: item.product_id?.toString() || '',
+      s: item.size || '',
+      q: item.quantity,
+      p: item.price,
+    }));
 
     const sessionMetadata: Stripe.Checkout.SessionCreateParams['metadata'] = {
       source: 'mobile_app',
       user_id: user_id || '',
-      shipping_name: shipping.name || '',
-      shipping_email: shipping.email || '',
-      shipping_address: shipping.address || '',
-      shipping_city: shipping.city || '',
-      shipping_zip: shipping.zip || '',
+      customer_name: shipping.name || '',
+      address: shipping.address || '',
+      city: shipping.city || '',
+      zip: shipping.zip || '',
       coupon_code: appliedCoupon?.codigo || '',
-      discount_amount: discountAmount.toString(),
+      coupon_id: appliedCoupon?.id?.toString() || '',
+      discount: discountAmount.toString(),
+      shipping_cost: '0',
+      items_json: JSON.stringify(itemsJson),
       order_items: JSON.stringify(orderItems),
     };
 
