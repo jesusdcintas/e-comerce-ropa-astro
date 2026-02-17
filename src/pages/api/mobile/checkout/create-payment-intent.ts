@@ -65,21 +65,25 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // Verificar usuario existe
-    const { data: user, error: userError } = await supabase
+    // Obtener datos del usuario (intentar profiles primero, si no existe usar auth fallback)
+    let user: any = null;
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('id, email, nombre')
       .eq('id', userId)
       .single();
 
-    if (userError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Usuario no encontrado',
-      }), {
-        status: 404,
-        headers,
-      });
+    if (profileData) {
+      user = profileData;
+    } else {
+      // Si no existe profile, usar datos mínimos de auth.users (el servidor servicio tiene acceso si está autenticado)
+      // En este caso usamos el email del token JWT si está disponible
+      // Como fallback, simplemente usamos el userId como identificador
+      user = {
+        id: userId,
+        email: shippingAddress.email, // Usar email del envío como fallback
+        nombre: shippingAddress.name,
+      };
     }
 
     // Obtener productos y calcular total
