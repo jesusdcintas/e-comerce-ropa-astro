@@ -122,60 +122,124 @@ export const POST: APIRoute = async ({ request }) => {
       console.log('📱 PaymentIntent completado:', paymentIntent.id);
 
       const metadata = paymentIntent.metadata || {};
-      const order_id = metadata.order_id;
       const user_id = metadata.user_id;
       const coupon_code = metadata.coupon_code;
       const discount_amount = parseInt(metadata.discount_amount || '0');
+      const shipping_cost = parseInt(metadata.shipping_cost || '0');
+      const order_items_json = metadata.order_items;
 
-      if (!order_id) {
-        console.error('[ERROR] PaymentIntent sin order_id en metadata');
+      if (!user_id) {
+        console.error('[ERROR] PaymentIntent sin user_id en metadata');
         return new Response(JSON.stringify({ received: true }), { status: 200 });
       }
 
-      // 1. Verificar que el pedido existe y está en pending (idempotencia)
-      const { data: existingOrder, error: orderError } = await supabase
+      // Parsear items (vinieron como JSON desde create-payment-intent)
+      let order_items: any[] = [];
+      try {
+        order_items = order_items_json ? JSON.parse(order_items_json) : [];
+      } catch (e) {
+        console.error('[WARNING] Error parseando order_items:', e);
+      }
+
+      // 1. Crear orden en estado 'paid' (el PMI fue exitoso)
+      const orderData = {
+        stripe_session_id: paymentIntent.id,
+        user_id: user_id,
+        total_amount: paymentIntent.amount,
+        status: 'paid' as const,
+        discount_amount: discount_amount,
+        shipping_cost: shipping_cost,
+        coupon_code: coupon_code || null,
+        shipping_name: metadata.shipping_name || 'Cliente',
+        shipping_email: metadata.shipping_email || paymentIntent.receipt_email || '',
+        shipping_address: metadata.shipping_address || '',
+        shipping_city: metadata.shipping_city || '',
+        shipping_zip: metadata.shipping_zip || '',
+        updated_at: new Date().toISOString(),
+      };
+
+      // Verificar idempotencia: si la orden ya existe (por payment_intent.id), no crearla de nuevo
+      const { data: existingOrder } = await supabase
         .from('orders')
-        .select('id, status, user_id')
-        .eq('id', parseInt(order_id))
-        .single();
+        .select('id, status')
+        .eq('stripe_session_id', paymentIntent.id)
+        .maybeSingle();
 
-      if (orderError || !existingOrder) {
-        console.error('[ERROR] Pedido no encontrado:', order_id);
-        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      let order_id: number;
+
+      if (existingOrder) {
+        // Idempotencia: si ya existe y está pagada, ignorar
+        if (existingOrder.status === 'paid') {
+          console.log('ℹ️ Pedido ya estaba pagado, ignorando:', existingOrder.id);
+          return new Response(JSON.stringify({ received: true }), { status: 200 });
+        }
+        // Si no está pagada, actualizar
+        await supabase
+          .from('orders')
+          .update(orderData)
+          .eq('id', existingOrder.id);
+        order_id = existingOrder.id;
+        console.log('📦 Pedido actualizado a paid:', order_id);
+      } else {
+        // Crear nueva orden
+        const { data: newOrder, error: insertError } = await supabase
+          .from('orders')
+          .insert(orderData)
+          .select('id')
+          .single();
+
+        if (insertError || !newOrder) {
+          console.error('[ERROR] Error creando orden:', insertError?.message);
+          return new Response(JSON.stringify({ received: true }), { status: 200 });
+        }
+        order_id = newOrder.id;
+        console.log('📦 Pedido creado:', order_id);
       }
 
-      // Idempotencia: si ya está pagado, no procesar de nuevo
-      if (existingOrder.status === 'paid') {
-        console.log('ℹ️ Pedido ya estaba pagado, ignorando:', order_id);
-        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      // 2. Insertar items del pedido (si no existen)
+      const { data: existingItems } = await supabase
+        .from('order_items')
+        .select('id')
+        .eq('order_id', order_id)
+        .limit(1);
+
+      if (!existingItems || existingItems.length === 0) {
+        const itemsToInsert = order_items.map((item: any) => ({
+          order_id: order_id,
+          product_id: item.product_id,
+          variant_id: item.variant_id,
+          product_name: item.product_name,
+          product_size: item.product_size,
+          quantity: item.quantity,
+          price: item.price,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) {
+          console.error('[WARNING] Error insertando items:', itemsError);
+          // No fallar el webhook, los items pueden añadirse después
+        } else {
+          console.log('✅ Items del pedido insertados:', itemsToInsert.length);
+        }
       }
-
-      // 2. Actualizar pedido a paid
-      await supabase
-        .from('orders')
-        .update({ 
-          status: 'paid',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', parseInt(order_id));
-
-      console.log('✅ Pedido actualizado a paid:', order_id);
 
       // 3. Descontar stock de las variantes
-      const { data: orderItems, error: itemsError } = await supabase
+      const { data: allOrderItems } = await supabase
         .from('order_items')
         .select('variant_id, quantity')
-        .eq('order_id', parseInt(order_id));
+        .eq('order_id', order_id);
 
-      if (!itemsError && orderItems) {
-        for (const item of orderItems) {
+      if (allOrderItems && allOrderItems.length > 0) {
+        for (const item of allOrderItems) {
           if (item.variant_id) {
-            // Decrementar stock de la variante
             await supabase.rpc('decrement_variant_stock', {
               p_variant_id: item.variant_id,
               p_quantity: item.quantity
             }).catch(async () => {
-              // Fallback si no existe el RPC
+              // Fallback
               const { data: variant } = await supabase
                 .from('product_variants')
                 .select('stock')
@@ -183,65 +247,59 @@ export const POST: APIRoute = async ({ request }) => {
                 .single();
               
               if (variant) {
-                const newStock = Math.max(0, variant.stock - item.quantity);
                 await supabase
                   .from('product_variants')
-                  .update({ stock: newStock })
+                  .update({ stock: Math.max(0, variant.stock - item.quantity) })
                   .eq('id', item.variant_id);
               }
             });
           }
         }
-        console.log('📦 Stock actualizado para', orderItems.length, 'items');
+        console.log('📦 Stock actualizado for', allOrderItems.length, 'items');
       }
 
-      // 4. Generar número de ticket
+      // 4. Generar ticket y enviar emails
       const { data: ticketData } = await supabase.rpc('generate_next_ticket_number');
       const ticket_number = ticketData || `T-${order_id.toString().padStart(6, '0')}`;
 
-      await supabase.from('orders').update({ ticket_number }).eq('id', parseInt(order_id));
+      await supabase.from('orders').update({ ticket_number }).eq('id', order_id);
 
-      // 5. Obtener datos completos del pedido para el email
-      const { data: fullOrder } = await supabase
-        .from('orders')
-        .select('*, order_items(*, products(name, images))')
-        .eq('id', parseInt(order_id))
-        .single();
+      try {
+        const { sendOrderReceiptEmail, sendAdminNewOrderNotification } = await import('../../../lib/emails');
+        
+        const items = (allOrderItems || []).map((item: any) => ({
+          name: item.product_name || item.name,
+          size: item.product_size || item.size,
+          quantity: item.quantity,
+          price: item.price,
+        }));
 
-      if (fullOrder) {
-        try {
-          const { sendOrderReceiptEmail, sendAdminNewOrderNotification } = await import('../../../lib/emails');
-          
-          const items = fullOrder.order_items?.map((item: any) => ({
-            name: item.product_name || item.products?.name,
-            size: item.product_size,
-            quantity: item.quantity,
-            price: item.price,
-            image: item.products?.images?.[0] || '',
-          })) || [];
+        const fullOrder = {
+          ...orderData,
+          id: order_id,
+          ticket_number,
+          created_at: new Date().toISOString(),
+        };
 
-          await sendOrderReceiptEmail(fullOrder, items);
-          console.log('📧 Email de confirmación enviado');
+        await sendOrderReceiptEmail(fullOrder, items);
+        console.log('📧 Email de confirmación enviado');
 
-          await sendAdminNewOrderNotification(fullOrder, items);
-          console.log('🔔 Admin notificado de nueva venta móvil');
-        } catch (emailError) {
-          console.error('[WARNING] Error enviando emails:', emailError);
-          // No fallar el webhook por error de email
-        }
+        await sendAdminNewOrderNotification(fullOrder, items);
+        console.log('🔔 Admin notificado de nueva venta móvil');
+      } catch (emailError) {
+        console.error('[WARNING] Error enviando emails:', emailError);
       }
 
-      // 6. Marcar cupón como usado si aplica
+      // 5. Marcar cupón como usado
       if (coupon_code && user_id) {
         await supabase
           .from('cupones')
           .update({ 
             usado: true, 
-            pedido_usado_en: parseInt(order_id) 
+            pedido_usado_en: order_id 
           })
           .eq('codigo', coupon_code.toUpperCase());
 
-        // Registrar uso del cupón
         const { data: coupon } = await supabase
           .from('cupones')
           .select('id')
@@ -252,7 +310,7 @@ export const POST: APIRoute = async ({ request }) => {
           await supabase.from('cupon_usos').insert({
             cupon_id: coupon.id,
             cliente_id: user_id,
-            order_id: parseInt(order_id),
+            order_id: order_id,
             discount_applied: discount_amount,
             amount_saved: discount_amount,
           });

@@ -200,68 +200,27 @@ export const POST: APIRoute = async ({ request }) => {
     const shippingCost = subtotal >= 5000 ? 0 : 495; // Gratis sobre 50€
     const totalAmount = subtotal - discountAmount + shippingCost;
 
-    // Crear pedido en estado processing (el webhook lo cambiará a 'paid')
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: userId,
-        status: 'processing',
-        total_amount: totalAmount,
-        discount_amount: discountAmount,
-        shipping_cost: shippingCost,
-        coupon_code: appliedCoupon?.code || null,
-        shipping_name: shippingAddress.name || user.nombre || '',
-        shipping_email: shippingAddress.email || user.email || '',
-        shipping_address: shippingAddress.address,
-        shipping_city: shippingAddress.city,
-        shipping_zip: shippingAddress.zip,
-      })
-      .select('id')
-      .single();
+    // Crear pedido TEMPORAL (sin insertar en BD aún para evitar RLS issues)
+    // El webhook actualizará/creará cuando payment_intent.succeeded llegue
+    // Por ahora, solo crear el PaymentIntent y retornar clientSecret
+    
+    // Preparar metadata para el PaymentIntent (que luego el webhook usará)
+    const paymentMetadata = {
+      order_items: JSON.stringify(orderItems),
+      user_id: userId,
+      shipping_name: shippingAddress.name || user.nombre || '',
+      shipping_email: shippingAddress.email || user.email || '',
+      shipping_address: shippingAddress.address,
+      shipping_city: shippingAddress.city,
+      shipping_zip: shippingAddress.zip,
+      discount_amount: discountAmount.toString(),
+      coupon_code: appliedCoupon?.code || '',
+      shipping_cost: shippingCost.toString(),
+    };
 
-    if (orderError || !order) {
-      console.error('❌ Error creando pedido:');
-      console.error('  Código:', orderError?.code);
-      console.error('  Mensaje:', orderError?.message);
-      console.error('  Detalles:', JSON.stringify(orderError?.details, null, 2));
-      console.error('  Línea:', orderError?.line);
-      console.error('  Request body:', { userId, shippingAddress });
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Error al crear el pedido',
-        details: orderError?.message || 'Unknown error',
-        code: orderError?.code,
-        hint: orderError?.hint,
-      }), {
-        status: 500,
-        headers,
-      });
-    }
-
-    // Insertar items del pedido
-    const itemsWithOrderId = orderItems.map(item => ({
-      ...item,
-      order_id: order.id,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(itemsWithOrderId);
-
-    if (itemsError) {
-      console.error('Error insertando items:', itemsError);
-      // Eliminar pedido huérfano
-      await supabase.from('orders').delete().eq('id', order.id);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Error al guardar los productos',
-      }), {
-        status: 500,
-        headers,
-      });
-    }
-
-    // Crear PaymentIntent en Stripe
+    // Crear PaymentIntent en Stripe CON METADATA del pedido (el webhook lo procesará)
+    console.log('💳 Creando PaymentIntent con metadata:', { userId, subtotal, totalAmount });
+    
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount,
       currency: 'eur',
@@ -269,29 +228,23 @@ export const POST: APIRoute = async ({ request }) => {
         enabled: true,
       },
       metadata: {
-        order_id: order.id.toString(),
-        user_id: userId,
+        ...paymentMetadata, // Incluir todos los datos de la orden
         source: 'mobile_app',
-        coupon_code: appliedCoupon?.code || '',
-        discount_amount: discountAmount.toString(),
+        itemCount: orderItems.length.toString(),
       },
       receipt_email: shippingAddress.email || user.email || undefined,
-      description: `Pedido FashionStore #${order.id}`,
+      description: `Pedido FashionStore - ${shippingAddress.name}`,
     });
 
-    // Guardar payment_intent_id en el pedido (reutilizando stripe_session_id)
-    await supabase
-      .from('orders')
-      .update({ stripe_session_id: paymentIntent.id })
-      .eq('id', order.id);
+    console.log('✅ PaymentIntent creado:', paymentIntent.id);
 
+    // Retornar clientSecret para que Flutter complete el pago
+    // Cuando el pago se confirme, el webhook creará la orden en Supabase
     return new Response(JSON.stringify({
       success: true,
       data: {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
-        orderId: order.id,
-        orderNumber: `#${order.id}`,
         summary: {
           subtotal,
           discount: discountAmount,
