@@ -13,7 +13,7 @@ const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY);
  *   userId: string (ID del usuario autenticado)
  *   items: Array<{ productId, variantId, quantity }>
  *   couponCode?: string
- *   shippingAddress: { name, street, city, postalCode, province, country, phone }
+ *   shippingAddress: { name, email, address, city, zip, phone? }
  * }
  * 
  * Retorna:
@@ -55,7 +55,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    if (!shippingAddress || !shippingAddress.street || !shippingAddress.city) {
+    if (!shippingAddress || !shippingAddress.address || !shippingAddress.city) {
       return new Response(JSON.stringify({
         success: false,
         error: 'Dirección de envío incompleta',
@@ -68,7 +68,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Verificar usuario existe
     const { data: user, error: userError } = await supabase
       .from('profiles')
-      .select('id, email, name')
+      .select('id, email, nombre')
       .eq('id', userId)
       .single();
 
@@ -84,15 +84,21 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Obtener productos y calcular total
     let subtotal = 0;
-    const orderItems = [];
+    const orderItems: Array<{
+      product_id: number;
+      variant_id: number;
+      product_name: string;
+      product_size: string;
+      quantity: number;
+      price: number;
+    }> = [];
 
     for (const item of items) {
-      // Obtener producto
+      // Obtener producto (sin filtro 'active' que no existe en el schema)
       const { data: product, error: prodError } = await supabase
         .from('products')
-        .select('id, name, price, original_price')
+        .select('id, name, price, discount_percentage')
         .eq('id', item.productId)
-        .eq('active', true)
         .single();
 
       if (prodError || !product) {
@@ -108,7 +114,7 @@ export const POST: APIRoute = async ({ request }) => {
       // Verificar variante y stock
       const { data: variant, error: varError } = await supabase
         .from('product_variants')
-        .select('id, size, color, stock')
+        .select('id, size, stock')
         .eq('id', item.variantId)
         .eq('product_id', item.productId)
         .single();
@@ -134,42 +140,52 @@ export const POST: APIRoute = async ({ request }) => {
         });
       }
 
-      const itemTotal = product.price * item.quantity;
+      // Calcular precio con descuento si aplica
+      let finalPrice = product.price;
+      if (product.discount_percentage > 0) {
+        finalPrice = Math.round(product.price * (1 - product.discount_percentage / 100));
+      }
+
+      const itemTotal = finalPrice * item.quantity;
       subtotal += itemTotal;
 
       orderItems.push({
         product_id: product.id,
         variant_id: variant.id,
         product_name: product.name,
-        size: variant.size,
-        color: variant.color,
+        product_size: variant.size,
         quantity: item.quantity,
-        unit_price: product.price,
-        total_price: itemTotal,
+        price: finalPrice,
       });
     }
 
     // Aplicar cupón si existe
     let discountAmount = 0;
-    let appliedCoupon = null;
+    let appliedCoupon: { code: string; discountPercentage: number; discountAmount: number } | null = null;
 
     if (couponCode) {
-      const { data: couponResult, error: couponError } = await supabase.rpc(
-        'rpc_validate_coupon',
-        {
-          code: couponCode,
-          user_id: userId,
-          order_total: subtotal,
-        }
-      );
+      // Buscar cupón válido
+      const { data: coupon, error: couponError } = await supabase
+        .from('cupones')
+        .select('id, codigo, descuento_porcentaje, usado, activo, fecha_expiracion, cliente_id, es_publico')
+        .eq('codigo', couponCode.toUpperCase())
+        .eq('activo', true)
+        .eq('usado', false)
+        .single();
 
-      if (!couponError && couponResult && couponResult.valid) {
-        discountAmount = couponResult.discount_amount;
-        appliedCoupon = {
-          code: couponCode,
-          discountPercentage: couponResult.discount_percentage,
-          discountAmount,
-        };
+      if (!couponError && coupon) {
+        // Verificar si es válido para este usuario
+        const isValidForUser = coupon.es_publico || coupon.cliente_id === userId;
+        const isNotExpired = !coupon.fecha_expiracion || new Date(coupon.fecha_expiracion) > new Date();
+
+        if (isValidForUser && isNotExpired) {
+          discountAmount = Math.round(subtotal * coupon.descuento_porcentaje / 100);
+          appliedCoupon = {
+            code: coupon.codigo,
+            discountPercentage: coupon.descuento_porcentaje,
+            discountAmount,
+          };
+        }
       }
     }
 
@@ -177,27 +193,23 @@ export const POST: APIRoute = async ({ request }) => {
     const shippingCost = subtotal >= 5000 ? 0 : 495; // Gratis sobre 50€
     const totalAmount = subtotal - discountAmount + shippingCost;
 
-    // Crear pedido en estado pending
+    // Crear pedido en estado pending (usando columnas reales del schema)
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         user_id: userId,
         status: 'pending',
-        subtotal_amount: subtotal,
-        discount_amount: discountAmount,
-        shipping_amount: shippingCost,
         total_amount: totalAmount,
+        discount_amount: discountAmount,
+        shipping_cost: shippingCost,
         coupon_code: appliedCoupon?.code || null,
-        shipping_name: shippingAddress.name,
-        shipping_street: shippingAddress.street,
+        shipping_name: shippingAddress.name || user.nombre || '',
+        shipping_email: shippingAddress.email || user.email || '',
+        shipping_address: shippingAddress.address,
         shipping_city: shippingAddress.city,
-        shipping_postal_code: shippingAddress.postalCode,
-        shipping_province: shippingAddress.province,
-        shipping_country: shippingAddress.country || 'ES',
-        shipping_phone: shippingAddress.phone,
-        source: 'mobile_app',
+        shipping_zip: shippingAddress.zip,
       })
-      .select()
+      .select('id')
       .single();
 
     if (orderError || !order) {
@@ -205,6 +217,7 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({
         success: false,
         error: 'Error al crear el pedido',
+        details: orderError?.message,
       }), {
         status: 500,
         headers,
@@ -242,18 +255,20 @@ export const POST: APIRoute = async ({ request }) => {
         enabled: true,
       },
       metadata: {
-        order_id: order.id,
+        order_id: order.id.toString(),
         user_id: userId,
         source: 'mobile_app',
+        coupon_code: appliedCoupon?.code || '',
+        discount_amount: discountAmount.toString(),
       },
-      receipt_email: user.email,
-      description: `Pedido FashionStore #${order.id.slice(0, 8)}`,
+      receipt_email: shippingAddress.email || user.email || undefined,
+      description: `Pedido FashionStore #${order.id}`,
     });
 
-    // Guardar payment_intent_id en el pedido
+    // Guardar payment_intent_id en el pedido (reutilizando stripe_session_id)
     await supabase
       .from('orders')
-      .update({ stripe_payment_intent_id: paymentIntent.id })
+      .update({ stripe_session_id: paymentIntent.id })
       .eq('id', order.id);
 
     return new Response(JSON.stringify({
@@ -262,7 +277,7 @@ export const POST: APIRoute = async ({ request }) => {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
         orderId: order.id,
-        orderNumber: order.id.slice(0, 8).toUpperCase(),
+        orderNumber: `#${order.id}`,
         summary: {
           subtotal,
           discount: discountAmount,
@@ -271,7 +286,6 @@ export const POST: APIRoute = async ({ request }) => {
           itemCount: orderItems.length,
         },
         coupon: appliedCoupon,
-        ephemeralKey: null, // Para Customer Sessions si se implementa
       }
     }), {
       status: 200,

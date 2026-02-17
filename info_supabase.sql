@@ -1,454 +1,3 @@
-[
-  {
-    "comment_line": "/* Schema: public | Table: cart_reservations | Policy: Cart_Admin_All */",
-    "create_policy_stmt": "CREATE POLICY \"Cart_Admin_All\" ON public.cart_reservations FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cart_reservations | Policy: Cart_Select_Authenticated */",
-    "create_policy_stmt": "CREATE POLICY \"Cart_Select_Authenticated\" ON public.cart_reservations FOR SELECT TO authenticated USING (true);"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: categories | Policy: Categories_Admin */",
-    "create_policy_stmt": "CREATE POLICY \"Categories_Admin\" ON public.categories FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: categories | Policy: Categories_Select */",
-    "create_policy_stmt": "CREATE POLICY \"Categories_Select\" ON public.categories FOR SELECT TO PUBLIC USING (true);"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupon_asignaciones | Policy: Admins control total asignaciones */",
-    "create_policy_stmt": "CREATE POLICY \"Admins control total asignaciones\" ON public.cupon_asignaciones FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupon_asignaciones | Policy: Users_View_Own_Assignments */",
-    "create_policy_stmt": "CREATE POLICY \"Users_View_Own_Assignments\" ON public.cupon_asignaciones FOR SELECT TO authenticated USING ((cliente_id = auth.uid()));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupon_notificados | Policy: Notif_Cupon_Admin */",
-    "create_policy_stmt": "CREATE POLICY \"Notif_Cupon_Admin\" ON public.cupon_notificados FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupon_notificados | Policy: Notif_Cupon_Select_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Notif_Cupon_Select_Own\" ON public.cupon_notificados FOR SELECT TO authenticated USING ((cliente_id = auth.uid()));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupon_notificados | Policy: Usuarios ven sus notificaciones cupon */",
-    "create_policy_stmt": "CREATE POLICY \"Usuarios ven sus notificaciones cupon\" ON public.cupon_notificados FOR SELECT TO authenticated USING ((cliente_id = auth.uid()));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupon_usos | Policy: Admin_Full_Control_Usos */",
-    "create_policy_stmt": "CREATE POLICY \"Admin_Full_Control_Usos\" ON public.cupon_usos FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupon_usos | Policy: Usos_Select_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Usos_Select_Own\" ON public.cupon_usos FOR SELECT TO authenticated USING ((cliente_id = auth.uid()));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupones | Policy: Cupones_Admin */",
-    "create_policy_stmt": "CREATE POLICY \"Cupones_Admin\" ON public.cupones FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: cupones | Policy: Users_Select_Eligible_V2 */",
-    "create_policy_stmt": "CREATE POLICY \"Users_Select_Eligible_V2\" ON public.cupones FOR SELECT TO authenticated USING (((es_publico = true) OR (cliente_id = auth.uid()) OR (id IN ( SELECT cupon_asignaciones.cupon_id\n   FROM cupon_asignaciones\n  WHERE (cupon_asignaciones.cliente_id = auth.uid())))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: favorites | Policy: Favorites_Admin_Select */",
-    "create_policy_stmt": "CREATE POLICY \"Favorites_Admin_Select\" ON public.favorites FOR SELECT TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: favorites | Policy: Favorites_User_All_With_Admin */",
-    "create_policy_stmt": "CREATE POLICY \"Favorites_User_All_With_Admin\" ON public.favorites FOR ALL TO authenticated USING (((auth.uid() = user_id) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))) WITH CHECK (((auth.uid() = user_id) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: inquiry_messages | Policy: Msg_Admin_All */",
-    "create_policy_stmt": "CREATE POLICY \"Msg_Admin_All\" ON public.inquiry_messages FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: inquiry_messages | Policy: Msg_Select_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Msg_Select_Own\" ON public.inquiry_messages FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1\n   FROM product_inquiries\n  WHERE ((product_inquiries.id = inquiry_messages.inquiry_id) AND (product_inquiries.customer_email = (auth.jwt() ->> 'email'::text))))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: inquiry_messages | Policy: Users_Insert_Own_Msgs */",
-    "create_policy_stmt": "CREATE POLICY \"Users_Insert_Own_Msgs\" ON public.inquiry_messages FOR INSERT TO PUBLIC WITH CHECK ((EXISTS ( SELECT 1\n   FROM product_inquiries\n  WHERE ((product_inquiries.id = inquiry_messages.inquiry_id) AND (product_inquiries.customer_email = (auth.jwt() ->> 'email'::text))))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: newsletter_campaigns | Policy: Admins_Full_Access_Campaigns */",
-    "create_policy_stmt": "CREATE POLICY \"Admins_Full_Access_Campaigns\" ON public.newsletter_campaigns FOR ALL TO PUBLIC USING (( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))) WITH CHECK (( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: newsletter_sends | Policy: Admins_Full_Access_Sends */",
-    "create_policy_stmt": "CREATE POLICY \"Admins_Full_Access_Sends\" ON public.newsletter_sends FOR ALL TO PUBLIC USING (( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))) WITH CHECK (( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: newsletter_sends | Policy: Users_View_Own_Sends */",
-    "create_policy_stmt": "CREATE POLICY \"Users_View_Own_Sends\" ON public.newsletter_sends FOR SELECT TO PUBLIC USING ((user_id = auth.uid()));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: newsletter_subscribers | Policy: Admins can view subscribers */",
-    "create_policy_stmt": "CREATE POLICY \"Admins can view subscribers\" ON public.newsletter_subscribers FOR SELECT TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: newsletter_subscribers | Policy: Public can subscribe */",
-    "create_policy_stmt": "CREATE POLICY \"Public can subscribe\" ON public.newsletter_subscribers FOR INSERT TO PUBLIC WITH CHECK (true);"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: notifications | Policy: Notif_Select_Self */",
-    "create_policy_stmt": "CREATE POLICY \"Notif_Select_Self\" ON public.notifications FOR SELECT TO authenticated USING ((auth.uid() = user_id));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: notifications | Policy: Notif_Update_Self */",
-    "create_policy_stmt": "CREATE POLICY \"Notif_Update_Self\" ON public.notifications FOR UPDATE TO authenticated USING ((auth.uid() = user_id));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: notifications | Policy: Only_System_Creates_Notifs */",
-    "create_policy_stmt": "CREATE POLICY \"Only_System_Creates_Notifs\" ON public.notifications FOR INSERT TO PUBLIC WITH CHECK ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: order_items | Policy: Items_Admin_All */",
-    "create_policy_stmt": "CREATE POLICY \"Items_Admin_All\" ON public.order_items FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: order_items | Policy: Items_Delete_Admin_Only */",
-    "create_policy_stmt": "CREATE POLICY \"Items_Delete_Admin_Only\" ON public.order_items FOR DELETE TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: order_items | Policy: Items_Select_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Items_Select_Own\" ON public.order_items FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid())))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: order_items | Policy: Items_Update_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Items_Update_Own\" ON public.order_items FOR UPDATE TO authenticated USING ((EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid()))))) WITH CHECK ((EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid())))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: order_items | Policy: Users_Insert_Own_Items */",
-    "create_policy_stmt": "CREATE POLICY \"Users_Insert_Own_Items\" ON public.order_items FOR INSERT TO PUBLIC WITH CHECK ((EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid())))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: orders | Policy: Orders_Admin_All */",
-    "create_policy_stmt": "CREATE POLICY \"Orders_Admin_All\" ON public.orders FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: orders | Policy: Orders_Select_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Orders_Select_Own\" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = user_id));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: orders | Policy: Orders_Update_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Orders_Update_Own\" ON public.orders FOR UPDATE TO authenticated USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: orders | Policy: Users_Insert_Own_Orders */",
-    "create_policy_stmt": "CREATE POLICY \"Users_Insert_Own_Orders\" ON public.orders FOR INSERT TO PUBLIC WITH CHECK ((auth.uid() = user_id));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: popups | Policy: Admins control total popups */",
-    "create_policy_stmt": "CREATE POLICY \"Admins control total popups\" ON public.popups FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: popups | Policy: Todo el mundo ve popups activos */",
-    "create_policy_stmt": "CREATE POLICY \"Todo el mundo ve popups activos\" ON public.popups FOR SELECT TO PUBLIC USING (((activa = true) AND ((fecha_inicio IS NULL) OR (fecha_inicio <= now())) AND ((fecha_fin IS NULL) OR (fecha_fin >= now()))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: product_inquiries | Policy: Inquiry_Admin_All */",
-    "create_policy_stmt": "CREATE POLICY \"Inquiry_Admin_All\" ON public.product_inquiries FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: product_inquiries | Policy: Inquiry_Insert_Public */",
-    "create_policy_stmt": "CREATE POLICY \"Inquiry_Insert_Public\" ON public.product_inquiries FOR INSERT TO PUBLIC WITH CHECK (true);"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: product_inquiries | Policy: Inquiry_Select_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Inquiry_Select_Own\" ON public.product_inquiries FOR SELECT TO authenticated USING ((customer_email = (auth.jwt() ->> 'email'::text)));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: product_inquiries | Policy: Inquiry_Update_Own */",
-    "create_policy_stmt": "CREATE POLICY \"Inquiry_Update_Own\" ON public.product_inquiries FOR UPDATE TO authenticated USING ((customer_email = (auth.jwt() ->> 'email'::text))) WITH CHECK ((customer_email = (auth.jwt() ->> 'email'::text)));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: product_variants | Policy: Variants_Admin */",
-    "create_policy_stmt": "CREATE POLICY \"Variants_Admin\" ON public.product_variants FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: product_variants | Policy: Variants_Select */",
-    "create_policy_stmt": "CREATE POLICY \"Variants_Select\" ON public.product_variants FOR SELECT TO PUBLIC USING (true);"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: products | Policy: Products_Admin */",
-    "create_policy_stmt": "CREATE POLICY \"Products_Admin\" ON public.products FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: products | Policy: Products_Select */",
-    "create_policy_stmt": "CREATE POLICY \"Products_Select\" ON public.products FOR SELECT TO PUBLIC USING (true);"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: profiles | Policy: Profiles_Admin_Select */",
-    "create_policy_stmt": "CREATE POLICY \"Profiles_Admin_Select\" ON public.profiles FOR SELECT TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: profiles | Policy: Profiles_Select_Self */",
-    "create_policy_stmt": "CREATE POLICY \"Profiles_Select_Self\" ON public.profiles FOR SELECT TO authenticated USING ((auth.uid() = id));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: profiles | Policy: Profiles_Update_Self */",
-    "create_policy_stmt": "CREATE POLICY \"Profiles_Update_Self\" ON public.profiles FOR UPDATE TO authenticated USING ((auth.uid() = id));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: reglas_cupones | Policy: Admin_Full_Control_Reglas */",
-    "create_policy_stmt": "CREATE POLICY \"Admin_Full_Control_Reglas\" ON public.reglas_cupones FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: reglas_cupones | Policy: Admin_Full_Rules */",
-    "create_policy_stmt": "CREATE POLICY \"Admin_Full_Rules\" ON public.reglas_cupones FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: reglas_cupones | Policy: Users_View_Relevant_Rules */",
-    "create_policy_stmt": "CREATE POLICY \"Users_View_Relevant_Rules\" ON public.reglas_cupones FOR SELECT TO authenticated USING ((id IN ( SELECT cupones.regla_id\n   FROM cupones\n  WHERE ((cupones.es_publico = true) OR (cupones.cliente_id = auth.uid())))));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: settings | Policy: Settings_Admin */",
-    "create_policy_stmt": "CREATE POLICY \"Settings_Admin\" ON public.settings FOR ALL TO authenticated USING ((((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text));"
-  },
-  {
-    "comment_line": "/* Schema: public | Table: settings | Policy: Settings_Select */",
-    "create_policy_stmt": "CREATE POLICY \"Settings_Select\" ON public.settings FOR SELECT TO PUBLIC USING (true);"
-  }
-]
-
-
-[
-  {
-    "rolname": "anon",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "authenticated",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "authenticator",
-    "rolsuper": false,
-    "rolinherit": false,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "dashboard_user",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": true,
-    "rolcreatedb": true,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_checkpoint",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_create_subscription",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_database_owner",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_execute_server_program",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_maintain",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_monitor",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_read_all_data",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_read_all_settings",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_read_all_stats",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_read_server_files",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_signal_backend",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_stat_scan_tables",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_use_reserved_connections",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_write_all_data",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pg_write_server_files",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "pgbouncer",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "postgres",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": true,
-    "rolcreatedb": true,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "service_role",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "supabase_admin",
-    "rolsuper": true,
-    "rolinherit": true,
-    "rolcreaterole": true,
-    "rolcreatedb": true,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "supabase_auth_admin",
-    "rolsuper": false,
-    "rolinherit": false,
-    "rolcreaterole": true,
-    "rolcreatedb": false,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "supabase_etl_admin",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "supabase_read_only_user",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "supabase_realtime_admin",
-    "rolsuper": false,
-    "rolinherit": false,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": false
-  },
-  {
-    "rolname": "supabase_replication_admin",
-    "rolsuper": false,
-    "rolinherit": true,
-    "rolcreaterole": false,
-    "rolcreatedb": false,
-    "rolcanlogin": true
-  },
-  {
-    "rolname": "supabase_storage_admin",
-    "rolsuper": false,
-    "rolinherit": false,
-    "rolcreaterole": true,
-    "rolcreatedb": false,
-    "rolcanlogin": true
-  }
-]
-
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
@@ -732,6 +281,9 @@ CREATE TABLE public.profiles (
   billing_codigo_postal text,
   newsletter_subscribed boolean DEFAULT false,
   newsletter_subscribed_at timestamp with time zone,
+  shipping_address text,
+  shipping_city text,
+  shipping_zip text,
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
@@ -770,3 +322,536 @@ CREATE TABLE public.site_config (
   maintenance_mode boolean DEFAULT false,
   CONSTRAINT site_config_pkey PRIMARY KEY (id)
 );
+
+[
+  {
+    "schemaname": "public",
+    "tablename": "cart_reservations",
+    "policyname": "Cart_Admin_All",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cart_reservations",
+    "policyname": "Cart_Select_Authenticated",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "true",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "categories",
+    "policyname": "Categories_Admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "categories",
+    "policyname": "Categories_Select",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "true",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupon_asignaciones",
+    "policyname": "Admins control total asignaciones",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupon_asignaciones",
+    "policyname": "Users_View_Own_Assignments",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(cliente_id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupon_notificados",
+    "policyname": "Notif_Cupon_Admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupon_notificados",
+    "policyname": "Notif_Cupon_Select_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(cliente_id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupon_notificados",
+    "policyname": "Usuarios ven sus notificaciones cupon",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(cliente_id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupon_usos",
+    "policyname": "Admin_Full_Control_Usos",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupon_usos",
+    "policyname": "Usos_Select_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(cliente_id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupones",
+    "policyname": "Cupones_Admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "cupones",
+    "policyname": "Users_Select_Eligible_V2",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "((es_publico = true) OR (cliente_id = auth.uid()) OR (id IN ( SELECT cupon_asignaciones.cupon_id\n   FROM cupon_asignaciones\n  WHERE (cupon_asignaciones.cliente_id = auth.uid()))))",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "favorites",
+    "policyname": "Favorites_Admin_Select",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "favorites",
+    "policyname": "Favorites_User_All_With_Admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "((auth.uid() = user_id) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))",
+    "with_check_expression": "((auth.uid() = user_id) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "inquiry_messages",
+    "policyname": "Msg_Admin_All",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "inquiry_messages",
+    "policyname": "Msg_Select_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM product_inquiries\n  WHERE ((product_inquiries.id = inquiry_messages.inquiry_id) AND (product_inquiries.customer_email = (auth.jwt() ->> 'email'::text)))))",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "inquiry_messages",
+    "policyname": "Users_Insert_Own_Msgs",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(EXISTS ( SELECT 1\n   FROM product_inquiries\n  WHERE ((product_inquiries.id = inquiry_messages.inquiry_id) AND (product_inquiries.customer_email = (auth.jwt() ->> 'email'::text)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_campaigns",
+    "policyname": "Admins_Full_Access_Campaigns",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "using_expression": "( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))",
+    "with_check_expression": "( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_sends",
+    "policyname": "Admins_Full_Access_Sends",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "using_expression": "( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))",
+    "with_check_expression": "( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_sends",
+    "policyname": "Users_View_Own_Sends",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(user_id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_subscribers",
+    "policyname": "Admins can view subscribers",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "newsletter_subscribers",
+    "policyname": "Public can subscribe",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notifications",
+    "policyname": "Notif_Select_Self",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(auth.uid() = user_id)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notifications",
+    "policyname": "Notif_Update_Self",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "using_expression": "(auth.uid() = user_id)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notifications",
+    "policyname": "Only_System_Creates_Notifs",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "order_items",
+    "policyname": "Items_Admin_All",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "order_items",
+    "policyname": "Items_Delete_Admin_Only",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "order_items",
+    "policyname": "Items_Select_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid()))))",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "order_items",
+    "policyname": "Items_Update_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid()))))",
+    "with_check_expression": "(EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid()))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "order_items",
+    "policyname": "Users_Insert_Own_Items",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = order_items.order_id) AND (orders.user_id = auth.uid()))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Orders_Admin_All",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Orders_Select_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(auth.uid() = user_id)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Orders_Update_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "using_expression": "(auth.uid() = user_id)",
+    "with_check_expression": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "orders",
+    "policyname": "Users_Insert_Own_Orders",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(auth.uid() = user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "popups",
+    "policyname": "Admins control total popups",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "popups",
+    "policyname": "Todo el mundo ve popups activos",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "((activa = true) AND ((fecha_inicio IS NULL) OR (fecha_inicio <= now())) AND ((fecha_fin IS NULL) OR (fecha_fin >= now())))",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "product_inquiries",
+    "policyname": "Inquiry_Admin_All",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "product_inquiries",
+    "policyname": "Inquiry_Insert_Public",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "product_inquiries",
+    "policyname": "Inquiry_Select_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(customer_email = (auth.jwt() ->> 'email'::text))",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "product_inquiries",
+    "policyname": "Inquiry_Update_Own",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "using_expression": "(customer_email = (auth.jwt() ->> 'email'::text))",
+    "with_check_expression": "(customer_email = (auth.jwt() ->> 'email'::text))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "product_variants",
+    "policyname": "Variants_Admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "product_variants",
+    "policyname": "Variants_Select",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "true",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "products",
+    "policyname": "Products_Admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "products",
+    "policyname": "Products_Select",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "true",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "profiles",
+    "policyname": "Profiles_Admin_Select",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "profiles",
+    "policyname": "Profiles_Select_Self",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(auth.uid() = id)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "profiles",
+    "policyname": "Profiles_Update_Self",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "using_expression": "(auth.uid() = id)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "reglas_cupones",
+    "policyname": "Admin_Full_Control_Reglas",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "reglas_cupones",
+    "policyname": "Admin_Full_Rules",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "reglas_cupones",
+    "policyname": "Users_View_Relevant_Rules",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "using_expression": "(id IN ( SELECT cupones.regla_id\n   FROM cupones\n  WHERE ((cupones.es_publico = true) OR (cupones.cliente_id = auth.uid()))))",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "settings",
+    "policyname": "Settings_Admin",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "using_expression": "(((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)",
+    "with_check_expression": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "settings",
+    "policyname": "Settings_Select",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "true",
+    "with_check_expression": null
+  }
+]
