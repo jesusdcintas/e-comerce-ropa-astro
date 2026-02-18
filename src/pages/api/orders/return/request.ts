@@ -4,8 +4,16 @@ import { requestReturn } from '../../../../lib/orders';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
-        if (!accessToken) return new Response(JSON.stringify({ error: 'Inicia sesión para continuar' }), { status: 401 });
+        let accessToken = cookies.get('sb-access-token')?.value;
+        const authHeader = request.headers.get('Authorization');
+
+        if (!accessToken && authHeader && authHeader.startsWith('Bearer ')) {
+            accessToken = authHeader.split(' ')[1];
+        }
+
+        if (!accessToken) {
+            return new Response(JSON.stringify({ error: 'Inicia sesión para continuar' }), { status: 401 });
+        }
 
         const { data: { user } } = await supabase.auth.getUser(accessToken);
         if (!user) return new Response(JSON.stringify({ error: 'Usuario no encontrado' }), { status: 403 });
