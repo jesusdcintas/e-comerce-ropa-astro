@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
-import { sendTicketEmail } from "../../../../lib/emails";
+import { sendOrderReceiptEmail } from "../../../../lib/emails";
 
 const supabaseAdmin = createClient(
     import.meta.env.PUBLIC_SUPABASE_URL,
@@ -65,7 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
         }));
 
         // Enviar email con ticket
-        await sendTicketEmail(order, items);
+        await sendOrderReceiptEmail(order, items);
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error: any) {
