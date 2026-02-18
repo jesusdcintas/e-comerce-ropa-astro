@@ -122,82 +122,85 @@ export const POST: APIRoute = async ({ request }) => {
       console.log('📱 PaymentIntent completado:', paymentIntent.id);
 
       const metadata = paymentIntent.metadata || {};
+      const order_id_str = metadata.order_id;
       const user_id = metadata.user_id;
+
+      // Si viene order_id en metadata, la orden ya fue creada por create-payment-intent
+      // Solo necesitamos actualizar el status a "paid"
+      if (order_id_str) {
+        const order_id = parseInt(order_id_str);
+        
+        const { data: existingOrder } = await supabase
+          .from('orders')
+          .select('id, status')
+          .eq('id', order_id)
+          .single();
+
+        if (existingOrder) {
+          if (existingOrder.status === 'paid') {
+            console.log('ℹ️ Pedido ya estaba pagado (vía confirm-payment):', order_id);
+            return new Response(JSON.stringify({ received: true }), { status: 200 });
+          }
+
+          // Actualizar a paid
+          await supabase
+            .from('orders')
+            .update({ 
+              status: 'paid',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', order_id);
+
+          console.log('📦 Pedido actualizado a paid por webhook:', order_id);
+
+          // Generar ticket si no existe
+          const { data: orderWithTicket } = await supabase
+            .from('orders')
+            .select('ticket_number')
+            .eq('id', order_id)
+            .single();
+
+          if (!orderWithTicket?.ticket_number) {
+            const { data: ticketData } = await supabase.rpc('generate_next_ticket_number');
+            const ticket_number = ticketData || `T-${order_id.toString().padStart(6, '0')}`;
+            await supabase.from('orders').update({ ticket_number }).eq('id', order_id);
+          }
+
+          // Enviar emails si aún no se enviaron
+          try {
+            const { data: fullOrder } = await supabase
+              .from('orders')
+              .select('*, order_items(*)')
+              .eq('id', order_id)
+              .single();
+
+            if (fullOrder) {
+              const { sendOrderReceiptEmail, sendAdminNewOrderNotification } = await import('../../../lib/emails');
+              
+              const items = (fullOrder.order_items || []).map((item: any) => ({
+                name: item.product_name,
+                size: item.product_size,
+                quantity: item.quantity,
+                price: item.price,
+              }));
+
+              await sendOrderReceiptEmail(fullOrder, items);
+              await sendAdminNewOrderNotification(fullOrder, items);
+              console.log('📧 Emails enviados por webhook');
+            }
+          } catch (emailError) {
+            console.error('⚠️ Error enviando emails:', emailError);
+          }
+        }
+
+        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      }
+
+      // Flujo legacy: si no hay order_id en metadata, crear orden (backward compatibility)
       const coupon_code = metadata.coupon_code;
       const discount_amount = parseInt(metadata.discount_amount || '0');
       const shipping_cost = parseInt(metadata.shipping_cost || '0');
       const order_items_json = metadata.order_items;
-
-      if (!user_id) {
-        console.error('[ERROR] PaymentIntent sin user_id en metadata');
-        return new Response(JSON.stringify({ received: true }), { status: 200 });
-      }
-
-      // Parsear items (vinieron como JSON desde create-payment-intent)
-      let order_items: any[] = [];
-      try {
-        order_items = order_items_json ? JSON.parse(order_items_json) : [];
-      } catch (e) {
-        console.error('[WARNING] Error parseando order_items:', e);
-      }
-
-      // 1. Crear orden en estado 'paid' (el PMI fue exitoso)
-      const orderData = {
-        stripe_session_id: paymentIntent.id,
-        user_id: user_id,
-        total_amount: paymentIntent.amount,
-        status: 'paid' as const,
-        discount_amount: discount_amount,
-        shipping_cost: shipping_cost,
-        coupon_code: coupon_code || null,
-        shipping_name: metadata.shipping_name || 'Cliente',
-        shipping_email: metadata.shipping_email || paymentIntent.receipt_email || '',
-        shipping_address: metadata.shipping_address || '',
-        shipping_city: metadata.shipping_city || '',
-        shipping_zip: metadata.shipping_zip || '',
-        updated_at: new Date().toISOString(),
-      };
-
-      // Verificar idempotencia: si la orden ya existe (por payment_intent.id), no crearla de nuevo
-      const { data: existingOrder } = await supabase
-        .from('orders')
-        .select('id, status')
-        .eq('stripe_session_id', paymentIntent.id)
-        .maybeSingle();
-
-      let order_id: number;
-
-      if (existingOrder) {
-        // Idempotencia: si ya existe y está pagada, ignorar
-        if (existingOrder.status === 'paid') {
-          console.log('ℹ️ Pedido ya estaba pagado, ignorando:', existingOrder.id);
-          return new Response(JSON.stringify({ received: true }), { status: 200 });
-        }
-        // Si no está pagada, actualizar
-        await supabase
-          .from('orders')
-          .update(orderData)
-          .eq('id', existingOrder.id);
-        order_id = existingOrder.id;
-        console.log('📦 Pedido actualizado a paid:', order_id);
-      } else {
-        // Crear nueva orden
-        const { data: newOrder, error: insertError } = await supabase
-          .from('orders')
-          .insert(orderData)
-          .select('id')
-          .single();
-
-        if (insertError || !newOrder) {
-          console.error('[ERROR] Error creando orden:', insertError?.message);
-          return new Response(JSON.stringify({ received: true }), { status: 200 });
-        }
-        order_id = newOrder.id;
-        console.log('📦 Pedido creado:', order_id);
-      }
-
-      // 2. Insertar items del pedido (si no existen)
-      const { data: existingItems } = await supabase
         .from('order_items')
         .select('id')
         .eq('order_id', order_id)

@@ -200,26 +200,89 @@ export const POST: APIRoute = async ({ request }) => {
     const shippingCost = subtotal >= 5000 ? 0 : 495; // Gratis sobre 50€
     const totalAmount = subtotal - discountAmount + shippingCost;
 
-    // Crear pedido TEMPORAL (sin insertar en BD aún para evitar RLS issues)
-    // El webhook actualizará/creará cuando payment_intent.succeeded llegue
-    // Por ahora, solo crear el PaymentIntent y retornar clientSecret
+    // ========== CREAR ORDEN EN SUPABASE ANTES DEL PAGO ==========
+    // Creamos la orden en estado "pending_payment" para que exista antes de Stripe
+    // Esto evita depender del webhook para crear la orden
     
-    // Preparar metadata para el PaymentIntent (que luego el webhook usará)
-    const paymentMetadata = {
-      order_items: JSON.stringify(orderItems),
+    const orderData = {
       user_id: userId,
+      total_amount: totalAmount,
+      status: 'pending_payment', // Se actualizará a 'paid' cuando confirme el pago
+      discount_amount: discountAmount,
+      shipping_cost: shippingCost,
+      coupon_code: appliedCoupon?.code || null,
       shipping_name: shippingAddress.name || user.nombre || '',
       shipping_email: shippingAddress.email || user.email || '',
       shipping_address: shippingAddress.address,
       shipping_city: shippingAddress.city,
       shipping_zip: shippingAddress.zip,
-      discount_amount: discountAmount.toString(),
-      coupon_code: appliedCoupon?.code || '',
-      shipping_cost: shippingCost.toString(),
     };
 
-    // Crear PaymentIntent en Stripe CON METADATA del pedido (el webhook lo procesará)
-    console.log('💳 Creando PaymentIntent con metadata:', { userId, subtotal, totalAmount });
+    console.log('📦 Creando orden en Supabase:', { userId, totalAmount });
+
+    const { data: newOrder, error: orderError } = await supabase
+      .from('orders')
+      .insert(orderData)
+      .select('id')
+      .single();
+
+    if (orderError || !newOrder) {
+      console.error('❌ Error creando orden:', orderError?.message);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Error al crear el pedido',
+      }), {
+        status: 500,
+        headers,
+      });
+    }
+
+    const orderId = newOrder.id;
+    console.log('✅ Orden creada:', orderId);
+
+    // Insertar items del pedido
+    const itemsToInsert = orderItems.map((item) => ({
+      order_id: orderId,
+      product_id: item.product_id,
+      variant_id: item.variant_id,
+      product_name: item.product_name,
+      product_size: item.product_size,
+      quantity: item.quantity,
+      price: item.price,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(itemsToInsert);
+
+    if (itemsError) {
+      console.error('⚠️ Error insertando items (continuando):', itemsError.message);
+    }
+
+    // Descontar stock ahora (se restaurará si el pago falla/expira)
+    for (const item of orderItems) {
+      await supabase.rpc('decrement_variant_stock', {
+        p_variant_id: item.variant_id,
+        p_quantity: item.quantity
+      }).catch(async () => {
+        // Fallback manual
+        const { data: variant } = await supabase
+          .from('product_variants')
+          .select('stock')
+          .eq('id', item.variant_id)
+          .single();
+        
+        if (variant) {
+          await supabase
+            .from('product_variants')
+            .update({ stock: Math.max(0, variant.stock - item.quantity) })
+            .eq('id', item.variant_id);
+        }
+      });
+    }
+
+    // ========== CREAR PAYMENTINTENT EN STRIPE ==========
+    console.log('💳 Creando PaymentIntent:', { orderId, totalAmount });
     
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalAmount,
@@ -228,23 +291,29 @@ export const POST: APIRoute = async ({ request }) => {
         enabled: true,
       },
       metadata: {
-        ...paymentMetadata, // Incluir todos los datos de la orden
+        order_id: orderId.toString(),
+        user_id: userId,
         source: 'mobile_app',
-        itemCount: orderItems.length.toString(),
       },
       receipt_email: shippingAddress.email || user.email || undefined,
-      description: `Pedido FashionStore - ${shippingAddress.name}`,
+      description: `Pedido FashionStore #${orderId}`,
     });
 
     console.log('✅ PaymentIntent creado:', paymentIntent.id);
 
-    // Retornar clientSecret para que Flutter complete el pago
-    // Cuando el pago se confirme, el webhook creará la orden en Supabase
+    // Guardar el payment_intent_id en la orden
+    await supabase
+      .from('orders')
+      .update({ stripe_session_id: paymentIntent.id })
+      .eq('id', orderId);
+
+    // Retornar clientSecret Y orderId para que Flutter sepa qué orden es
     return new Response(JSON.stringify({
       success: true,
       data: {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
+        orderId: orderId, // ← IMPORTANTE: ahora retornamos el orderId
         summary: {
           subtotal,
           discount: discountAmount,
