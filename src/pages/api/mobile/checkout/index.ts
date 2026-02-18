@@ -153,8 +153,8 @@ export const POST: APIRoute = async ({ request }) => {
       discounts: stripeDiscounts,
       mode: 'payment',
       customer_email: shipping.email,
-      success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${domain}/checkout/cancel`,
+      success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}&source=mobile`,
+      cancel_url: `${domain}/checkout/cancel?source=mobile`,
       metadata: sessionMetadata,
     });
 

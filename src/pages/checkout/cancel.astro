@@ -1,5 +1,9 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+
+// Detectar si viene de la app móvil
+const sourceParam = Astro.url.searchParams.get("source");
+const isMobileApp = sourceParam === "mobile";
 ---
 
 <BaseLayout title="Pago Cancelado - FashionStore">
@@ -31,13 +35,22 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
             quieres intentarlo de nuevo.
         </p>
 
-        <div class="flex justify-center">
-            <a
-                href="/checkout"
-                class="bg-brand-black text-white px-8 py-4 rounded-lg font-bold hover:bg-gray-800 transition-all"
-            >
-                Volver al Checkout
-            </a>
+        <div class="flex flex-col items-center gap-4">
+            {isMobileApp ? (
+                <a
+                    href="fashionstore://checkout/cancel"
+                    class="bg-brand-black text-white px-8 py-4 rounded-lg font-bold hover:bg-gray-800 transition-all"
+                >
+                    📱 Volver a la app
+                </a>
+            ) : (
+                <a
+                    href="/checkout"
+                    class="bg-brand-black text-white px-8 py-4 rounded-lg font-bold hover:bg-gray-800 transition-all"
+                >
+                    Volver al Checkout
+                </a>
+            )}
         </div>
     </div>
 </BaseLayout>

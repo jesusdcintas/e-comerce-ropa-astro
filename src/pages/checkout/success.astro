@@ -24,6 +24,12 @@ let orderCreated = false;
 let errorMsg = "";
 let isMobileApp = false;
 
+// Detectar si viene de la app móvil (desde URL o metadata)
+const sourceParam = Astro.url.searchParams.get("source");
+if (sourceParam === "mobile") {
+    isMobileApp = true;
+}
+
 if (sessionId) {
     try {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -262,7 +268,17 @@ if (sessionId) {
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             {
-                accessToken && (
+                isMobileApp && (
+                    <a
+                        href="fashionstore://checkout/success"
+                        class="bg-brand-gold text-white px-8 py-4 rounded-lg font-bold hover:bg-amber-600 transition-all"
+                    >
+                        📱 Volver a la app
+                    </a>
+                )
+            }
+            {
+                accessToken && !isMobileApp && (
                     <a
                         href="/mis-pedidos"
                         class="bg-brand-black text-white px-8 py-4 rounded-lg font-bold hover:bg-gray-800 transition-all"
