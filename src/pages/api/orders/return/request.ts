@@ -31,8 +31,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             .eq('id', orderId)
             .single();
 
+        console.log(`[DEBUG] Request Return - User ID from Token: ${user.id}`);
+        console.log(`[DEBUG] Request Return - Order ID: ${orderId}`);
+        console.log(`[DEBUG] Request Return - Order User ID: ${order?.user_id}`);
+
         if (!order || order.user_id !== user.id) {
-            return new Response(JSON.stringify({ error: 'Acceso denegado' }), { status: 403 });
+            console.error(`[ERROR] Access Denied: User ${user.id} tried to access Order ${orderId} belonging to ${order?.user_id}`);
+            return new Response(JSON.stringify({ error: 'Acceso denegado', debug: { tokenUser: user.id, orderUser: order?.user_id } }), { status: 403 });
         }
 
         if (order.status !== 'delivered' && order.shipping_status !== 'delivered') {
