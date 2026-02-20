@@ -89,7 +89,7 @@ export const GET: APIRoute = async ({ url, request }) => {
                 return new Response("Factura de abono no disponible", { status: 400 });
             }
             const refundAmount = order.status === 'cancelled'
-                ? order.total_amount - (order.shipping_cost || 0)
+                ? order.total_amount
                 : order.order_items.reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
 
             pdfBuffer = generateRefundInvoicePDF(order, refundAmount, items, 'buffer', isAdmin) as Buffer;

@@ -110,8 +110,7 @@ export async function cancelOrder(orderId: string | number) {
             });
 
             if (refundProcessed) {
-                const refundAmount = order.total_amount - (order.shipping_cost || 0);
-                await sendRefundInvoiceEmail({ ...order, status: 'cancelled', refund_invoice_number: refundInvoiceNum }, refundAmount);
+                await sendRefundInvoiceEmail({ ...order, status: 'cancelled', refund_invoice_number: refundInvoiceNum }, order.total_amount);
             }
         } catch (emailErr) {
             console.error("[cancelOrder] Error enviando email de cancelación:", emailErr);
