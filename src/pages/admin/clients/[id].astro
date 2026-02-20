@@ -81,7 +81,12 @@ const zip =
 const totalSpent =
     orders?.reduce(
         (acc: number, curr: any) =>
-            acc + (curr.status !== "cancelled" ? curr.total_amount : 0),
+            acc +
+            (curr.status === "cancelled"
+                ? 0
+                : curr.return_status === "refunded"
+                  ? curr.shipping_cost || 0
+                  : curr.total_amount),
         0,
     ) || 0;
 const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
@@ -319,8 +324,18 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                                 class="hover:bg-slate-50/50 transition-colors order-row"
                                                 data-id={order.id}
                                                 data-date={order.created_at}
-                                                data-status={order.status}
-                                                data-total={order.total_amount}
+                                                data-total={
+                                                    order.status === "cancelled"
+                                                        ? -order.total_amount
+                                                        : order.return_status ===
+                                                            "refunded"
+                                                          ? -(
+                                                                order.total_amount -
+                                                                (order.shipping_cost ||
+                                                                    0)
+                                                            )
+                                                          : order.total_amount
+                                                }
                                             >
                                                 <td class="px-8 py-5 font-mono text-xs font-bold text-slate-400">
                                                     #
@@ -355,8 +370,22 @@ const formatPrice = (cents: number) => (cents / 100).toFixed(2) + "€";
                                                     )}
                                                 </td>
                                                 <td class="px-8 py-5 text-right font-black text-slate-900">
+                                                    {order.status ===
+                                                        "cancelled" ||
+                                                    order.return_status ===
+                                                        "refunded"
+                                                        ? "-"
+                                                        : ""}
                                                     {formatPrice(
-                                                        order.total_amount,
+                                                        order.status ===
+                                                            "cancelled"
+                                                            ? order.total_amount
+                                                            : order.return_status ===
+                                                                "refunded"
+                                                              ? order.total_amount -
+                                                                (order.shipping_cost ||
+                                                                    0)
+                                                              : order.total_amount,
                                                     )}
                                                 </td>
                                             </tr>

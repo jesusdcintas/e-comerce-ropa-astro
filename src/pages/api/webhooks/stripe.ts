@@ -50,6 +50,7 @@ export const POST: APIRoute = async ({ request }) => {
         total_amount: session.amount_total || 0,
         status: 'paid',
         payment_status: session.payment_status,
+        shipping_cost: metadata.shipping_cost ? parseInt(metadata.shipping_cost) : 0,
         items: items_json ? JSON.parse(items_json) : [],
         metadata: metadata
       };
@@ -129,7 +130,7 @@ export const POST: APIRoute = async ({ request }) => {
       // Solo necesitamos actualizar el status a "paid"
       if (order_id_str) {
         const order_id = parseInt(order_id_str);
-        
+
         const { data: existingOrder } = await supabase
           .from('orders')
           .select('id, status')
@@ -145,7 +146,7 @@ export const POST: APIRoute = async ({ request }) => {
           // Actualizar a paid
           await supabase
             .from('orders')
-            .update({ 
+            .update({
               status: 'paid',
               updated_at: new Date().toISOString(),
             })
@@ -176,7 +177,7 @@ export const POST: APIRoute = async ({ request }) => {
 
             if (fullOrder) {
               const { sendOrderReceiptEmail, sendAdminNewOrderNotification } = await import('../../../lib/emails');
-              
+
               const items = (fullOrder.order_items || []).map((item: any) => ({
                 name: item.product_name,
                 size: item.product_size,

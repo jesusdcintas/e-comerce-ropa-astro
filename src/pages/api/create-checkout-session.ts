@@ -96,6 +96,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 coupon_id: metadata?.coupon_id || '',
                 coupon_code: metadata?.coupon_code || '',
                 discount: metadata?.discount || '0',
+                shipping_cost: metadata?.shipping_cost || '0',
                 items_json: JSON.stringify(items.map((i: any) => ({ id: i.id, s: i.size, q: i.quantity, p: i.price })))
             },
         };

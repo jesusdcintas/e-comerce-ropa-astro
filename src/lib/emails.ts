@@ -134,6 +134,24 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
   });
 
   // Totales
+  // Gastos de envío
+  y += 5;
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.text("Gastos de Envío", 25, y);
+  doc.setFont("helvetica", "normal");
+  const shippingText = !order.shipping_cost || order.shipping_cost === 0 ? "Envío Gratis" : formatPrice(order.shipping_cost);
+  if (!order.shipping_cost || order.shipping_cost === 0) {
+    doc.setTextColor(22, 163, 74); // Green for free shipping
+  }
+  doc.text(shippingText, 185, y, { align: 'right' });
+
+  y += 10;
+  doc.setDrawColor(241, 245, 249);
+  doc.line(20, y - 5, 190, y - 5);
+
+  // Totales
   y += 5;
   const vat = calculateVAT(order.total_amount);
 
@@ -261,6 +279,26 @@ export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64
 
     if (y > 250) { doc.addPage(); y = 20; }
   });
+
+  // Totales
+  // Gastos de envío
+  y += 5;
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.text("Gastos de Envío", 25, y);
+  doc.setFont("helvetica", "normal");
+  const shippingText = !order.shipping_cost || order.shipping_cost === 0 ? "Envío Gratis" : formatPrice(order.shipping_cost);
+  if (!order.shipping_cost || order.shipping_cost === 0) {
+    doc.setTextColor(22, 163, 74);
+  } else {
+    doc.setTextColor(15, 23, 42);
+  }
+  doc.text(shippingText, 185, y, { align: 'right' });
+
+  y += 10;
+  doc.setDrawColor(241, 245, 249);
+  doc.line(20, y - 5, 190, y - 5);
 
   // Totales
   y += 5;
@@ -1463,12 +1501,12 @@ export interface NewsletterContent {
 
 export const generateNewsletterHtml = (content: NewsletterContent): string => {
   let html = '';
-  
+
   // Título principal
   if (content.title) {
     html += `<h1 style="margin: 0 0 25px 0; font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1.3;">${escapeHtml(content.title)}</h1>`;
   }
-  
+
   // Imagen destacada
   if (content.imageUrl) {
     html += `
@@ -1477,7 +1515,7 @@ export const generateNewsletterHtml = (content: NewsletterContent): string => {
       </div>
     `;
   }
-  
+
   // Bloques de texto (párrafos)
   if (content.blocks && content.blocks.length > 0) {
     content.blocks.forEach(block => {
@@ -1486,7 +1524,7 @@ export const generateNewsletterHtml = (content: NewsletterContent): string => {
       }
     });
   }
-  
+
   // Botón CTA
   if (content.ctaText && content.ctaUrl) {
     html += `
@@ -1497,7 +1535,7 @@ export const generateNewsletterHtml = (content: NewsletterContent): string => {
       </div>
     `;
   }
-  
+
   return html;
 };
 
@@ -1525,10 +1563,10 @@ export const sendNewsletterEmail = async (
   campaignId?: string
 ): Promise<{ success: boolean; error?: any }> => {
   const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
-  
+
   // Generar HTML desde contenido estructurado o usar HTML directo
-  const contentHtml = typeof content === 'string' 
-    ? content 
+  const contentHtml = typeof content === 'string'
+    ? content
     : generateNewsletterHtml(content);
 
   // Wrapper HTML con diseño premium y opción de baja
@@ -1584,7 +1622,7 @@ export const sendNewsletterEmail = async (
   sendSmtpEmail.htmlContent = html;
   sendSmtpEmail.sender = { name: 'Fashion Store', email: from };
   sendSmtpEmail.to = [{ email: email, name: nombre || 'Suscriptor' }];
-  
+
   // Headers personalizados para tracking
   if (campaignId) {
     sendSmtpEmail.headers = {

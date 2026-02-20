@@ -16,7 +16,7 @@ export async function validateCoupon(
     codigo: string,
     userId: string | null,
     subtotalCents: number
-): Promise<{ valid: boolean; message?: string; coupon?: any; discountAmount?: number }> {
+): Promise<{ valid: boolean; message?: string; couponId?: string; discount?: number }> {
     try {
         console.log(`[VALIDATE] Validando cupón: ${codigo}, user=${userId}, subtotal=${subtotalCents}`);
 
@@ -125,7 +125,7 @@ async function checkCouponRule(
                 .from('orders')
                 .select('id')
                 .eq('user_id', userId)
-                .in('status', ['paid', 'shipped', 'delivered'])
+                .in('status', ['paid', 'shipped', 'delivered', 'completed', 'processing'])
                 .limit(1);
 
             if (orders && orders.length > 0) {
@@ -136,7 +136,7 @@ async function checkCouponRule(
                 .from('orders')
                 .select('total_amount')
                 .eq('user_id', userId)
-                .in('status', ['paid', 'shipped', 'delivered']);
+                .in('status', ['paid', 'shipped', 'delivered', 'completed', 'processing']);
 
             const totalSpent = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
             if (totalSpent < (regla.monto_minimo || 0)) {
@@ -150,7 +150,7 @@ async function checkCouponRule(
                 .from('orders')
                 .select('total_amount')
                 .eq('user_id', userId)
-                .in('status', ['paid', 'shipped', 'delivered'])
+                .in('status', ['paid', 'shipped', 'delivered', 'completed', 'processing'])
                 .gte('created_at', dateLimit.toISOString());
 
             const spentInPeriod = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
@@ -255,14 +255,14 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
                 console.log(`[DISTRIBUTE] ✓ Encontrados ${eligibleUserIds.length} suscriptores`);
             } else if (regra.tipo_regla === 'primera_compra') {
                 const { data: profiles } = await supabaseAdmin.from('profiles').select('id');
-                const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
+                const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered', 'completed', 'processing']);
                 const usersWithOrders = new Set(orders?.map(o => o.user_id));
                 eligibleUserIds = profiles?.filter(p => !usersWithOrders.has(p.id)).map(p => p.id) || [];
             } else if (regra.tipo_regla === 'compra_minima') {
-                const { data: orders } = await supabaseAdmin.from('orders').select('user_id').in('status', ['paid', 'shipped', 'delivered']);
-                eligibleUserIds = [...new Set(orders?.map(o => o.user_id).filter(Boolean) as string[])];
+                const { data: profiles } = await supabaseAdmin.from('profiles').select('id');
+                eligibleUserIds = profiles?.map(p => p.id) || [];
             } else if (regra.tipo_regla === 'gasto_total' || regra.tipo_regla === 'gasto_periodo') {
-                let query = supabaseAdmin.from('orders').select('user_id, total_amount').in('status', ['paid', 'shipped', 'delivered']);
+                let query = supabaseAdmin.from('orders').select('user_id, total_amount').in('status', ['paid', 'shipped', 'delivered', 'completed', 'processing']);
                 if (regra.tipo_regla === 'gasto_periodo') {
                     const dateLimit = new Date();
                     dateLimit.setDate(dateLimit.getDate() - (regra.periodo_dias || 30));
@@ -298,10 +298,19 @@ export async function distributeCouponToSegment(couponId: string, ruleId: string
         for (const userId of eligibleUserIds) {
             try {
                 if (!cupom.es_publico) {
-                    await supabaseAdmin.from('cupon_asignaciones').upsert({
-                        cupon_id: cupom.id,
-                        cliente_id: userId
-                    }, { onConflict: 'cupon_id, cliente_id' });
+                    const { data: existing } = await supabaseAdmin
+                        .from('cupon_asignaciones')
+                        .select('id')
+                        .eq('cupon_id', cupom.id)
+                        .eq('cliente_id', userId)
+                        .maybeSingle();
+
+                    if (!existing) {
+                        await supabaseAdmin.from('cupon_asignaciones').insert({
+                            cupon_id: cupom.id,
+                            cliente_id: userId
+                        });
+                    }
                 }
 
                 await supabaseAdmin.from('notifications').insert({
