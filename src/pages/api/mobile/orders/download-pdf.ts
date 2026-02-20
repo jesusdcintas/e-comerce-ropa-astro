@@ -11,11 +11,10 @@ export const GET: APIRoute = async ({ url, request }) => {
     try {
         const orderId = url.searchParams.get("orderId");
         const type = url.searchParams.get("type") || "ticket"; // ticket, invoice o refund
-        
-        // Obtener token de Authorization header o query param
-        let accessToken = request.headers.get("Authorization")?.replace("Bearer ", "");
+
+        let accessToken: string | undefined = request.headers.get("Authorization")?.replace("Bearer ", "");
         if (!accessToken) {
-            accessToken = url.searchParams.get("token") || null;
+            accessToken = url.searchParams.get("token") || undefined;
         }
 
         if (!accessToken) {
@@ -36,7 +35,7 @@ export const GET: APIRoute = async ({ url, request }) => {
         );
 
         const { data: { user }, error: authError } = await supabaseClient.auth.getUser(accessToken);
-        
+
         if (authError || !user) {
             console.error("Auth error:", authError);
             return new Response("Usuario no encontrado o token inválido", { status: 401 });
@@ -90,7 +89,7 @@ export const GET: APIRoute = async ({ url, request }) => {
                 return new Response("Factura de abono no disponible", { status: 400 });
             }
             const refundAmount = order.status === 'cancelled'
-                ? order.total_amount
+                ? order.total_amount - (order.shipping_cost || 0)
                 : order.order_items.reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
 
             pdfBuffer = generateRefundInvoicePDF(order, refundAmount, items, 'buffer', isAdmin) as Buffer;

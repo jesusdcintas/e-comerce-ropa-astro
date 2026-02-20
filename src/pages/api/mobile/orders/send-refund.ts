@@ -64,7 +64,11 @@ export const POST: APIRoute = async ({ request }) => {
             product_image: i.products?.images?.[0] || null
         }));
 
-        await sendRefundInvoiceEmail(order, items);
+        const refundAmount = order.status === 'cancelled'
+            ? order.total_amount - (order.shipping_cost || 0)
+            : order.order_items.reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
+
+        await sendRefundInvoiceEmail(order, refundAmount);
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error: any) {

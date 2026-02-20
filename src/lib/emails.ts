@@ -1383,7 +1383,7 @@ export const sendAdminNewOrderNotification = async (order: any, items: any[]) =>
   `;
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.subject = `🔔 [VENTA] Nuevo pedido #${order.id.toString().padStart(6, '0')} - Fashion Store`;
+  sendSmtpEmail.subject = `[VENTA] Nuevo pedido #${order.id.toString().padStart(6, '0')} - Fashion Store`;
   sendSmtpEmail.htmlContent = html;
   sendSmtpEmail.sender = { name: 'Fashion Store Alerts', email: from };
   sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
@@ -1428,7 +1428,7 @@ export const sendAdminOrderCancelledNotification = async (order: any) => {
   `;
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.subject = `❌ [CANCELADO] Pedido #${order.id.toString().padStart(6, '0')}`;
+  sendSmtpEmail.subject = `[CANCELADO] Pedido #${order.id.toString().padStart(6, '0')}`;
   sendSmtpEmail.htmlContent = html;
   sendSmtpEmail.sender = { name: 'Fashion Store Alerts', email: from };
   sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
@@ -1471,7 +1471,7 @@ export const sendAdminReturnRequestedNotification = async (order: any) => {
   `;
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.subject = `🔄 [DEVOLUCIÓN] Solicitud para pedido #${order.id.toString().padStart(6, '0')}`;
+  sendSmtpEmail.subject = `[DEVOLUCIÓN] Solicitud para pedido #${order.id.toString().padStart(6, '0')}`;
   sendSmtpEmail.htmlContent = html;
   sendSmtpEmail.sender = { name: 'Fashion Store Alerts', email: from };
   sendSmtpEmail.to = [{ email: adminEmail, name: 'Administrador' }];
