@@ -107,6 +107,11 @@
 ## Pendientes (TODO)
 
 - [ ] **Tests de estrés**: Verificar concurrencia en reservas de stock.
+- [ ] Corregir proporción de fotos en catálogo, algunas salen cortadas.
+- [ ] Miniaturas de los productos en los PDFs.
+- [ ] Descuento visible de cupón en los PDFs de facturas.
+- [ ] Aviso de que no quedan más tallas si en el carrito le das a la flechita de aumentar cantidad.
+- [ ] Icono de la web (favicon).
 
 ### RLS Audit Completada (2026-02-02)
 - ✅ **3 políticas duplicadas eliminadas** (cupon_notificados, cupones, cupon_usos)
