@@ -62,13 +62,6 @@ const { data: heroSlides } = await supabase
   .eq("is_active", true)
   .order("order_index", { ascending: true });
 
-// Novedad: Colecciones Activas
-const { data: collections } = await supabase
-  .from("collections")
-  .select("*, collection_products(count)")
-  .eq("is_active", true)
-  .order("created_at", { ascending: false });
-
 function formatPrice(cents: number) {
   return `${(cents / 100).toFixed(2)}€`;
 }
@@ -185,59 +178,6 @@ const showOffers = globalConfig?.offers_enabled !== false;
       </div>
     </div>
   </section>
-
-  <!-- Colecciones Especiales Dinámicas -->
-  {
-    collections && collections.length > 0 && (
-      <section class="max-w-7xl mx-auto px-4 pt-16 border-t border-slate-100">
-        <div class="flex items-baseline justify-between mb-16">
-          <div>
-            <span class="block text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold mb-4">
-              Inspiración
-            </span>
-            <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-brand-black">
-              NUESTRAS{" "}
-              <span class="text-brand-gold italic font-serif">Colecciones</span>
-            </h2>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {collections.map((col) => (
-            <a
-              href={`/catalogo/coleccion/${col.slug}`}
-              class="group block relative rounded-[2rem] overflow-hidden bg-slate-900 aspect-[4/5] shadow-2xl hover:-translate-y-2 transition-transform duration-500"
-            >
-              {col.image_url ? (
-                <img
-                  src={col.image_url}
-                  alt={col.name}
-                  class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-700 group-hover:scale-105"
-                />
-              ) : (
-                <div class="absolute inset-0 bg-slate-800" />
-              )}
-              <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-
-              <div class="absolute inset-0 p-8 flex flex-col justify-end text-white z-10 transition-transform duration-500 group-hover:-translate-y-4">
-                <span class="inline-block px-3 py-1 bg-brand-gold text-brand-black text-[9px] font-black uppercase tracking-widest rounded-full mb-4 w-fit shadow-lg">
-                  {col.collection_products?.[0]?.count || 0} ITEMS
-                </span>
-                <h3 class="text-3xl font-black mb-2 tracking-tighter drop-shadow-md">
-                  {col.name}
-                </h3>
-                {col.description && (
-                  <p class="text-sm font-medium text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100 line-clamp-2">
-                    {col.description}
-                  </p>
-                )}
-              </div>
-            </a>
-          ))}
-        </div>
-      </section>
-    )
-  }
 
   <!-- Carrusel de Novedades (Spotlight) -->
   {

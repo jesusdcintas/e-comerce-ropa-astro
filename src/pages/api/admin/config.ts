@@ -1,6 +1,7 @@
 
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
@@ -9,7 +10,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }
 
-        const { data: { user } } = await supabase.auth.getUser(accessToken);
+        const supabaseAuth = createClient(
+            import.meta.env.PUBLIC_SUPABASE_URL,
+            import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+            {
+                global: { headers: { Authorization: `Bearer ${accessToken}` } },
+            },
+        );
+
+        const { data: { user } } = await supabaseAuth.auth.getUser();
         if (!user || user.app_metadata?.role !== "admin") {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 403 });
         }
@@ -18,14 +27,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const { action, key, value } = body;
 
         if (action === 'get') {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseAuth
                 .from('site_config')
                 .select('*')
                 .single();
 
             // Si no existe, lo creamos con valores por defecto
             if (error && error.code === 'PGRST116') {
-                const { data: newData, error: createError } = await supabase
+                const { data: newData, error: createError } = await supabaseAuth
                     .from('site_config')
                     .insert([{ id: 1, offers_enabled: true, novedades_enabled: true, popups_enabled: true, maintenance_mode: false }])
                     .select()
@@ -43,7 +52,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             const updateData: any = {};
             updateData[key] = value;
 
-            const { data, error } = await supabase
+            const { data, error } = await supabaseAuth
                 .from('site_config')
                 .update(updateData)
                 .eq('id', 1)
