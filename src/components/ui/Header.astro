@@ -1070,8 +1070,11 @@ const { data: headerCollections } = await supabase
     document.querySelectorAll(".logout-action").forEach((btn) => {
       btn.addEventListener("click", async () => {
         await supabase.auth.signOut();
-        import("../../stores/cartStore").then((m) => m.clearCart());
-        import("../../stores/favoriteStore").then((m) => m.clearFavorites());
+        const cartStore = await import("../../stores/cartStore");
+        cartStore.clearCart();
+        const favStore = await import("../../stores/favoriteStore");
+        favStore.clearFavorites();
+        localStorage.removeItem("favoriteCount");
         document.cookie = "sb-access-token=; Path=/; Max-Age=0; SameSite=Lax";
         document.cookie = "sb-refresh-token=; Path=/; Max-Age=0; SameSite=Lax";
         window.location.href = "/";
