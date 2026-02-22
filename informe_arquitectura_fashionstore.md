@@ -34,6 +34,8 @@ El diseño de la base de datos se ha concebido bajo reglas estrictas de normaliz
 
 El diagrama Entidad-Relación (ER) (adjunto como imagen complementaria a este informe) describe detalladamente cómo interactúan las siguientes capas:
 
+![Diagrama ER FashionStore](./diagrama-er-2026-02-22.png)
+
 - **Catálogo (`products`, `categories`):** Estructuran jerárquicamente la tienda. Cada registro de producto incluye campos vitales como matriz de imágenes (JSON Array), el precio (almacenado como un número entero o numérico en céntimos, para certificar precisión matemática y evitar anomalías de coma flotante que podrían ocurrir utilizando *Floats*), y un control primitivo para ofertas/novedades.
 - **Pedidos y Carrito (`orders`, `order_items`):** Actúan como un nodo conector de transacciones. A un `orders` se ligan los datos logísticos y un estado (`enum_order_status`: Pendiente, Pagado, Enviado, Mantenimiento, Entregado, etc.), mientras que `order_items` almacena la fotografía exacta en el tiempo de lo que se compró, registrando el ID del producto y el importe unitario que existía la tarde de la venta.
 
