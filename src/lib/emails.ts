@@ -1,6 +1,25 @@
 import * as brevo from '@getbrevo/brevo';
 import { jsPDF } from 'jspdf';
 import { LOGO_BASE64 } from './logo';
+import sharp from 'sharp';
+
+async function fetchImageBase64(url?: string): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const jpegBuffer = await sharp(buffer)
+      .resize(100, 100, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .jpeg()
+      .toBuffer();
+    return `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
+  } catch (e) {
+    console.warn('[EMAILS] Error procesando miniatura:', url, String(e));
+    return null;
+  }
+}
 
 // Helper para compatibilidad entre Astro y Node
 const getEnv = (key: string) => {
@@ -45,7 +64,7 @@ export const formatDocNumber = (id: number | string, date: string | Date, prefix
 /**
  * Genera el PDF del Ticket (Recibo automático) con diseño Ultra-Premium
  */
-export const generateTicketPDF = (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): string | Buffer => {
+export const generateTicketPDF = async (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): Promise<string | Buffer> => {
   const doc = new jsPDF();
   const ticketNum = order.ticket_number || formatDocNumber(order.id, order.created_at, 'ONL-F');
 
@@ -108,15 +127,29 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
   y += 22;
   doc.setTextColor(15, 23, 42);
 
-  items.forEach(item => {
+  const enrichedItems = await Promise.all(items.map(async item => {
+    let thumb = null;
+    if (item.product_image) {
+      thumb = await fetchImageBase64(item.product_image);
+    }
+    return { ...item, thumb };
+  }));
+
+  enrichedItems.forEach(item => {
+    let px = 25;
+    if (item.thumb) {
+      doc.addImage(item.thumb, 'JPEG', px, y - 6, 12, 12);
+      px = 42;
+    }
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text(`${item.product_name}`, 25, y);
+    doc.text(`${item.product_name}`, px, y);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Talla: ${item.size || item.product_size}  |  Cant: ${item.quantity}`, 25, y + 5);
+    doc.text(`Talla: ${item.size || item.product_size}  |  Cant: ${item.quantity}`, px, y + 5);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -146,6 +179,17 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
     doc.setTextColor(22, 163, 74); // Green for free shipping
   }
   doc.text(shippingText, 185, y, { align: 'right' });
+
+  if (order.discount_amount && order.coupon_code) {
+    y += 8;
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Descuento Cupón (${order.coupon_code})`, 25, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(220, 38, 38);
+    doc.text(`-${formatPrice(order.discount_amount)}`, 185, y, { align: 'right' });
+  }
 
   y += 10;
   doc.setDrawColor(241, 245, 249);
@@ -187,7 +231,7 @@ export const generateTicketPDF = (order: any, items: any[], outputType: 'base64'
 /**
  * Genera el PDF de la Factura con diseño Corporativo Premium
  */
-export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): string | Buffer => {
+export const generateInvoicePDF = async (order: any, items: any[], outputType: 'base64' | 'buffer' = 'base64'): Promise<string | Buffer> => {
   const doc = new jsPDF();
   const invoiceNum = order.invoice_number || `F-${new Date().getFullYear()}-${order.id.toString().padStart(5, '0')}`;
   const fiscal = order.invoice_fiscal_data || {};
@@ -258,14 +302,30 @@ export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64
 
   y += 18;
   doc.setTextColor(15, 23, 42);
-  items.forEach(item => {
+
+  const enrichedItems = await Promise.all(items.map(async item => {
+    let thumb = null;
+    if (item.product_image) {
+      thumb = await fetchImageBase64(item.product_image);
+    }
+    return { ...item, thumb };
+  }));
+
+  enrichedItems.forEach(item => {
     const totalItem = (item.price_at_time * item.quantity) / 100;
+
+    let px = 25;
+    if (item.thumb) {
+      doc.addImage(item.thumb, 'JPEG', px, y - 6, 12, 12);
+      px = 42;
+    }
+
     doc.setFont("helvetica", "bold");
-    doc.text(`${item.product_name}`, 25, y);
+    doc.text(`${item.product_name}`, px, y);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Talla: ${item.size || item.product_size}`, 25, y + 4.5);
+    doc.text(`Talla: ${item.size || item.product_size}`, px, y + 4.5);
 
     doc.setFontSize(9);
     doc.setTextColor(15, 23, 42);
@@ -295,6 +355,17 @@ export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64
     doc.setTextColor(15, 23, 42);
   }
   doc.text(shippingText, 185, y, { align: 'right' });
+
+  if (order.discount_amount && order.coupon_code) {
+    y += 8;
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Descuento Cupón (${order.coupon_code})`, 25, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(220, 38, 38);
+    doc.text(`-${formatPrice(order.discount_amount)}`, 185, y, { align: 'right' });
+  }
 
   y += 10;
   doc.setDrawColor(241, 245, 249);
@@ -338,7 +409,7 @@ export const generateInvoicePDF = (order: any, items: any[], outputType: 'base64
 export const sendOrderReceiptEmail = async (order: any, items: any[]) => {
   const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
-  const pdfBuffer = generateTicketPDF(order, items) as string;
+  const pdfBuffer = await generateTicketPDF(order, items) as string;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; overflow: hidden;">
@@ -385,7 +456,7 @@ export const sendOrderReceiptEmail = async (order: any, items: any[]) => {
 export const sendOfficialInvoiceEmail = async (order: any, items: any[]) => {
   const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
-  const pdfBuffer = generateInvoicePDF(order, items) as string;
+  const pdfBuffer = await generateInvoicePDF(order, items) as string;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; overflow: hidden;">
@@ -918,7 +989,7 @@ export const generateOrdersReportPDF = (orders: any[], label: string): string =>
     // Entrada negativa: Reembolsos parciales o totales
     let refundAmount = (order.order_items || []).reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
 
-    const isTotalCancellation = order.status === 'cancelled' && (order.payment_status === 'refunded' || order.payment_status === 'paid');
+    const isTotalCancellation = order.status === 'cancelled' && order.return_status !== 'refunded';
 
     if (isTotalCancellation || refundAmount > 0) {
       let finalRefundValue = isTotalCancellation ? order.total_amount : refundAmount;
@@ -1200,7 +1271,7 @@ export const sendReturnRefundedEmail = async (order: any, refundAmount: number) 
 /**
  * Genera el PDF del Reembolso (Negativo para admin, Positivo para cliente)
  */
-export const generateRefundInvoicePDF = (order: any, refundAmount: number, items: any[] = [], outputType: 'base64' | 'buffer' = 'base64', isAdminView: boolean = false): string | Buffer => {
+export const generateRefundInvoicePDF = async (order: any, refundAmount: number, items: any[] = [], outputType: 'base64' | 'buffer' = 'base64', isAdminView: boolean = false): Promise<string | Buffer> => {
   const doc = new jsPDF();
   const refundNum = order.refund_invoice_number || formatDocNumber(order.id, order.updated_at || new Date(), 'ONL-R');
   const fiscal = order.invoice_fiscal_data || {};
@@ -1271,10 +1342,83 @@ export const generateRefundInvoicePDF = (order: any, refundAmount: number, items
   y += 20;
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "normal");
-  const desc = order.status === 'cancelled' ? `Anulación de pedido #${order.id}` : `Devolución de productos - Pedido #${order.id}`;
-  doc.text(desc, 25, y);
-  doc.setFont("helvetica", "bold");
-  doc.text(`${sign}${(refundAmount / 100).toFixed(2)}€`, 185, y, { align: 'right' });
+
+  const enrichedItems = await Promise.all(items.map(async item => {
+    let thumb = null;
+    if (item.product_image) {
+      thumb = await fetchImageBase64(item.product_image);
+    }
+    return { ...item, thumb };
+  }));
+
+  if (enrichedItems.length > 0) {
+    enrichedItems.forEach(item => {
+      let px = 25;
+      if (item.thumb) {
+        doc.addImage(item.thumb, 'JPEG', px, y - 6, 12, 12);
+        px = 42;
+      }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`${item.product_name}`, px, y);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      const refundedQty = item.return_refunded_quantity || item.quantity;
+      doc.text(`Talla: ${item.size || item.product_size} | Reembolsado: ${refundedQty}`, px, y + 5);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      const itemTotal = ((item.price_at_time * refundedQty) / 100).toFixed(2);
+      doc.text(`${sign}${itemTotal}€`, 185, y + 2, { align: 'right' });
+
+      y += 18;
+      doc.setDrawColor(241, 245, 249);
+      doc.line(20, y - 8, 190, y - 8);
+
+      if (y > 250) { doc.addPage(); y = 20; }
+    });
+
+    const isPureCancellation = order.status === 'cancelled' && order.return_status !== 'refunded';
+    if (isPureCancellation) {
+      if (order.shipping_cost > 0) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Gastos de envío", 25, y - 5);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${sign}${(order.shipping_cost / 100).toFixed(2)}€`, 185, y - 3, { align: 'right' });
+        y += 13;
+        doc.setDrawColor(241, 245, 249);
+        doc.line(20, y - 8, 190, y - 8);
+      }
+
+      if (order.discount_amount > 0 && order.coupon_code) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`Descuento Cupón (${order.coupon_code})`, 25, y - 5);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(220, 38, 38);
+        // Si el admin ve el signo (-) usamos (+), porque resta del total negativo. O lo más simple, usar el signo contrario.
+        const invertSign = sign === '-' ? '+' : '-';
+        doc.text(`${invertSign}${(order.discount_amount / 100).toFixed(2)}€`, 185, y - 3, { align: 'right' });
+        y += 13;
+        doc.setDrawColor(241, 245, 249);
+        doc.line(20, y - 8, 190, y - 8);
+      }
+    }
+
+  } else {
+    const isPureCancellation = order.status === 'cancelled' && order.return_status !== 'refunded';
+    const desc = isPureCancellation ? `Anulación de pedido #${order.id}` : `Devolución de productos - Pedido #${order.id}`;
+    doc.text(desc, 25, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${sign}${(refundAmount / 100).toFixed(2)}€`, 185, y, { align: 'right' });
+    y += 10;
+  }
 
   // Si hay cupón, mostrar información adicional de descuento aplicado originalmente
   if (order.coupon_code) {
@@ -1313,10 +1457,10 @@ export const generateRefundInvoicePDF = (order: any, refundAmount: number, items
 /**
  * Envía la factura rectificativa por email
  */
-export const sendRefundInvoiceEmail = async (order: any, refundAmount: number) => {
+export const sendRefundInvoiceEmail = async (order: any, refundAmount: number, items: any[] = []) => {
   const from = getEnv('EMAIL_FROM') || 'jdcintas.dam@10489692.brevosend.com';
   const to = order.shipping_email;
-  const pdfBase64 = generateRefundInvoicePDF(order, refundAmount, [], 'base64', false) as string;
+  const pdfBase64 = await generateRefundInvoicePDF(order, refundAmount, items, 'base64', false) as string;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #eee; overflow: hidden;">

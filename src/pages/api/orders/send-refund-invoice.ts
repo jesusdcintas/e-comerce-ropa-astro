@@ -24,7 +24,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             .from("orders")
             .select(`
                 *, 
-                order_items(*)
+                order_items(
+                    *,
+                    products(id, name, images)
+                )
             `)
             .eq("id", orderId)
             .eq("user_id", user.id)
@@ -39,13 +42,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         // 2. Calcular importe reembolsado
-        const refundAmount = order.status === 'cancelled'
+        const isPureCancellation = order.status === 'cancelled' && order.return_status !== 'refunded';
+        const refundAmount = isPureCancellation
             ? order.total_amount
             : order.order_items.reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
 
+        const items = order.order_items.map((i: any) => ({
+            product_name: i.product_name,
+            size: i.product_size,
+            quantity: i.quantity,
+            price_at_time: i.price,
+            product_image: i.products?.images?.[0] || null,
+            return_refunded_quantity: i.return_refunded_quantity
+        }));
+
         // 3. Enviar email
         const { sendRefundInvoiceEmail } = await import("../../../lib/emails");
-        await sendRefundInvoiceEmail(order, refundAmount);
+        await sendRefundInvoiceEmail(order, refundAmount, items);
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error: any) {

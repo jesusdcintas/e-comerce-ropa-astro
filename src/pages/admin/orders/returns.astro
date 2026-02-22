@@ -77,7 +77,10 @@ const returnStatusText: Record<string, string> = {
                     <tbody class="divide-y divide-slate-50">
                         {
                             returnOrders?.map((order) => (
-                                <tr class="hover:bg-slate-50/50 transition-colors group">
+                                <tr
+                                    class="hover:bg-slate-50/50 transition-colors cursor-pointer group clickable-row"
+                                    data-href={`/admin/orders/${order.id}`}
+                                >
                                     <td class="px-8 py-6">
                                         <span class="font-black text-slate-900">
                                             #
@@ -281,5 +284,35 @@ const returnStatusText: Record<string, string> = {
                 },
             });
         });
+    });
+
+    // Lógica para filas clicables
+    function initClickableRows() {
+        const rows = document.querySelectorAll(".clickable-row");
+        rows.forEach((row) => {
+            row.addEventListener("click", (e) => {
+                const target = e.target as HTMLElement;
+                if (!target) return;
+
+                // Si el clic es en un botón, enlace, o sus hijos, no navegar
+                if (
+                    target.closest("button") ||
+                    target.closest("a") ||
+                    target.closest("select") ||
+                    target.closest("input")
+                ) {
+                    return;
+                }
+                const href = (row as HTMLElement).dataset.href;
+                if (href) window.location.href = href;
+            });
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        initClickableRows();
+    });
+    document.addEventListener("astro:after-swap", () => {
+        initClickableRows();
     });
 </script>

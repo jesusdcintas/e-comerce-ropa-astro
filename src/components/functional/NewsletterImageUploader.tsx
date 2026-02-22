@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { uploadImageToCloudinary } from '../../lib/cloudinary';
 
-export default function NewsletterImageUploader() {
+interface Props {
+    inputId?: string;
+}
+
+export default function NewsletterImageUploader({ inputId = 'campaign-image' }: Props) {
     const [loading, setLoading] = useState(false);
     const [preview, setPreview] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -32,7 +36,7 @@ export default function NewsletterImageUploader() {
             const secureUrl = await uploadImageToCloudinary(file);
             if (secureUrl) {
                 // Actualizar input hidden para que el formulario lo capture
-                const imageInput = document.getElementById('campaign-image') as HTMLInputElement;
+                const imageInput = document.getElementById(inputId) as HTMLInputElement;
                 if (imageInput) imageInput.value = secureUrl;
                 setError(null);
             } else {
@@ -85,13 +89,12 @@ export default function NewsletterImageUploader() {
             />
 
             <div
-                className={`relative border-2 border-dashed rounded-lg transition-all duration-300 ${
-                    isDragging
+                className={`relative border-2 border-dashed rounded-lg transition-all duration-300 ${isDragging
                         ? 'border-brand-gold bg-brand-gold/5'
                         : preview
-                        ? 'border-transparent'
-                        : 'border-slate-200 bg-slate-50'
-                }`}
+                            ? 'border-transparent'
+                            : 'border-slate-200 bg-slate-50'
+                    }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -116,7 +119,7 @@ export default function NewsletterImageUploader() {
                                 type="button"
                                 onClick={() => {
                                     setPreview(null);
-                                    const imageInput = document.getElementById('campaign-image') as HTMLInputElement;
+                                    const imageInput = document.getElementById(inputId) as HTMLInputElement;
                                     if (imageInput) imageInput.value = '';
                                     if (fileInputRef.current) fileInputRef.current.value = '';
                                 }}

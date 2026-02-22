@@ -24,7 +24,8 @@ const userName =
 // Lógica para detectar página activa
 const pathname = Astro.url.pathname;
 const isHome = pathname === "/";
-const isCatalogo = pathname.startsWith("/catalogo");
+const isColecciones = pathname.startsWith("/catalogo/coleccion");
+const isCatalogo = pathname.startsWith("/catalogo") && !isColecciones;
 const isOfertas = pathname.startsWith("/ofertas");
 const isAdmin = pathname.startsWith("/admin");
 const isAccount =
@@ -32,6 +33,14 @@ const isAccount =
   pathname.startsWith("/mensajes") ||
   pathname.startsWith("/mis-pedidos") ||
   pathname.startsWith("/mis-cupones");
+
+// Obtener colecciones activas para el dropdown
+const { data: headerCollections } = await supabase
+  .from("collections")
+  .select("*")
+  .eq("is_active", true)
+  .order("created_at", { ascending: false })
+  .limit(6);
 ---
 
 <!-- Marquee Superior -->
@@ -248,6 +257,70 @@ const isAccount =
           </div>
         </div>
 
+        <div class="relative group/colecciones">
+          <button
+            type="button"
+            class={`nav-trigger text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1.5 focus:outline-none cursor-pointer ${isColecciones ? "text-brand-gold" : "text-slate-900 hover:text-brand-gold"}`}
+            data-trigger="colecciones"
+          >
+            Colecciones
+            <svg
+              class="nav-arrow w-3 h-3 transition-transform pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M19 9l-7 7-7-7"></path></svg
+            >
+          </button>
+
+          <div
+            class="nav-dropdown hidden absolute left-0 top-full mt-2 w-[350px] rounded-3xl bg-white shadow-2xl z-[10000] p-6 border border-gray-100 animate-slide-up"
+            data-menu="colecciones"
+          >
+            <p
+              class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold mb-4 border-b border-brand-gold/10 pb-2"
+            >
+              Destacadas
+            </p>
+            <div class="space-y-2">
+              {
+                headerCollections?.map((col) => (
+                  <a
+                    href={`/catalogo/coleccion/${col.slug}`}
+                    class="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors group"
+                  >
+                    {col.image_url ? (
+                      <img
+                        src={col.image_url}
+                        alt={col.name}
+                        class="w-12 h-12 rounded-xl object-cover bg-slate-100"
+                      />
+                    ) : (
+                      <div class="w-12 h-12 rounded-xl bg-slate-100" />
+                    )}
+                    <div>
+                      <h4 class="text-sm font-bold text-slate-800 group-hover:text-brand-gold transition-colors">
+                        {col.name}
+                      </h4>
+                    </div>
+                  </a>
+                ))
+              }
+              {
+                (!headerCollections || headerCollections.length === 0) && (
+                  <p class="text-xs text-slate-500 py-4 text-center">
+                    Nuevas colecciones muy pronto
+                  </p>
+                )
+              }
+            </div>
+          </div>
+        </div>
+
         <a
           href="/ofertas"
           class={`text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2 group ${isOfertas ? "text-red-600" : "text-red-500 hover:text-red-600"}`}
@@ -451,7 +524,10 @@ const isAccount =
             title="Centro de Ayuda"
             aria-label="Centro de Ayuda"
           >
-            <span class="text-xl font-bold text-slate-700 group-hover:text-white leading-none">?</span>
+            <span
+              class="text-xl font-bold text-slate-700 group-hover:text-white leading-none"
+              >?</span
+            >
           </a>
         </div>
       </div>

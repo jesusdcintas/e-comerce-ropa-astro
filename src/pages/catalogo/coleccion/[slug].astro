@@ -1,0 +1,138 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { supabase } from "../../../lib/supabase";
+import ProductCard from "../../../components/ProductCard.astro";
+
+const { slug } = Astro.params;
+
+if (!slug) {
+    return Astro.redirect("/");
+}
+
+// 1. Obtener la colección por slug
+const { data: collection } = await supabase
+    .from("collections")
+    .select("*")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .single();
+
+if (!collection) {
+    return Astro.redirect("/404");
+}
+
+// 2. Obtener los IDs de productos pertenecientes a esta colección
+const { data: collectionProducts } = await supabase
+    .from("collection_products")
+    .select("product_id")
+    .eq("collection_id", collection.id);
+
+const productIds = collectionProducts?.map((cp) => cp.product_id) || [];
+
+// 3. Obtener los productos reales
+let products = [];
+if (productIds.length > 0) {
+    const { data } = await supabase
+        .from("products")
+        .select(`*, category:categories(name, slug)`)
+        .in("id", productIds)
+        .order("created_at", { ascending: false });
+    products = data || [];
+}
+---
+
+<BaseLayout title={`Colección: ${collection.name} | FashionStore`}>
+    <!-- Cabecera de la Colección -->
+    <div
+        class="relative bg-slate-900 border-b border-white/10 h-64 md:h-80 lg:h-96 flex items-center justify-center overflow-hidden"
+    >
+        {
+            collection.image_url ? (
+                <img
+                    src={collection.image_url}
+                    alt={collection.name}
+                    class="absolute inset-0 w-full h-full object-cover opacity-50"
+                />
+            ) : (
+                <div class="absolute inset-0 bg-slate-800" />
+            )
+        }
+        <div
+            class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"
+        >
+        </div>
+
+        <div
+            class="relative z-10 text-center max-w-4xl px-4 mt-12 animate-in fade-in slide-in-from-bottom-6 duration-700"
+        >
+            <span
+                class="inline-block px-3 py-1 bg-brand-gold/20 text-brand-gold text-[10px] font-black uppercase tracking-[0.3em] rounded-full mb-6 border border-brand-gold/30"
+            >
+                Colección Exclusiva
+            </span>
+            <h1
+                class="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter mb-6 drop-shadow-lg"
+            >
+                {collection.name}
+            </h1>
+            {
+                collection.description && (
+                    <p class="text-lg text-slate-300 max-w-2xl mx-auto font-medium leading-relaxed drop-shadow">
+                        {collection.description}
+                    </p>
+                )
+            }
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-12">
+        <div class="flex items-center justify-between mb-8">
+            <div class="text-sm text-slate-500 font-medium">
+                Mostrando <span class="font-bold text-slate-800"
+                    >{products.length}</span
+                > piezas seleccionadas
+            </div>
+        </div>
+
+        {
+            products.length > 0 ? (
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-12">
+                    {products.map((product) => (
+                        <ProductCard product={product} />
+                    ))}
+                </div>
+            ) : (
+                <div class="text-center py-32 bg-slate-50 rounded-[3rem] border border-slate-100">
+                    <div class="w-20 h-20 mx-auto bg-white rounded-full flex items-center justify-center shadow-sm mb-6">
+                        <svg
+                            class="w-10 h-10 text-slate-300"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                            />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-black text-slate-800 tracking-tighter mb-2">
+                        Colección en Preparación
+                    </h3>
+                    <p class="text-slate-500 font-medium max-w-md mx-auto">
+                        Aún no hemos añadido las piezas para esta colección.
+                        Vuelve pronto para descubrir nuestra selección.
+                    </p>
+                    <a
+                        href="/"
+                        class="inline-block mt-8 text-sm font-bold text-brand-gold hover:text-slate-900 border-b border-brand-gold pb-1 transition-colors"
+                    >
+                        Volver a la Portada
+                    </a>
+                </div>
+            )
+        }
+    </div>
+</BaseLayout>

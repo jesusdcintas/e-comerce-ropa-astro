@@ -1,0 +1,285 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+import NewsletterImageUploader from "../../../components/functional/NewsletterImageUploader";
+
+// Handle form submissions
+if (Astro.request.method === "POST") {
+    const formData = await Astro.request.formData();
+    const action = formData.get("action");
+
+    if (action === "create") {
+        const title = formData.get("name") as string;
+        const slug = title
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, "")
+            .replace(/[\s_-]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+
+        await supabase.from("collections").insert({
+            name: title,
+            slug: slug,
+            description: formData.get("description"),
+            image_url: formData.get("image_url") || "/hero/slide-2.jpg",
+        });
+        return Astro.redirect("/admin/colecciones");
+    } else if (action === "delete") {
+        await supabase
+            .from("collections")
+            .delete()
+            .eq("id", formData.get("id"));
+        return Astro.redirect("/admin/colecciones");
+    } else if (action === "toggle") {
+        const id = formData.get("id");
+        const currentState = formData.get("current_state") === "true";
+        await supabase
+            .from("collections")
+            .update({ is_active: !currentState })
+            .eq("id", id);
+        return Astro.redirect("/admin/colecciones");
+    }
+}
+
+// Fetch existing collections
+const { data: collections, error: err } = await supabase
+    .from("collections")
+    .select("*, collection_products(count)")
+    .order("created_at", { ascending: false });
+---
+
+<AdminLayout title="Gestión de Colecciones">
+    <div
+        class="max-w-7xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-6 duration-700"
+    >
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
+        >
+            <div>
+                <h2 class="text-4xl font-black text-slate-800 tracking-tighter">
+                    Colecciones <span class="text-brand-gold italic font-serif"
+                        >Destacadas</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium tracking-tight mt-2">
+                    Agrupa productos en colecciones (Ej: Vuelta al cole, Rebajas
+                    Primavera)...
+                </p>
+            </div>
+            <button
+                onclick="document.getElementById('add-collection-modal').classList.remove('hidden')"
+                class="px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:bg-brand-gold transition-all"
+            >
+                + Nueva Colección
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {
+                collections?.map((collection) => (
+                    <div
+                        class={`bg-white rounded-3xl overflow-hidden shadow-sm border ${collection.is_active ? "border-brand-gold/30" : "border-slate-100 opacity-75"} transition-all`}
+                    >
+                        <div class="aspect-video relative overflow-hidden bg-slate-100">
+                            {collection.image_url && (
+                                <img
+                                    src={collection.image_url}
+                                    alt={collection.name}
+                                    class="w-full h-full object-cover opacity-80"
+                                />
+                            )}
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent flex flex-col justify-end p-6 z-10">
+                                <h3 class="text-2xl font-black text-white leading-tight tracking-tighter drop-shadow-md">
+                                    {collection.name}
+                                </h3>
+                                <p class="text-brand-gold text-xs font-bold mt-1 uppercase tracking-widest">
+                                    {collection.collection_products?.[0]
+                                        ?.count || 0}{" "}
+                                    Productos
+                                </p>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <p class="text-sm text-slate-500 mb-6 line-clamp-2 min-h-[40px]">
+                                {collection.description || "Sin descripción"}
+                            </p>
+
+                            <div class="flex gap-2">
+                                <a
+                                    href={`/admin/colecciones/${collection.id}`}
+                                    class="flex-1 px-4 py-2 bg-slate-900 text-white text-center text-xs font-bold rounded-xl hover:bg-brand-gold transition-colors"
+                                >
+                                    Gestionar Productos
+                                </a>
+                                <form method="POST" class="flex-none">
+                                    <input
+                                        type="hidden"
+                                        name="action"
+                                        value="toggle"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value={collection.id}
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="current_state"
+                                        value={collection.is_active?.toString()}
+                                    />
+                                    <button
+                                        type="submit"
+                                        class={`p-2 rounded-xl transition-colors ${collection.is_active ? "text-green-600 bg-green-50 hover:bg-green-100" : "text-slate-400 bg-slate-50 hover:bg-slate-100"}`}
+                                        title={
+                                            collection.is_active
+                                                ? "Desactivar Colección"
+                                                : "Activar Colección"
+                                        }
+                                    >
+                                        <svg
+                                            class="w-4 h-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            {collection.is_active ? (
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                />
+                                            ) : (
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                                                />
+                                            )}
+                                        </svg>
+                                    </button>
+                                </form>
+                                <form
+                                    method="POST"
+                                    class="flex-none"
+                                    onsubmit="return confirm('¿Eliminar esta colección permanentemente? Los productos no se borrarán.');"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="action"
+                                        value="delete"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value={collection.id}
+                                    />
+                                    <button
+                                        type="submit"
+                                        class="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+                                    >
+                                        <svg
+                                            class="w-4 h-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                            />
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                ))
+            }
+            {
+                (!collections || collections.length === 0) && (
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        No tienes ninguna colección creada todavía. Crea una
+                        para organizar tus productos.
+                    </div>
+                )
+            }
+        </div>
+    </div>
+
+    <!-- Modal Añadir -->
+    <div id="add-collection-modal" class="fixed inset-0 z-50 hidden">
+        <div
+            class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onclick="document.getElementById('add-collection-modal').classList.add('hidden')"
+        >
+        </div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg p-6 max-h-screen overflow-y-auto"
+        >
+            <div class="bg-white rounded-[2.5rem] shadow-2xl p-8">
+                <h3 class="text-2xl font-black text-slate-800 mb-6">
+                    Crear <span class="text-brand-gold italic font-serif"
+                        >Colección</span
+                    >
+                </h3>
+                <form method="POST" class="space-y-4">
+                    <input type="hidden" name="action" value="create" />
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Nombre (P.ej: Primavera 2026)</label
+                        ><input
+                            required
+                            type="text"
+                            name="name"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Descripción</label
+                        ><textarea
+                            name="description"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                            rows="3"></textarea>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Fotografía Portada (Cloudinary)</label
+                        >
+                        <NewsletterImageUploader
+                            inputId="collection-image-input"
+                            client:load
+                        />
+                        <input
+                            type="hidden"
+                            name="image_url"
+                            id="collection-image-input"
+                        />
+                    </div>
+
+                    <div class="flex gap-4 pt-4">
+                        <button
+                            type="button"
+                            onclick="document.getElementById('add-collection-modal').classList.add('hidden')"
+                            class="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200"
+                            >Cancelar</button
+                        >
+                        <button
+                            type="submit"
+                            class="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-brand-gold"
+                            >Crear Colección</button
+                        >
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</AdminLayout>

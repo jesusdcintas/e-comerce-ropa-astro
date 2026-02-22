@@ -74,13 +74,12 @@ const calculateNetSales = (sinceIso?: string) => {
         allSalesData
             .filter((order) => !sinceIso || order.created_at >= sinceIso)
             .reduce((acc, order) => {
-                // Si el pedido fue cancelado antes de pagarse, no cuenta.
-                // Si fue pagado y luego cancelado, el NETO es 0.
+                // Si el pedido entero está cancelado
                 if (
-                    order.status === "cancelled" &&
-                    order.payment_status !== "refunded"
+                    order.status === "cancelled" ||
+                    order.status === "refunded"
                 ) {
-                    return acc;
+                    return acc; // El ingreso neto de este pedido es 0
                 }
 
                 let gross = order.total_amount;
@@ -95,14 +94,6 @@ const calculateNetSales = (sinceIso?: string) => {
                     },
                     0,
                 );
-
-                // Si el pedido entero está cancelado/reembolsado
-                if (
-                    order.payment_status === "refunded" ||
-                    order.status === "cancelled"
-                ) {
-                    return acc; // El ingreso neto de este pedido es 0
-                }
 
                 return acc + (gross - refundedAmount);
             }, 0) / 100

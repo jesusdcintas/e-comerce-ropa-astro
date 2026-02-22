@@ -346,8 +346,9 @@ const shippingPriority: Record<string, number> = {
                         {
                             orders?.map((order) => (
                                 <tr
-                                    class="hover:bg-slate-50/50 transition-colors group order-row"
+                                    class="hover:bg-slate-50/50 transition-colors cursor-pointer group order-row clickable-row"
                                     data-id={order.id}
+                                    data-href={`/admin/orders/${order.id}`}
                                     data-date={order.created_at}
                                     data-status={
                                         shippingPriority[
@@ -473,7 +474,6 @@ const shippingPriority: Record<string, number> = {
     </div>
 
     <script is:inline>
-        // 0. Lógica de Filtros
         const statusFilter = document.getElementById("shipping-status-filter");
         statusFilter?.addEventListener("change", (e) => {
             const val = e.target.value;
@@ -482,6 +482,51 @@ const shippingPriority: Record<string, number> = {
             else params.delete("shipping_status");
             params.set("offset", "0");
             window.location.search = params.toString();
+        });
+
+        // Lógica para filas clicables
+        function initClickableRows() {
+            const rows = document.querySelectorAll(".clickable-row");
+            rows.forEach((row) => {
+                row.addEventListener("click", (e) => {
+                    const target = e.target;
+                    if (!target) return;
+
+                    // Si el clic es en un botón, enlace, select o checkbox, no navegar
+                    if (
+                        target.closest("button") ||
+                        target.closest("a") ||
+                        target.closest("select") ||
+                        target.closest("input[type='checkbox']") ||
+                        target.classList.contains("order-checkbox") ||
+                        target.closest(".quick-advance-btn")
+                    ) {
+                        return;
+                    }
+                    const href = row.dataset.href;
+                    if (href) window.location.href = href;
+                });
+            });
+
+            // Evitar propagación desde los checkboxes
+            const checkboxes = document.querySelectorAll(
+                "input[type='checkbox']",
+            );
+            checkboxes.forEach((cb) => {
+                cb.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                });
+                cb.parentElement?.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                });
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initClickableRows();
+        });
+        document.addEventListener("astro:after-swap", () => {
+            initClickableRows();
         });
 
         // 1. Selección Individual y Masiva

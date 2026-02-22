@@ -62,22 +62,23 @@ export const GET: APIRoute = async ({ url, cookies }) => {
             if (!order.invoice_number && !isAdmin) {
                 return new Response("Factura no generada aún", { status: 400 });
             }
-            pdfBuffer = generateInvoicePDF(order, items, 'buffer') as Buffer;
+            pdfBuffer = await generateInvoicePDF(order, items, 'buffer') as Buffer;
             filename = `Factura_${order.invoice_number || order.id}.pdf`;
         } else if (type === "refund") {
             if (!order.refund_invoice_number && !isAdmin) {
                 return new Response("Factura de abono no disponible", { status: 400 });
             }
             // El importe a reembolsar es el total menos envío si fue cancelación, o lo que se devolvió
-            const refundAmount = order.status === 'cancelled'
+            const isPureCancellation = order.status === 'cancelled' && order.return_status !== 'refunded';
+            const refundAmount = isPureCancellation
                 ? order.total_amount
                 : order.order_items.reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
 
-            pdfBuffer = generateRefundInvoicePDF(order, refundAmount, items, 'buffer', isAdmin) as Buffer;
+            pdfBuffer = await generateRefundInvoicePDF(order, refundAmount, items, 'buffer', isAdmin) as Buffer;
             const orderLabel = order.id.toString().padStart(6, '0');
             filename = isAdmin ? `Rectificativa_Pedido_${orderLabel}.pdf` : `Reembolso_Pedido_${orderLabel}.pdf`;
         } else {
-            pdfBuffer = generateTicketPDF(order, items, 'buffer') as Buffer;
+            pdfBuffer = await generateTicketPDF(order, items, 'buffer') as Buffer;
             filename = `Ticket_${order.id}.pdf`;
         }
 

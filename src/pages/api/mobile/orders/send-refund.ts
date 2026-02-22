@@ -61,14 +61,16 @@ export const POST: APIRoute = async ({ request }) => {
             size: i.product_size,
             quantity: i.quantity,
             price_at_time: i.price,
-            product_image: i.products?.images?.[0] || null
+            product_image: i.products?.images?.[0] || null,
+            return_refunded_quantity: i.return_refunded_quantity
         }));
 
-        const refundAmount = order.status === 'cancelled'
+        const isPureCancellation = order.status === 'cancelled' && order.return_status !== 'refunded';
+        const refundAmount = isPureCancellation
             ? order.total_amount
             : order.order_items.reduce((acc: number, item: any) => acc + (item.price * (item.return_refunded_quantity || 0)), 0);
 
-        await sendRefundInvoiceEmail(order, refundAmount);
+        await sendRefundInvoiceEmail(order, refundAmount, items);
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error: any) {

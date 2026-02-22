@@ -57,12 +57,12 @@ const mainImage =
     <!-- Imagen con link al detalle -->
     <a
         href={`/producto/${product.slug}`}
-        class="relative aspect-[3/4] overflow-hidden bg-gray-100 block"
+        class="relative block aspect-[3/4] overflow-hidden bg-white"
     >
         <img
             src={mainImage}
             alt={product.name}
-            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            class="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500"
             loading="lazy"
         />
         {

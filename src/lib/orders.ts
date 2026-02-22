@@ -26,7 +26,7 @@ export async function cancelOrder(orderId: string | number) {
         // 1. Obtener el pedido para datos de Stripe y email
         const { data: order, error: orderError } = await supabaseAdmin
             .from("orders")
-            .select("*, order_items(*)")
+            .select("*, order_items(*, products(id, name, images))")
             .eq("id", orderId)
             .single();
 
@@ -42,7 +42,7 @@ export async function cancelOrder(orderId: string | number) {
 
         // 2. Gestionar Reembolso en Stripe (antes de la cancelación en DB)
         let refundProcessed = false;
-        if ((order.status === "paid" || order.payment_status === "paid") && order.stripe_session_id) {
+        if (order.status === "paid" && order.stripe_session_id) {
             try {
                 console.log(`[cancelOrder] Procesando reembolso en Stripe para sesión: ${order.stripe_session_id}`);
                 const session = await stripe.checkout.sessions.retrieve(order.stripe_session_id);
@@ -61,37 +61,45 @@ export async function cancelOrder(orderId: string | number) {
             }
         }
 
-        // 3. Cancelación ATÓMICA via RPC (estado + restauración de stock)
+        // 3. Cancelación via JS (bypass temporal del RPC atómico para evitar error 'payment_status' no existente)
         const refundInvoiceNum = refundProcessed
             ? formatDocNumber(orderId, new Date(), 'ONL-R')
             : null;
 
-        console.log("[cancelOrder] Ejecutando RPC atómico para cancelar pedido y restaurar stock.");
-        const { data: rpcResult, error: rpcError } = await supabaseAdmin
-            .rpc('rpc_cancel_order', {
-                p_order_id: Number(orderId),
-                p_refund_invoice_number: refundInvoiceNum
-            });
+        console.log("[cancelOrder] Ejecutando cancelación manual (JS) para restaurar stock y evadir RPC dañado.");
 
-        if (rpcError) {
-            console.error("[cancelOrder] Error en RPC:", rpcError);
-            throw new Error(`Error en cancelación atómica: ${rpcError.message}`);
+        let itemsRestored = 0;
+        if (order.order_items) {
+            for (const item of order.order_items) {
+                // Variante
+                const { data: v } = await supabaseAdmin.from("product_variants").select("stock").eq("product_id", item.product_id).eq("size", item.product_size).maybeSingle();
+                if (v) await supabaseAdmin.from("product_variants").update({ stock: v.stock + item.quantity }).eq("product_id", item.product_id).eq("size", item.product_size);
+
+                // Producto global
+                const { data: p } = await supabaseAdmin.from("products").select("stock").eq("id", item.product_id).maybeSingle();
+                if (p) await supabaseAdmin.from("products").update({ stock: p.stock + item.quantity }).eq("id", item.product_id);
+
+                itemsRestored += item.quantity;
+            }
         }
 
-        if (!rpcResult?.success) {
-            console.error("[cancelOrder] RPC retornó error:", rpcResult);
-            throw new Error(rpcResult?.message || "Error desconocido en RPC");
+        const { error: updateError } = await supabaseAdmin
+            .from("orders")
+            .update({
+                status: 'cancelled',
+                refund_invoice_number: refundInvoiceNum,
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", orderId);
+
+        if (updateError) {
+            console.error("[cancelOrder] Error en cancelación:", updateError);
+            throw new Error(`Error en cancelación manual: ${updateError.message}`);
         }
 
-        console.log(`[cancelOrder] RPC exitoso. Items restaurados: ${rpcResult.items_restored}`);
+        console.log(`[cancelOrder] Cancelación exitosa. Items restaurados: ${itemsRestored}`);
 
-        // 4. Actualizar payment_status si hubo reembolso (el RPC solo actualiza status)
-        if (refundProcessed) {
-            await supabaseAdmin
-                .from("orders")
-                .update({ payment_status: "refunded" })
-                .eq("id", orderId);
-        }
+        // 4. (Eliminado: payment_status no existe en BD, rpc_cancel_order actualiza status)
 
         // 5. Enviar emails de notificación
         try {
@@ -110,7 +118,15 @@ export async function cancelOrder(orderId: string | number) {
             });
 
             if (refundProcessed) {
-                await sendRefundInvoiceEmail({ ...order, status: 'cancelled', refund_invoice_number: refundInvoiceNum }, order.total_amount);
+                const mappedItems = order.order_items.map((i: any) => ({
+                    product_name: i.product_name,
+                    size: i.product_size,
+                    quantity: i.quantity,
+                    price_at_time: i.price,
+                    product_image: i.products?.images?.[0] || null,
+                    return_refunded_quantity: i.quantity
+                }));
+                await sendRefundInvoiceEmail({ ...order, status: 'cancelled', refund_invoice_number: refundInvoiceNum }, order.total_amount, mappedItems);
             }
         } catch (emailErr) {
             console.error("[cancelOrder] Error enviando email de cancelación:", emailErr);
@@ -119,7 +135,7 @@ export async function cancelOrder(orderId: string | number) {
         return {
             success: true,
             refunded: refundProcessed,
-            itemsRestored: rpcResult.items_restored,
+            itemsRestored: itemsRestored,
             message: refundProcessed
                 ? "Pedido cancelado y reembolso emitido correctamente."
                 : "Pedido cancelado con éxito."
@@ -218,7 +234,7 @@ export async function processReturnRefund(orderId: string | number) {
     try {
         const { data: order, error: fetchErr } = await supabaseAdmin
             .from("orders")
-            .select("*, order_items(*)")
+            .select("*, order_items(*, products(id, name, images))")
             .eq("id", orderId)
             .single();
 
@@ -277,7 +293,7 @@ export async function processReturnRefund(orderId: string | number) {
         }
 
         // 3. Actualizar estado del pedido
-        // Si después de esta devolución, todo el pedido está devuelto, marcamos como "cancelled"
+        // Si después de esta devolución, todo el pedido está devuelto, marcamos como "refunded"
         const { data: finalItems } = await supabaseAdmin.from("order_items").select("quantity, return_refunded_quantity").eq("order_id", orderId);
         const allReturned = finalItems?.every(i => i.quantity === i.return_refunded_quantity);
 
@@ -285,7 +301,7 @@ export async function processReturnRefund(orderId: string | number) {
 
         await supabaseAdmin.from("orders").update({
             return_status: "refunded",
-            status: allReturned ? "cancelled" : order.status,
+            status: allReturned ? "refunded" : order.status,
             refund_invoice_number: refundInvoiceNum,
             return_received_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -294,8 +310,16 @@ export async function processReturnRefund(orderId: string | number) {
         // 4. Enviar email
         try {
             const { sendReturnRefundedEmail, sendRefundInvoiceEmail } = await import("./emails");
+            const mappedItems = order.order_items.map((i: any) => ({
+                product_name: i.product_name,
+                size: i.product_size,
+                quantity: i.quantity,
+                price_at_time: i.price,
+                product_image: i.products?.images?.[0] || null,
+                return_refunded_quantity: i.return_requested_quantity || 0
+            }));
             await sendReturnRefundedEmail(order, refundAmount);
-            await sendRefundInvoiceEmail({ ...order, refund_invoice_number: refundInvoiceNum }, refundAmount);
+            await sendRefundInvoiceEmail({ ...order, refund_invoice_number: refundInvoiceNum }, refundAmount, mappedItems);
         } catch (e) {
             console.error("Error sending emails:", e);
         }

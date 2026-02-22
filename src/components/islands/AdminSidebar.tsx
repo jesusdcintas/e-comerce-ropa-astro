@@ -281,6 +281,22 @@ export default function AdminSidebar({
                 <span className="sidebar-text overflow-hidden transition-all duration-300">Gestión de Novedades</span>
             </a>
 
+            {/* Banners Portada */}
+            <a href="/admin/hero" className={`${navLinkClass} ${isActive('/admin/hero') ? activeClass : inactiveClass}`} title={isCollapsed ? "Banners Portada" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/hero') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Banners Portada</span>
+            </a>
+
+            {/* Colecciones */}
+            <a href="/admin/colecciones" className={`${navLinkClass} ${isActive('/admin/colecciones') ? activeClass : inactiveClass}`} title={isCollapsed ? "Colecciones" : ""}>
+                <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/colecciones') ? 'text-white' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <span className="sidebar-text overflow-hidden transition-all duration-300">Colecciones</span>
+            </a>
+
             {/* Newsletter */}
             <a href="/admin/newsletter" className={`${navLinkClass} ${isActive('/admin/newsletter') ? activeClass : inactiveClass}`} title={isCollapsed ? "Newsletter" : ""}>
                 <svg className={`shrink-0 h-5 w-5 ${isActive('/admin/newsletter') ? 'text-brand-gold' : ''} ${!isCollapsed ? 'mr-3' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,15 +307,15 @@ export default function AdminSidebar({
 
             {/* Ver Tienda Pública */}
             <div className="mt-auto pt-10">
-                <a 
-                    href="/" 
-                    target="_blank" 
+                <a
+                    href="/"
+                    target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => {
                         e.preventDefault();
                         window.open('/', '_blank');
                     }}
-                    className="flex items-center px-4 py-3 text-xs font-semibold text-slate-500 hover:text-white border-t border-white/5 group transition-colors cursor-pointer" 
+                    className="flex items-center px-4 py-3 text-xs font-semibold text-slate-500 hover:text-white border-t border-white/5 group transition-colors cursor-pointer"
                     title={isCollapsed ? "Ver Tienda" : ""}
                 >
                     <span className="sidebar-text transition-all duration-300">Ver Tienda en Vivo</span>

@@ -1,7 +1,34 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { supabase } from "../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import ProductCarousel from "../components/ui/ProductCarousel.astro";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+let isLoggedIn = false;
+let userProfile = null;
+
+if (accessToken) {
+  const supabaseAuth = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+    {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    },
+  );
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
+  if (user) {
+    isLoggedIn = true;
+    const { data } = await supabaseAuth
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    userProfile = data;
+  }
+}
 
 // Obtener categorías principales (sin parent_id)
 const { data: categories } = await supabase
@@ -28,6 +55,20 @@ const { data: ofertas } = await supabase
   .or(`discount_ends_at.is.null,discount_ends_at.gt.${now}`)
   .order("discount_percentage", { ascending: false });
 
+// Novedad: Banners Dinámicos
+const { data: heroSlides } = await supabase
+  .from("hero_slides")
+  .select("*")
+  .eq("is_active", true)
+  .order("order_index", { ascending: true });
+
+// Novedad: Colecciones Activas
+const { data: collections } = await supabase
+  .from("collections")
+  .select("*, collection_products(count)")
+  .eq("is_active", true)
+  .order("created_at", { ascending: false });
+
 function formatPrice(cents: number) {
   return `${(cents / 100).toFixed(2)}€`;
 }
@@ -48,248 +89,155 @@ const showOffers = globalConfig?.offers_enabled !== false;
     class="relative h-[85vh] lg:h-[91vh] overflow-hidden bg-slate-900 font-sans"
   >
     <div id="hero-slider" class="absolute inset-0">
-      <!-- SLIDE 1: URBAN COLLECTION -->
-      <div class="hero-slide absolute inset-0" data-active>
-        <img
-          src="/hero/slide-5.jpg"
-          alt="Colección Urbana"
-          class="absolute inset-0 w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-black/40 z-10"></div>
-        <div
-          class="absolute inset-0 z-20 flex items-center max-w-7xl mx-auto px-6"
-        >
-          <div class="max-w-2xl slide-content">
-            <div
-              class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-brand-gold mb-6"
-            >
-              <span class="w-12 h-px bg-brand-gold"></span>
-              Streetwear Premium
-            </div>
-            <h1
-              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
-            >
-              URBAN<br /><span
-                class="text-brand-gold italic font-serif font-light"
-                >Essentials</span
-              >
-            </h1>
-            <p
-              class="text-xl text-gray-200 mb-10 max-w-lg font-medium leading-relaxed"
-            >
-              Redefiniendo la moda urbana con materiales premium y cortes
-              contemporáneos.
-            </p>
-            <a
-              href="#novedades"
-              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all shadow-xl"
-            >
-              Ver Novedades
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                ><path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2.5"
-                  d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg
-              >
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- SLIDE 2: EXECUTIVE -->
-      <div class="hero-slide absolute inset-0">
-        <img
-          src="/hero/slide-1.jpg"
-          alt="Executive Look"
-          class="absolute inset-0 w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-black/40 z-10"></div>
-        <div
-          class="absolute inset-0 z-20 flex items-center max-w-7xl mx-auto px-6"
-        >
-          <div class="max-w-2xl slide-content">
-            <div
-              class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-white/80 mb-6"
-            >
-              <span class="w-12 h-px bg-white/80"></span>
-              The Modern Professional
-            </div>
-            <h2
-              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
-            >
-              ESTILO<br /><span class="text-white italic font-serif font-light"
-                >Ejecutivo</span
-              >
-            </h2>
-            <p
-              class="text-xl text-white/90 mb-10 max-w-lg font-medium leading-relaxed"
-            >
-              Prendas que proyectan confianza. Diseñadas para el hombre que
-              lidera.
-            </p>
-            <a
-              href="/catalogo/ropa"
-              class="inline-flex items-center gap-4 bg-brand-gold text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-white hover:text-brand-black transition-all shadow-xl"
-            >
-              Explorar Sastrería
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- SLIDE 3: SPORT -->
-      <div class="hero-slide absolute inset-0">
-        <img
-          src="/hero/slide-2.jpg"
-          alt="Sport Performance"
-          class="absolute inset-0 w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-black/30 z-10"></div>
-        <div
-          class="absolute inset-0 z-20 flex items-center max-w-7xl mx-auto px-6"
-        >
-          <div class="max-w-2xl slide-content">
-            <div
-              class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-white mb-6"
-            >
-              <span class="w-12 h-px bg-white"></span>
-              Performance Wear
-            </div>
-            <h2
-              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
-            >
-              MOVIMIENTO<br /><span
-                class="text-white italic font-serif font-light uppercase"
-                >Puro</span
-              >
-            </h2>
-            <p
-              class="text-xl text-white/90 mb-10 max-w-lg font-medium leading-relaxed"
-            >
-              Libertad total. Innovación textil para tu rendimiento diario.
-            </p>
-            <a
-              href="/catalogo/ropa"
-              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all"
-            >
-              Línea Training
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- SLIDE 4: ACCESSORIES -->
-      <div class="hero-slide absolute inset-0">
-        <img
-          src="/hero/slide-4.jpg"
-          alt="Accesorios de Lujo"
-          class="absolute inset-0 w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-black/50 z-10"></div>
-        <div
-          class="absolute inset-0 z-20 flex items-center justify-center max-w-7xl mx-auto px-6 text-center"
-        >
-          <div class="max-w-3xl slide-content">
-            <div
-              class="text-[10px] font-black uppercase tracking-[0.6em] text-brand-gold mb-6"
-            >
-              El Toque Final
-            </div>
-            <h2
-              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
-            >
-              PIEZAS<br /><span
-                class="text-brand-gold italic font-serif font-light"
-                >Maestras</span
-              >
-            </h2>
-            <p class="text-xl text-gray-200 mb-10 max-w-xl mx-auto font-medium">
-              Complementos de alta gama que definen tu personalidad única.
-            </p>
-            <a
-              href="/catalogo/complementos"
-              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all shadow-xl"
-            >
-              Ver Relojería y Joyería
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- SLIDE 5: FOOTWEAR -->
-      <div class="hero-slide absolute inset-0">
-        <img
-          src="/hero/slide-3.jpg"
-          alt="Calzado Premium"
-          class="absolute inset-0 w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-black/40 z-10"></div>
-        <div
-          class="absolute inset-0 z-20 flex items-center max-w-7xl mx-auto px-6 justify-end text-right"
-        >
-          <div class="max-w-2xl slide-content">
-            <div
-              class="flex items-center gap-2 justify-end text-[10px] font-black uppercase tracking-[0.5em] text-white/80 mb-6 font-sans"
-            >
-              Footwear Selection
-              <span class="w-12 h-px bg-white/80"></span>
-            </div>
-            <h2
-              class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]"
-            >
-              PASO<br /><span
-                class="text-brand-gold italic font-serif font-light"
-                >Elegante</span
-              >
-            </h2>
-            <p
-              class="text-xl text-gray-200 mb-10 max-w-lg ml-auto font-medium leading-relaxed"
-            >
-              Desde las últimas sneakers hasta calzado artesanal.
-            </p>
-            <a
-              href="/catalogo/calzado"
-              class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold transition-all shadow-xl"
-            >
-              Explorar Sneakers
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Controles Minimalistas -->
-    <div
-      class="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex gap-4 items-center"
-    >
+      {/* Bucle dinámico sobre los Slides */}
       {
-        [0, 1, 2, 3, 4].map((i) => (
-          <button
-            class="hero-dot w-2 h-2 rounded-full bg-white/40 transition-all duration-300 hover:bg-white"
-            data-index={i}
-            aria-label={`Ir a slide ${i + 1}`}
-          />
+        heroSlides?.map((slide, index) => (
+          <div
+            class="hero-slide absolute inset-0"
+            data-active={index === 0 ? "" : undefined}
+          >
+            <img
+              src={slide.image_url}
+              alt={slide.title}
+              class="absolute inset-0 w-full h-full object-cover"
+            />
+            <div class="absolute inset-0 bg-black/40 z-10" />
+            <div
+              class={`absolute inset-0 z-20 flex items-center max-w-7xl mx-auto px-6 ${slide.align === "center" ? "justify-center text-center" : slide.align === "right" ? "justify-end text-right" : ""}`}
+            >
+              <div
+                class={`${slide.align === "center" ? "max-w-3xl" : "max-w-2xl"} slide-content`}
+              >
+                {slide.subtitle && (
+                  <div
+                    class={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.5em] text-brand-gold mb-6 ${slide.align === "center" ? "justify-center" : slide.align === "right" ? "flex-row-reverse" : ""}`}
+                  >
+                    <span class="w-12 h-px bg-brand-gold" />
+                    {slide.subtitle}
+                  </div>
+                )}
+                <h1 class="text-6xl md:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]">
+                  {slide.title}
+                  <br />
+                  <span class="text-brand-gold italic font-serif font-light">
+                    {slide.title_highlight}
+                  </span>
+                </h1>
+                {slide.description && (
+                  <p
+                    class={`text-xl text-gray-200 mb-10 max-w-lg font-medium leading-relaxed ${slide.align === "center" ? "mx-auto" : ""}`}
+                  >
+                    {slide.description}
+                  </p>
+                )}
+                {slide.button_text && slide.button_link && (
+                  <a
+                    href={slide.button_link}
+                    class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all shadow-xl"
+                  >
+                    {slide.button_text}
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2.5"
+                        d="M17 8l4 4m0 0l-4 4m4-4H3"
+                      />
+                    </svg>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
         ))
       }
-    </div>
 
-    <!-- Indicador de Scroll -->
-    <div
-      class="absolute bottom-10 right-10 z-30 hidden lg:flex flex-col items-center gap-4"
-    >
-      <span
-        class="text-[9px] font-black uppercase tracking-[0.4em] text-white/50 rotate-90 mb-8 origin-right"
-        >Scroll</span
+      <!-- Controles Minimalistas -->
+      <div
+        class="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex gap-4 items-center"
       >
-      <div class="w-px h-16 bg-gradient-to-t from-white/80 to-transparent">
+        {
+          heroSlides?.map((_, i) => (
+            <button
+              class="hero-dot w-2 h-2 rounded-full bg-white/40 transition-all duration-300 hover:bg-white"
+              data-index={i}
+              aria-label={`Ir a slide ${i + 1}`}
+            />
+          ))
+        }
+      </div>
+
+      <!-- Indicador de Scroll -->
+      <div
+        class="absolute bottom-10 right-10 z-30 hidden lg:flex flex-col items-center gap-4"
+      >
+        <span
+          class="text-[9px] font-black uppercase tracking-[0.4em] text-white/50 rotate-90 mb-8 origin-right"
+          >Scroll</span
+        >
+        <div class="w-px h-16 bg-gradient-to-t from-white/80 to-transparent">
+        </div>
       </div>
     </div>
   </section>
+
+  <!-- Colecciones Especiales Dinámicas -->
+  {
+    collections && collections.length > 0 && (
+      <section class="max-w-7xl mx-auto px-4 pt-16 border-t border-slate-100">
+        <div class="flex items-baseline justify-between mb-16">
+          <div>
+            <span class="block text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold mb-4">
+              Inspiración
+            </span>
+            <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-brand-black">
+              NUESTRAS{" "}
+              <span class="text-brand-gold italic font-serif">Colecciones</span>
+            </h2>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {collections.map((col) => (
+            <a
+              href={`/catalogo/coleccion/${col.slug}`}
+              class="group block relative rounded-[2rem] overflow-hidden bg-slate-900 aspect-[4/5] shadow-2xl hover:-translate-y-2 transition-transform duration-500"
+            >
+              {col.image_url ? (
+                <img
+                  src={col.image_url}
+                  alt={col.name}
+                  class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-700 group-hover:scale-105"
+                />
+              ) : (
+                <div class="absolute inset-0 bg-slate-800" />
+              )}
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+              <div class="absolute inset-0 p-8 flex flex-col justify-end text-white z-10 transition-transform duration-500 group-hover:-translate-y-4">
+                <span class="inline-block px-3 py-1 bg-brand-gold text-brand-black text-[9px] font-black uppercase tracking-widest rounded-full mb-4 w-fit shadow-lg">
+                  {col.collection_products?.[0]?.count || 0} ITEMS
+                </span>
+                <h3 class="text-3xl font-black mb-2 tracking-tighter drop-shadow-md">
+                  {col.name}
+                </h3>
+                {col.description && (
+                  <p class="text-sm font-medium text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100 line-clamp-2">
+                    {col.description}
+                  </p>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   <!-- Carrusel de Novedades (Spotlight) -->
   {
@@ -456,7 +404,7 @@ const showOffers = globalConfig?.offers_enabled !== false;
     )
   }
 
-  <!-- Banner Promocional -->
+  <!-- Banner Promocional / Acceso a Newsletter -->
   <section class="max-w-7xl mx-auto px-4 py-16">
     <div
       class="bg-brand-black text-white rounded-3xl overflow-hidden shadow-2xl relative"
@@ -466,161 +414,219 @@ const showOffers = globalConfig?.offers_enabled !== false;
       >
       </div>
       <div class="grid md:grid-cols-2 gap-8 items-center">
-        <div class="p-12 md:p-16 relative z-10">
-          <h2 class="text-5xl font-black mb-6 tracking-tighter">
-            ÚNETE AL CLUB
-          </h2>
-          <p class="text-xl mb-10 text-gray-300 font-medium leading-relaxed">
-            Regístrate hoy y recibe un <strong class="text-brand-gold"
-              >cupón exclusivo del 10%</strong
-            > para tu primera compra, además de acceso anticipado a nuevas colecciones
-            y eventos privados.
-          </p>
-          <a
-            href="/registro"
-            class="inline-flex items-center gap-4 bg-brand-gold text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-white hover:text-brand-black transition-all shadow-xl"
-          >
-            Registrarse Gratis
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg
-            >
-          </a>
-        </div>
-        <div class="h-80 md:h-[450px] relative">
-          <img
-            src="/hero/slide-5.jpg"
-            alt="Fidelización"
-            class="absolute inset-0 w-full h-full object-cover opacity-60"
-          />
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-brand-black via-brand-black/40 to-transparent"
-          >
-          </div>
-        </div>
+        {
+          !isLoggedIn ? (
+            <>
+              <div class="p-12 md:p-16 relative z-10">
+                <h2 class="text-5xl font-black mb-6 tracking-tighter">
+                  ÚNETE AL CLUB
+                </h2>
+                <p class="text-xl mb-10 text-gray-300 font-medium leading-relaxed">
+                  Regístrate hoy y recibe un{" "}
+                  <strong class="text-brand-gold">
+                    cupón exclusivo del 10%
+                  </strong>{" "}
+                  para tu primera compra, además de acceso anticipado a nuevas
+                  colecciones y eventos privados.
+                </p>
+                <a
+                  href="/registro"
+                  class="inline-flex items-center gap-4 bg-brand-gold text-white px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-white hover:text-brand-black transition-all shadow-xl"
+                >
+                  Registrarse Gratis
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
+                </a>
+              </div>
+              <div class="h-80 md:h-[450px] relative">
+                <img
+                  src="/hero/slide-5.jpg"
+                  alt="Fidelización"
+                  class="absolute inset-0 w-full h-full object-cover opacity-60"
+                />
+                <div class="absolute inset-0 bg-gradient-to-r from-brand-black via-brand-black/40 to-transparent" />
+              </div>
+            </>
+          ) : (
+            <>
+              <div class="p-12 md:p-16 relative z-10">
+                <h2 class="text-5xl font-black mb-6 tracking-tighter">
+                  NUESTRA NEWSLETTER
+                </h2>
+                <p class="text-xl mb-10 text-gray-300 font-medium leading-relaxed">
+                  {userProfile?.newsletter_subscribed
+                    ? "Ya estás recibiendo ofertas exclusivas y novedades. ¿Deseas modificar tus preferencias?"
+                    : "Suscríbete ahora para recibir ofertas exclusivas, acceso anticipado a colecciones y contenido especial directamente en tu correo."}
+                </p>
+                <a
+                  href="/mi-cuenta"
+                  class="inline-flex items-center gap-4 bg-white text-brand-black px-10 py-5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-gold hover:text-white transition-all shadow-xl"
+                >
+                  Gestionar Suscripción
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    />
+                  </svg>
+                </a>
+              </div>
+              <div class="h-80 md:h-[450px] relative bg-brand-black">
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <svg
+                    class="w-48 h-48 text-brand-gold/20"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1"
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </>
+          )
+        }
       </div>
     </div>
   </section>
-</BaseLayout>
 
-<style>
-  /* Base del Slide */
-  .hero-slide {
-    opacity: 0;
-    z-index: 0;
-    pointer-events: none;
-    transition: opacity 1s ease-in-out;
-    /* Safari/iOS: forzar compositing layer */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-  }
-
-  /* Slide Activo */
-  .hero-slide[data-active] {
-    opacity: 1;
-    z-index: 10;
-    pointer-events: auto;
-  }
-
-  /* Contenido del Slide (Texto) */
-  .slide-content {
-    opacity: 0;
-    /* Safari/iOS: usar translate3d para activar GPU */
-    -webkit-transform: translate3d(0, 30px, 0);
-    transform: translate3d(0, 30px, 0);
-    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 1s cubic-bezier(0.16, 1, 0.3, 1);
-    -webkit-transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
-                        -webkit-transform 1s cubic-bezier(0.16, 1, 0.3, 1);
-    transition-delay: 0.4s;
-    -webkit-transition-delay: 0.4s;
-    /* Safari: prevenir parpadeo de texto */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    will-change: opacity, transform;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-  }
-
-  /* Animación cuando el slide padre está activo */
-  .hero-slide[data-active] .slide-content {
-    opacity: 1;
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
-  }
-
-  /* Indicador de puntos */
-  .hero-dot[data-active] {
-    width: 40px;
-    background-color: #c6a87c;
-    opacity: 1;
-  }
-
-  /* Safari iOS: fix para elementos con posición fija/absoluta */
-  @supports (-webkit-touch-callout: none) {
-    .hero-slide,
-    .slide-content {
-      -webkit-transform-style: preserve-3d;
-      transform-style: preserve-3d;
+  <style>
+    /* Base del Slide */
+    .hero-slide {
+      opacity: 0;
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 1s ease-in-out;
+      /* Safari/iOS: forzar compositing layer */
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
     }
-  }
-</style>
 
-<script>
-  const slides = document.querySelectorAll(".hero-slide");
-  const dots = document.querySelectorAll(".hero-dot");
-  let currentSlide = 0;
-  let autoPlayInterval: any;
+    /* Slide Activo */
+    .hero-slide[data-active] {
+      opacity: 1;
+      z-index: 10;
+      pointer-events: auto;
+    }
 
-  function showSlide(index: number) {
-    if (!slides.length) return;
+    /* Contenido del Slide (Texto) */
+    .slide-content {
+      opacity: 0;
+      /* Safari/iOS: usar translate3d para activar GPU */
+      -webkit-transform: translate3d(0, 30px, 0);
+      transform: translate3d(0, 30px, 0);
+      transition:
+        opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+      -webkit-transition:
+        opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+        -webkit-transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+      transition-delay: 0.4s;
+      -webkit-transition-delay: 0.4s;
+      /* Safari: prevenir parpadeo de texto */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      will-change: opacity, transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
 
-    slides.forEach((slide, i) => {
-      if (i === index) {
-        slide.setAttribute("data-active", "");
-      } else {
-        slide.removeAttribute("data-active");
+    /* Animación cuando el slide padre está activo */
+    .hero-slide[data-active] .slide-content {
+      opacity: 1;
+      -webkit-transform: translate3d(0, 0, 0);
+      transform: translate3d(0, 0, 0);
+    }
+
+    /* Indicador de puntos */
+    .hero-dot[data-active] {
+      width: 40px;
+      background-color: #c6a87c;
+      opacity: 1;
+    }
+
+    /* Safari iOS: fix para elementos con posición fija/absoluta */
+    @supports (-webkit-touch-callout: none) {
+      .hero-slide,
+      .slide-content {
+        -webkit-transform-style: preserve-3d;
+        transform-style: preserve-3d;
       }
-    });
+    }
+  </style>
+
+  <script>
+    const slides = document.querySelectorAll(".hero-slide");
+    const dots = document.querySelectorAll(".hero-dot");
+    let currentSlide = 0;
+    let autoPlayInterval: any;
+
+    function showSlide(index: number) {
+      if (!slides.length) return;
+
+      slides.forEach((slide, i) => {
+        if (i === index) {
+          slide.setAttribute("data-active", "");
+        } else {
+          slide.removeAttribute("data-active");
+        }
+      });
+
+      dots.forEach((dot, i) => {
+        if (i === index) {
+          dot.setAttribute("data-active", "");
+        } else {
+          dot.removeAttribute("data-active");
+        }
+      });
+      currentSlide = index;
+    }
+
+    function nextSlide() {
+      showSlide((currentSlide + 1) % slides.length);
+    }
+
+    function startAutoPlay() {
+      clearInterval(autoPlayInterval);
+      autoPlayInterval = setInterval(nextSlide, 7000);
+    }
 
     dots.forEach((dot, i) => {
-      if (i === index) {
-        dot.setAttribute("data-active", "");
-      } else {
-        dot.removeAttribute("data-active");
-      }
+      dot.addEventListener("click", () => {
+        showSlide(i);
+        startAutoPlay();
+      });
     });
-    currentSlide = index;
-  }
 
-  function nextSlide() {
-    showSlide((currentSlide + 1) % slides.length);
-  }
-
-  function startAutoPlay() {
-    clearInterval(autoPlayInterval);
-    autoPlayInterval = setInterval(nextSlide, 7000);
-  }
-
-  dots.forEach((dot, i) => {
-    dot.addEventListener("click", () => {
-      showSlide(i);
+    // Iniciar
+    if (slides.length > 0) {
+      showSlide(0);
       startAutoPlay();
-    });
-  });
-
-  // Iniciar
-  if (slides.length > 0) {
-    showSlide(0);
-    startAutoPlay();
-  }
-</script>
+    }
+  </script>
+</BaseLayout>

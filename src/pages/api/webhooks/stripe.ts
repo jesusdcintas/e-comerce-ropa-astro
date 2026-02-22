@@ -49,7 +49,6 @@ export const POST: APIRoute = async ({ request }) => {
         customer_name: metadata.customer_name || session.customer_details?.name,
         total_amount: session.amount_total || 0,
         status: 'paid',
-        payment_status: session.payment_status,
         shipping_cost: metadata.shipping_cost ? parseInt(metadata.shipping_cost) : 0,
         items: items_json ? JSON.parse(items_json) : [],
         metadata: metadata

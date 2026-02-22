@@ -120,12 +120,12 @@ const finalPrice = hasActiveDiscount
                             {
                                 product.images && product.images.length > 0 ? (
                                     <div class="space-y-4">
-                                        <div class="aspect-square bg-gray-100 rounded-3xl overflow-hidden border border-slate-100">
+                                        <div class="relative aspect-square bg-white rounded-3xl overflow-hidden border border-slate-100">
                                             <img
                                                 id="main-image"
                                                 src={product.images[0]}
                                                 alt={product.name}
-                                                class="w-full h-full object-cover"
+                                                class="absolute inset-0 w-full h-full object-contain p-6"
                                             />
                                         </div>
 
@@ -139,12 +139,12 @@ const finalPrice = hasActiveDiscount
                                                         <button
                                                             type="button"
                                                             data-image={img}
-                                                            class={`thumbnail aspect-square rounded-2xl overflow-hidden border-2 transition-all hover:scale-105 ${idx === 0 ? "border-brand-gold" : "border-slate-100 hover:border-slate-200"}`}
+                                                            class={`thumbnail relative block aspect-square rounded-2xl overflow-hidden border-2 transition-all hover:scale-105 bg-white ${idx === 0 ? "border-brand-gold" : "border-slate-100 hover:border-slate-200"}`}
                                                         >
                                                             <img
                                                                 src={img}
                                                                 alt={`${product.name} ${idx + 1}`}
-                                                                class="w-full h-full object-cover"
+                                                                class="absolute inset-0 w-full h-full object-contain p-2"
                                                             />
                                                         </button>
                                                     ),

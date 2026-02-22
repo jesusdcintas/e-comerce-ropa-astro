@@ -1,0 +1,477 @@
+---
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { supabase } from "../../../lib/supabase";
+import NewsletterImageUploader from "../../../components/functional/NewsletterImageUploader";
+
+// POST Request handling for create / delete / toggle
+if (Astro.request.method === "POST") {
+    const formData = await Astro.request.formData();
+    const action = formData.get("action");
+
+    if (action === "create") {
+        const { error } = await supabase.from("hero_slides").insert({
+            title: formData.get("title"),
+            title_highlight: formData.get("title_highlight"),
+            subtitle: formData.get("subtitle"),
+            description: formData.get("description"),
+            button_text: formData.get("button_text"),
+            button_link: formData.get("button_link"),
+            image_url: formData.get("image_url") || "/hero/slide-1.jpg",
+            align: formData.get("align") || "left",
+        });
+        if (!error) return Astro.redirect("/admin/hero");
+    } else if (action === "edit") {
+        const id = formData.get("id");
+        const { error } = await supabase
+            .from("hero_slides")
+            .update({
+                title: formData.get("title"),
+                title_highlight: formData.get("title_highlight"),
+                subtitle: formData.get("subtitle"),
+                description: formData.get("description"),
+                button_text: formData.get("button_text"),
+                button_link: formData.get("button_link"),
+                image_url: formData.get("image_url") || undefined,
+                align: formData.get("align") || "left",
+            })
+            .eq("id", id);
+        if (!error) return Astro.redirect("/admin/hero");
+    } else if (action === "delete") {
+        await supabase
+            .from("hero_slides")
+            .delete()
+            .eq("id", formData.get("id"));
+        return Astro.redirect("/admin/hero");
+    } else if (action === "toggle") {
+        const id = formData.get("id");
+        const currentState = formData.get("current_state") === "true";
+        await supabase
+            .from("hero_slides")
+            .update({ is_active: !currentState })
+            .eq("id", id);
+        return Astro.redirect("/admin/hero");
+    }
+}
+
+// Obtener slides
+const { data: slides } = await supabase
+    .from("hero_slides")
+    .select("*")
+    .order("order_index", { ascending: true })
+    .order("created_at", { ascending: false });
+---
+
+<AdminLayout title="Banners de Portada">
+    <div
+        class="max-w-7xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-6 duration-700"
+    >
+        <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
+        >
+            <div>
+                <h2 class="text-4xl font-black text-slate-800 tracking-tighter">
+                    Banners de <span class="text-brand-gold italic font-serif"
+                        >Portada</span
+                    >
+                </h2>
+                <p class="text-slate-400 font-medium tracking-tight mt-2">
+                    Gestiona las imágenes principales del carrusel de la tienda.
+                </p>
+            </div>
+            <button
+                onclick="document.getElementById('add-modal').classList.remove('hidden')"
+                class="px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:bg-brand-gold transition-all"
+            >
+                + Nuevo Slide
+            </button>
+        </div>
+
+        <!-- Slides List -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {
+                slides?.map((slide) => (
+                    <div
+                        class={`bg-white rounded-3xl overflow-hidden shadow-sm border ${slide.is_active ? "border-brand-gold/30" : "border-slate-100 opacity-75"} transition-all`}
+                    >
+                        <div class="aspect-video relative overflow-hidden bg-slate-900">
+                            <img
+                                src={slide.image_url}
+                                alt={slide.title}
+                                class="w-full h-full object-cover opacity-60"
+                            />
+                            <div class="absolute inset-0 p-6 flex flex-col justify-center max-w-[80%] z-10">
+                                <span class="text-[8px] text-brand-gold uppercase tracking-widest font-black mb-2">
+                                    {slide.subtitle}
+                                </span>
+                                <h3 class="text-2xl font-black text-white leading-none tracking-tighter shadow-sm">
+                                    {slide.title}{" "}
+                                    <span class="text-brand-gold italic font-serif font-light">
+                                        {slide.title_highlight}
+                                    </span>
+                                </h3>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="flex gap-2 items-center mb-4">
+                                <span
+                                    class={`w-2 h-2 rounded-full ${slide.is_active ? "bg-green-500" : "bg-red-500"}`}
+                                />
+                                <span class="text-xs font-bold text-slate-600 uppercase">
+                                    {slide.is_active ? "Activo" : "Oculto"}
+                                </span>
+                            </div>
+                            <div class="flex gap-2">
+                                <form method="POST" class="flex-1">
+                                    <input
+                                        type="hidden"
+                                        name="action"
+                                        value="toggle"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value={slide.id}
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="current_state"
+                                        value={slide.is_active?.toString()}
+                                    />
+                                    <button
+                                        type="submit"
+                                        class="w-full px-4 py-2 bg-slate-50 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                    >
+                                        {slide.is_active
+                                            ? "Ocultar"
+                                            : "Mostrar"}
+                                    </button>
+                                </form>
+                                <button
+                                    onclick={`openEditModal(${JSON.stringify(slide)})`}
+                                    class="p-2 text-slate-500 bg-slate-50 hover:bg-slate-200 rounded-xl transition-colors"
+                                >
+                                    <svg
+                                        class="w-4 h-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                        />
+                                    </svg>
+                                </button>
+                                <form
+                                    method="POST"
+                                    class="flex-none"
+                                    onsubmit="return confirm('¿Seguro que deseas eliminar este slide?');"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="action"
+                                        value="delete"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value={slide.id}
+                                    />
+                                    <button
+                                        type="submit"
+                                        class="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+                                    >
+                                        <svg
+                                            class="w-4 h-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                            />
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                ))
+            }
+            {
+                (!slides || slides.length === 0) && (
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        No hay banners configurados.
+                    </div>
+                )
+            }
+        </div>
+    </div>
+
+    <!-- Modal Añadir -->
+    <div id="add-modal" class="fixed inset-0 z-50 hidden">
+        <div
+            class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onclick="document.getElementById('add-modal').classList.add('hidden')"
+        >
+        </div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg p-6 max-h-screen overflow-y-auto"
+        >
+            <div class="bg-white rounded-[2.5rem] shadow-2xl p-8">
+                <h3 class="text-2xl font-black text-slate-800 mb-6">
+                    Añadir <span class="text-brand-gold italic font-serif"
+                        >Slide</span
+                    >
+                </h3>
+                <form method="POST" class="space-y-4">
+                    <input type="hidden" name="action" value="create" />
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Título Principal (P.ej: URBAN)</label
+                        ><input
+                            required
+                            type="text"
+                            name="title"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Parte Dorada (P.ej: Essentials)</label
+                        ><input
+                            type="text"
+                            name="title_highlight"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Subtítulo superior</label
+                        ><input
+                            type="text"
+                            name="subtitle"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Descripción corta</label
+                        ><textarea
+                            name="description"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                            rows="2"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 mb-1"
+                                >Texto del botón</label
+                            ><input
+                                type="text"
+                                name="button_text"
+                                class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 mb-1"
+                                >Enlace del botón</label
+                            ><input
+                                type="text"
+                                name="button_link"
+                                class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Fotografía (Cloudinary)</label
+                        >
+                        <NewsletterImageUploader
+                            inputId="hero-image-input"
+                            client:load
+                        />
+                        <input
+                            type="hidden"
+                            name="image_url"
+                            id="hero-image-input"
+                            required
+                        />
+                    </div>
+
+                    <div class="flex gap-4 pt-4">
+                        <button
+                            type="button"
+                            onclick="document.getElementById('add-modal').classList.add('hidden')"
+                            class="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200"
+                            >Cancelar</button
+                        >
+                        <button
+                            type="submit"
+                            class="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-brand-gold"
+                            >Guardar Slide</button
+                        >
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar -->
+    <div id="edit-modal" class="fixed inset-0 z-50 hidden">
+        <div
+            class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onclick="document.getElementById('edit-modal').classList.add('hidden')"
+        >
+        </div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg p-6 max-h-screen overflow-y-auto"
+        >
+            <div class="bg-white rounded-[2.5rem] shadow-2xl p-8">
+                <h3 class="text-2xl font-black text-slate-800 mb-6">
+                    Editar <span class="text-brand-gold italic font-serif"
+                        >Slide</span
+                    >
+                </h3>
+                <form method="POST" class="space-y-4">
+                    <input type="hidden" name="action" value="edit" />
+                    <input type="hidden" name="id" id="edit-id" />
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Título Principal</label
+                        ><input
+                            required
+                            type="text"
+                            name="title"
+                            id="edit-title"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Parte Dorada</label
+                        ><input
+                            type="text"
+                            name="title_highlight"
+                            id="edit-title_highlight"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Subtítulo superior</label
+                        ><input
+                            type="text"
+                            name="subtitle"
+                            id="edit-subtitle"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Descripción</label
+                        ><textarea
+                            name="description"
+                            id="edit-description"
+                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                            rows="2"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 mb-1"
+                                >Texto del botón</label
+                            ><input
+                                type="text"
+                                name="button_text"
+                                id="edit-button_text"
+                                class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 mb-1"
+                                >Enlace del botón</label
+                            ><input
+                                type="text"
+                                name="button_link"
+                                id="edit-button_link"
+                                class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-gold/20"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 mb-1"
+                            >Fotografía (Cloudinary, dejar en blanco para no
+                            cambiar)</label
+                        >
+                        <NewsletterImageUploader
+                            inputId="edit-hero-image-input"
+                            client:load
+                        />
+                        <input
+                            type="hidden"
+                            name="image_url"
+                            id="edit-hero-image-input"
+                        />
+                    </div>
+
+                    <div class="flex gap-4 pt-4">
+                        <button
+                            type="button"
+                            onclick="document.getElementById('edit-modal').classList.add('hidden')"
+                            class="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200"
+                            >Cancelar</button
+                        >
+                        <button
+                            type="submit"
+                            class="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-brand-gold"
+                            >Actualizar</button
+                        >
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</AdminLayout>
+
+<script is:inline>
+    function openEditModal(slide) {
+        document.getElementById("edit-modal").classList.remove("hidden");
+        document.getElementById("edit-id").value = slide.id || "";
+        document.getElementById("edit-title").value = slide.title || "";
+        document.getElementById("edit-title_highlight").value =
+            slide.title_highlight || "";
+        document.getElementById("edit-subtitle").value = slide.subtitle || "";
+        document.getElementById("edit-description").value =
+            slide.description || "";
+        document.getElementById("edit-button_text").value =
+            slide.button_text || "";
+        document.getElementById("edit-button_link").value =
+            slide.button_link || "";
+        document.getElementById("edit-hero-image-input").value =
+            slide.image_url || "";
+    }
+</script>

@@ -1,5 +1,6 @@
 
 import { atom, map } from 'nanostores';
+import { addToast } from './toastStore';
 
 export interface CartItem {
     id: string;
@@ -183,6 +184,9 @@ export async function updateCartItemQuantity(productId: string, size: string, qu
 
             if (!result.success) {
                 console.error('No se pudo actualizar la cantidad:', result.error);
+                if (window) {
+                    addToast(`No hay más stock disponible para la talla ${size}`, 'error');
+                }
                 return;
             }
 
