@@ -1,34 +1,11 @@
 ---
+export const prerender = true;
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { supabase } from "../lib/supabase";
-import { createClient } from "@supabase/supabase-js";
 import ProductCarousel from "../components/ui/ProductCarousel.astro";
 
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
 let isLoggedIn = false;
-let userProfile = null;
-
-if (accessToken) {
-  const supabaseAuth = createClient(
-    import.meta.env.PUBLIC_SUPABASE_URL,
-    import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    },
-  );
-  const {
-    data: { user },
-  } = await supabaseAuth.auth.getUser();
-  if (user) {
-    isLoggedIn = true;
-    const { data } = await supabaseAuth
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    userProfile = data;
-  }
-}
+let userProfile: any = null;
 
 // Obtener categorías principales (sin parent_id)
 const { data: categories } = await supabase
