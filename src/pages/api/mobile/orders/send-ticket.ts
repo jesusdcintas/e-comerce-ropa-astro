@@ -18,20 +18,8 @@ export const POST: APIRoute = async ({ request }) => {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }
 
-        // Verificar usuario con el token
-        const supabaseClient = createClient(
-            import.meta.env.PUBLIC_SUPABASE_URL,
-            import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
-            {
-                global: {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
-                }
-            }
-        );
-
-        const { data: { user }, error: authError } = await supabaseClient.auth.getUser(accessToken);
+        // Verificar usuario con el token usando admin
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
         
         if (authError || !user) {
             return new Response(JSON.stringify({ error: "Usuario no encontrado" }), { status: 401 });
