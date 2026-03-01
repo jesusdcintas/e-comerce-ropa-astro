@@ -51,7 +51,7 @@ export const POST: APIRoute = async ({ request }) => {
             .from("orders")
             .select("id, status, shipping_status")
             .eq("user_id", userId)
-            .in_("status", ["pending", "paid", "processing"])
+            .in("status", ["pending", "paid", "processing"])
             .limit(1);
 
         if (activeOrders && activeOrders.length > 0) {
