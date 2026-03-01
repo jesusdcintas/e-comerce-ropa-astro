@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
-import { requestReturn } from '../../../../lib/orders';
+import { requestReturn } from '../../../../../lib/orders';
 
 const supabaseAdmin = createClient(
     import.meta.env.PUBLIC_SUPABASE_URL,
