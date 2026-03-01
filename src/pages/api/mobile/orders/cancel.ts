@@ -36,7 +36,8 @@ export const POST: APIRoute = async ({ request }) => {
         // Verificar usuario
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
         if (authError || !user) {
-            return new Response(JSON.stringify({ error: 'Token inválido o expirado' }), { status: 401, headers });
+            console.error('Cancel order auth error:', authError?.message, 'token length:', accessToken?.length, 'token start:', accessToken?.substring(0, 20));
+            return new Response(JSON.stringify({ error: 'Token inválido o expirado', detail: authError?.message }), { status: 401, headers });
         }
 
         const { orderId } = await request.json();
