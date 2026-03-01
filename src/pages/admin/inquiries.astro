@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../../layouts/AdminLayout.astro";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../lib/supabase";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 
@@ -18,7 +18,7 @@ if (!user || user.app_metadata?.role !== "admin") {
 }
 
 // Obtener consultas con información de producto
-const { data: inquiries, error } = await supabase
+const { data: inquiries, error } = await supabaseAdmin
     .from("inquiries_with_product")
     .select("*, messages:inquiry_messages(*)")
     .order("created_at", { ascending: false });

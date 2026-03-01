@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../../../layouts/AdminLayout.astro";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 
 const { id } = Astro.params;
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
@@ -18,7 +18,7 @@ if (!user || user.app_metadata?.role !== "admin") {
 }
 
 // Obtener pedido con sus items y productos relacionados
-const { data: order, error } = await supabase
+const { data: order, error } = await supabaseAdmin
     .from("orders")
     .select("*, order_items(*, product:products(images))")
     .eq("id", id)

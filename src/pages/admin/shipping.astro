@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../../layouts/AdminLayout.astro";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../lib/supabase";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 
@@ -57,7 +57,7 @@ if (period === "week") {
 }
 
 // Construcción de Query
-let query = supabase
+let query = supabaseAdmin
     .from("orders")
     .select("*")
     .neq("status", "cancelled")

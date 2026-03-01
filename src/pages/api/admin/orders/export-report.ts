@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { generateOrdersReportPDF } from "../../../../lib/emails";
-import { supabase } from "../../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../../lib/supabase";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {

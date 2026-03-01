@@ -1,7 +1,6 @@
 ---
 import AdminLayout from "../../../layouts/AdminLayout.astro";
-import { supabase } from "../../../lib/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 if (!accessToken) return Astro.redirect("/login");
@@ -11,11 +10,6 @@ const {
 } = await supabase.auth.getUser(accessToken);
 if (!adminUser || adminUser.app_metadata?.role !== "admin")
     return Astro.redirect("/");
-
-const supabaseAdmin = createClient(
-    import.meta.env.PUBLIC_SUPABASE_URL,
-    import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
-);
 
 // 1. Obtener perfiles de la DB
 const { data: profiles, error: pError } = await supabaseAdmin

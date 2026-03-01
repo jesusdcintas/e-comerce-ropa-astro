@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../../layouts/AdminLayout.astro";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../lib/supabase";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 
@@ -63,7 +63,7 @@ const quarterLabel = `Trimestre ${currentQuarter} (T${currentQuarter})`;
 
 // 1. Ingresos y Reembolsos Técnicos
 // Solo cargamos pedidos del año actual (el periodo más amplio usado en KPIs)
-const { data: allSalesData } = await supabase
+const { data: allSalesData } = await supabaseAdmin
     .from("orders")
     .select("id, total_amount, status, created_at, order_items(price, quantity, return_refunded_quantity, product_id, product_name)")
     .gte("created_at", yearIso);
@@ -139,7 +139,7 @@ const getBestSeller = (sinceIso?: string) => {
 const topSellerBasic = getBestSeller(monthIso);
 let bestProduct = null;
 if (topSellerBasic) {
-    const { data: p } = await supabase
+    const { data: p } = await supabaseAdmin
         .from("products")
         .select("images, slug")
         .eq("id", topSellerBasic.id)
@@ -150,7 +150,7 @@ if (topSellerBasic) {
 }
 
 // 2. Datos para el Gráfico de Tendencia (Ventas diarias este mes)
-const { data: trendData } = await supabase
+const { data: trendData } = await supabaseAdmin
     .from("orders")
     .select("total_amount, created_at")
     .neq("status", "cancelled")
@@ -178,12 +178,12 @@ const labelsChart = Array.from({ length: currentDay }, (_, i) => i + 1);
 const dataChart = labelsChart.map((day) => dailyMap[day] || 0);
 
 // 2. Conteo de Pedidos
-const { count: ordersCount } = await supabase
+const { count: ordersCount } = await supabaseAdmin
     .from("orders")
     .select("*", { count: "exact", head: true });
 
 // 3. Stock y Variantes - Agrupado por producto para KPIs reales
-const { data: variantsRaw } = await supabase
+const { data: variantsRaw } = await supabaseAdmin
     .from("product_variants")
     .select("product_id, stock");
 
@@ -207,25 +207,25 @@ const stockStats = {
 };
 
 // 4. Catálogo de Productos
-const { count: productsCount } = await supabase
+const { count: productsCount } = await supabaseAdmin
     .from("products")
     .select("*", { count: "exact", head: true });
 
 // 5. Actividad Global Reciente
-const { data: recentOrders } = await supabase
+const { data: recentOrders } = await supabaseAdmin
     .from("orders")
     .select("id, total_amount, status, created_at, customer_name, customer_email, shipping_name, shipping_email")
     .order("created_at", { ascending: false })
     .limit(5);
 
-const { data: recentReturns } = await supabase
+const { data: recentReturns } = await supabaseAdmin
     .from("orders")
     .select("id, total_amount, status, return_status, created_at, updated_at, customer_name, shipping_name, order_items(product_name, quantity, return_requested_quantity, return_refunded_quantity)")
     .neq("return_status", "none")
     .order("updated_at", { ascending: false })
     .limit(5);
 
-const { data: recentCancellations } = await supabase
+const { data: recentCancellations } = await supabaseAdmin
     .from("orders")
     .select("id, total_amount, status, created_at, updated_at, customer_name, shipping_name")
     .eq("status", "cancelled")

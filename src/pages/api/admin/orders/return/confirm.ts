@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '../../../../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../../../../lib/supabase';
 import { processReturnRefund } from '../../../../../lib/orders';
 
 export const POST: APIRoute = async ({ request, cookies }) => {

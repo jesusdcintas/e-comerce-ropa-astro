@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../../../layouts/AdminLayout.astro";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 
@@ -17,7 +17,7 @@ if (!user || user.app_metadata?.role !== "admin") {
 }
 
 // Obtener pedidos con devolución activa y sus items
-const { data: returnOrders, error } = await supabase
+const { data: returnOrders, error } = await supabaseAdmin
     .from("orders")
     .select("*, order_items(*)")
     .neq("return_status", "none")

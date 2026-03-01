@@ -1,6 +1,6 @@
 
 import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         // 1. Actualizar stock de la variante
-        const { data: variant, error: variantError } = await supabase
+        const { data: variant, error: variantError } = await supabaseAdmin
             .from('product_variants')
             .select('stock')
             .eq('id', variantId)
@@ -32,7 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         const newVariantStock = variant.stock + quantity;
 
-        const { error: updateVariantError } = await supabase
+        const { error: updateVariantError } = await supabaseAdmin
             .from('product_variants')
             .update({ stock: newVariantStock })
             .eq('id', variantId);
@@ -40,7 +40,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         if (updateVariantError) throw updateVariantError;
 
         // 2. Recalcular stock total del producto
-        const { data: allVariants, error: variantsError } = await supabase
+        const { data: allVariants, error: variantsError } = await supabaseAdmin
             .from('product_variants')
             .select('stock')
             .eq('product_id', productId);
@@ -49,7 +49,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0);
 
-        const { error: updateProductError } = await supabase
+        const { error: updateProductError } = await supabaseAdmin
             .from('products')
             .update({ stock: totalStock })
             .eq('id', productId)

@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../../../layouts/AdminLayout.astro";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 
@@ -80,7 +80,7 @@ if (status) {
 }
 
 // Obtener pedidos con sus items
-let query = supabase
+let query = supabaseAdmin
     .from("orders")
     .select("*, order_items(*, product:products(images))")
     .order(sortBy, { ascending: isAsc });
