@@ -62,10 +62,11 @@ const currentYear = now.getFullYear();
 const quarterLabel = `Trimestre ${currentQuarter} (T${currentQuarter})`;
 
 // 1. Ingresos y Reembolsos Técnicos
-// Nota: allSales ahora incluye TODO para cálculos fiscales precisos
+// Solo cargamos pedidos del año actual (el periodo más amplio usado en KPIs)
 const { data: allSalesData } = await supabase
     .from("orders")
-    .select("*, order_items(*)");
+    .select("id, total_amount, status, created_at, order_items(price, quantity, return_refunded_quantity, product_id, product_name)")
+    .gte("created_at", yearIso);
 
 const calculateNetSales = (sinceIso?: string) => {
     if (!allSalesData) return 0;
@@ -104,7 +105,7 @@ const totalSales = calculateNetSales();
 const weekSales = calculateNetSales(weekIso);
 const monthSales = calculateNetSales(monthIso);
 const quarterSales = calculateNetSales(quarterIso);
-const yearSales = calculateNetSales(yearIso);
+const yearSales = totalSales; // Ya filtrado por año en la query
 
 // 1.5. Producto Más Vendido (Mes Actual)
 const getBestSeller = (sinceIso?: string) => {
@@ -213,20 +214,20 @@ const { count: productsCount } = await supabase
 // 5. Actividad Global Reciente
 const { data: recentOrders } = await supabase
     .from("orders")
-    .select("*")
+    .select("id, total_amount, status, created_at, customer_name, customer_email, shipping_name, shipping_email")
     .order("created_at", { ascending: false })
     .limit(5);
 
 const { data: recentReturns } = await supabase
     .from("orders")
-    .select("*, order_items(*)")
+    .select("id, total_amount, status, return_status, created_at, updated_at, customer_name, shipping_name, order_items(product_name, quantity, return_requested_quantity, return_refunded_quantity)")
     .neq("return_status", "none")
     .order("updated_at", { ascending: false })
     .limit(5);
 
 const { data: recentCancellations } = await supabase
     .from("orders")
-    .select("*")
+    .select("id, total_amount, status, created_at, updated_at, customer_name, shipping_name")
     .eq("status", "cancelled")
     .order("updated_at", { ascending: false })
     .limit(5);

@@ -6,36 +6,51 @@ import { addToast } from '../../stores/toastStore';
 interface Props {
     productId: string;
     initialFavorited?: boolean;
+    userId?: string;
     variant?: 'primary' | 'icon';
 }
 
 export default function FavoriteButton({
     productId,
     initialFavorited = false,
+    userId: serverUserId,
     variant = 'primary'
 }: Props) {
     const [isFavorited, setIsFavorited] = useState(initialFavorited);
     const [isLoading, setIsLoading] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<any>(serverUserId ? { id: serverUserId } : null);
 
     useEffect(() => {
-        checkUser();
+        // Si el servidor ya pasó userId e initialFavorited, no necesitamos queries
+        if (serverUserId && initialFavorited !== undefined) {
+            // Solo verificar favorito si no viene pre-cargado
+            if (!initialFavorited) {
+                checkFavoriteOnly(serverUserId);
+            }
+            return;
+        }
+        // Fallback: verificar usuario desde cliente (para islas sin server data)
+        if (!serverUserId) {
+            checkUser();
+        }
     }, []);
+
+    const checkFavoriteOnly = async (uid: string) => {
+        const { data } = await supabase
+            .from('favorites')
+            .select('id')
+            .eq('user_id', uid)
+            .eq('product_id', parseInt(productId))
+            .maybeSingle();
+        setIsFavorited(!!data);
+    };
 
     const checkUser = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
 
         if (user) {
-            // Verificar si el producto está en favoritos
-            const { data } = await supabase
-                .from('favorites')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('product_id', parseInt(productId))
-                .maybeSingle();
-
-            setIsFavorited(!!data);
+            checkFavoriteOnly(user.id);
         }
     };
 

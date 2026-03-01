@@ -80,25 +80,14 @@ export default function HeaderCounter({ type, dark }: Props) {
         setMounted(true);
         fetchData();
 
-        let timer: any;
-        const debouncedRefresh = () => {
-            clearTimeout(timer);
-            timer = setTimeout(fetchData, 4000); // Cooldown
-        };
+        // Polling ligero en lugar de Realtime WebSocket (ahorra ~140-180 MB/día de egress)
+        // El tipo 'cart' usa nanostores locales, no necesita polling
+        if (type === 'cart') return;
 
-        // Escuchar cambios según el tipo
-        const table = (type === 'admin_orders' || type === 'admin_returns') ? 'orders' :
-            (type === 'inquiry' || type === 'admin_inquiries') ? 'product_inquiries' :
-                (type === 'notification' || type === 'coupon_notification') ? 'notifications' :
-                    (type === 'favorite') ? 'favorites' : '*';
-
-        const channel = supabase.channel(`sync-v6-${type}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table }, debouncedRefresh)
-            .subscribe();
+        const interval = setInterval(fetchData, 120_000); // Cada 2 minutos
 
         return () => {
-            clearTimeout(timer);
-            supabase.removeChannel(channel);
+            clearInterval(interval);
         };
     }, [type]);
 

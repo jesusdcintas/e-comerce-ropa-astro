@@ -1,17 +1,21 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { supabase } from "../lib/supabase";
+import { cached } from "../lib/cache";
 import ProductCarousel from "../components/ui/ProductCarousel.astro";
 
 let isLoggedIn = false;
 let userProfile: any = null;
 
-// Obtener categorías principales (sin parent_id)
-const { data: categories } = await supabase
-  .from("categories")
-  .select("*")
-  .is("parent_id", null)
-  .order("name");
+// Obtener categorías principales cacheadas (5 min)
+const categories = await cached('main_categories', 300, async () => {
+  const { data } = await supabase
+    .from("categories")
+    .select("id, name, slug, image_url")
+    .is("parent_id", null)
+    .order("name");
+  return data;
+});
 
 // Obtener la fecha actual para filtrar ofertas y novedades activas
 const now = new Date().toISOString();
@@ -19,34 +23,38 @@ const now = new Date().toISOString();
 // Obtener productos seleccionados como novedades por el admin
 const { data: novedades } = await supabase
   .from("products")
-  .select(`*, category:categories(name, slug), product_variants(*)`)
+  .select("id, name, slug, price, stock, discount_percentage, discount_ends_at, is_new_arrival, images, category:categories(name, slug)")
   .eq("is_new_arrival", true)
   .order("created_at", { ascending: false });
 
 // Obtener todas las ofertas activas para el carrusel de inicio
 const { data: ofertas } = await supabase
   .from("products")
-  .select(`*, category:categories(name, slug), product_variants(*)`)
+  .select("id, name, slug, price, stock, discount_percentage, discount_ends_at, is_new_arrival, images, category:categories(name, slug)")
   .gt("discount_percentage", 0)
   .or(`discount_ends_at.is.null,discount_ends_at.gt.${now}`)
   .order("discount_percentage", { ascending: false });
 
 // Novedad: Banners Dinámicos
-const { data: heroSlides } = await supabase
-  .from("hero_slides")
-  .select("*")
-  .eq("is_active", true)
-  .order("order_index", { ascending: true });
+// Hero slides cacheados (5 min TTL)
+const heroSlides = await cached('hero_slides', 300, async () => {
+  const { data } = await supabase
+    .from("hero_slides")
+    .select("*")
+    .eq("is_active", true)
+    .order("order_index", { ascending: true });
+  return data;
+});
 
 function formatPrice(cents: number) {
   return `${(cents / 100).toFixed(2)}€`;
 }
 
-// Obtener configuración global
-const { data: globalConfig } = await supabase
-  .from("site_config")
-  .select("*")
-  .single();
+// Configuración global cacheada (2 min TTL)
+const globalConfig = await cached('site_config', 120, async () => {
+  const { data } = await supabase.from("site_config").select("offers_enabled, novedades_enabled, popups_enabled").single();
+  return data;
+});
 
 const showNovedades = globalConfig?.novedades_enabled !== false;
 const showOffers = globalConfig?.offers_enabled !== false;

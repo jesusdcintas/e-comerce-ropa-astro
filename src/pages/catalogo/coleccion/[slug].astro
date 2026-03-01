@@ -39,6 +39,17 @@ if (productIds.length > 0) {
         .order("created_at", { ascending: false });
     products = data || [];
 }
+
+// Pre-cargar favoritos del usuario (1 query para todos los ProductCards)
+const user = Astro.locals.user;
+let favoriteIds: number[] = [];
+if (user) {
+    const { data: favs } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', user.id);
+    favoriteIds = favs?.map(f => f.product_id) || [];
+}
 ---
 
 <BaseLayout title={`Colección: ${collection.name} | FashionStore`}>
@@ -98,7 +109,7 @@ if (productIds.length > 0) {
             products.length > 0 ? (
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-12">
                     {products.map((product) => (
-                        <ProductCard product={product} />
+                        <ProductCard product={product} userId={user?.id} favoriteProductIds={favoriteIds} />
                     ))}
                 </div>
             ) : (

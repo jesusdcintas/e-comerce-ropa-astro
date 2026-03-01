@@ -4,6 +4,45 @@ import { supabase } from './lib/supabase';
 export const onRequest = defineMiddleware(async (context, next) => {
     const { url, cookies, redirect } = context;
 
+    // === Auth centralizado: UNA sola llamada getUser() por request ===
+    const accessToken = cookies.get('sb-access-token')?.value;
+    const refreshToken = cookies.get('sb-refresh-token')?.value;
+    let user = null;
+
+    if (accessToken) {
+        try {
+            const { data, error } = await supabase.auth.getUser(accessToken);
+            if (!error && data?.user) {
+                user = data.user;
+            } else {
+                // Token expirado: intentar refresh
+                if (refreshToken) {
+                    const { data: refreshData, error: refreshError } = await supabase.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    });
+                    if (!refreshError && refreshData?.user) {
+                        user = refreshData.user;
+                        // Actualizar cookie con nuevo token
+                        if (refreshData.session?.access_token) {
+                            cookies.set('sb-access-token', refreshData.session.access_token, {
+                                path: '/',
+                                httpOnly: true,
+                                secure: true,
+                                sameSite: 'lax'
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            // Token inválido, user queda null
+        }
+    }
+
+    // Compartir usuario en Astro.locals para todos los componentes
+    context.locals.user = user;
+
     // Rutas que requieren autenticación de admin
     if (url.pathname.startsWith('/admin')) {
         // Excepciones públicas dentro de /admin (como recuperación)
@@ -11,48 +50,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
             return next();
         }
 
-        // Obtener token de sesión
-        const accessToken = cookies.get('sb-access-token')?.value;
-        const refreshToken = cookies.get('sb-refresh-token')?.value;
-
-        if (!accessToken) {
+        if (!user) {
             return redirect('/login');
         }
 
-        try {
-            // Establecer la sesión en supabase
-            const { data: { user }, error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken || ''
-            });
+        const role = user.app_metadata?.role || user.user_metadata?.role;
 
-            if (error || !user) {
-                // Limpiar cookies inválidas
-                cookies.delete('sb-access-token', { path: '/' });
-                cookies.delete('sb-refresh-token', { path: '/' });
-                return redirect('/login');
-            }
-
-            // Verificar que el usuario tiene rol de admin
-            const { data: profile } = await supabase
-                .from('auth.users')
-                .select('raw_app_meta_data')
-                .eq('id', user.id)
-                .single();
-
-            const role = user.app_metadata?.role || user.user_metadata?.role;
-
-            if (role !== 'admin') {
-                // Si no es admin, redirigir al catálogo
-                return redirect('/catalogo');
-            }
-
-            // Usuario autenticado y es admin
-            context.locals.user = user;
-
-        } catch (error) {
-            console.error('Error en middleware:', error);
-            return redirect('/login');
+        if (role !== 'admin') {
+            // Si no es admin, redirigir al catálogo
+            return redirect('/catalogo');
         }
     }
 

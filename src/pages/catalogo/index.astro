@@ -8,15 +8,20 @@ import SupportBanner from "../../components/ui/SupportBanner.astro";
 // Obtener todos los productos con stock
 const { data: products } = await supabase
     .from("products")
-    .select(
-        `
-        *,
-        category:categories(name, slug),
-        product_variants(*)
-    `,
-    )
+    .select("id, name, slug, price, stock, discount_percentage, discount_ends_at, is_new_arrival, images, category:categories(name, slug)")
     .gt("stock", 0)
     .order("created_at", { ascending: false });
+
+// Pre-cargar favoritos del usuario (1 query para todos los ProductCards)
+const user = Astro.locals.user;
+let favoriteIds: number[] = [];
+if (user) {
+    const { data: favs } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', user.id);
+    favoriteIds = favs?.map(f => f.product_id) || [];
+}
 ---
 
 <BaseLayout title="Catálogo Completo - FashionStore">
@@ -71,7 +76,7 @@ const { data: products } = await supabase
                         products && products.length > 0 ? (
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
                                 {products.map((product) => (
-                                    <ProductCard product={product} />
+                                    <ProductCard product={product} userId={user?.id} favoriteProductIds={favoriteIds} />
                                 ))}
                             </div>
                         ) : (

@@ -3,9 +3,12 @@ import FavoriteButton from "./islands/FavoriteButton";
 
 interface Props {
     product: any;
+    userId?: string;
+    favoriteProductIds?: number[];
 }
 
-const { product } = Astro.props;
+const { product, userId, favoriteProductIds } = Astro.props;
+const isFavorited = favoriteProductIds ? favoriteProductIds.includes(product.id) : undefined;
 
 const formatPrice = (cents: number) => {
     return `${(cents / 100).toFixed(2)}€`;
@@ -15,12 +18,13 @@ const calculateDiscountedPrice = (price: number, discount: number) => {
     return Math.round(price * (1 - discount / 100));
 };
 
-// Configuración global (Cargar una vez para todas las tarjetas mediante Astro.props o caché si fuera posible, pero aquí lo haremos simple)
+// Configuración global cacheada (evita 1 query por cada tarjeta de producto)
 import { supabase } from "../lib/supabase";
-const { data: globalConfig } = await supabase
-    .from("site_config")
-    .select("*")
-    .single();
+import { cached } from "../lib/cache";
+const globalConfig = await cached('site_config', 120, async () => {
+    const { data } = await supabase.from("site_config").select("offers_enabled, novedades_enabled").single();
+    return data;
+});
 const globalOffersEnabled = globalConfig?.offers_enabled !== false;
 const globalNovedadesEnabled = globalConfig?.novedades_enabled !== false;
 
@@ -50,6 +54,8 @@ const mainImage =
         <FavoriteButton
             client:load
             productId={product.id.toString()}
+            userId={userId}
+            initialFavorited={isFavorited}
             variant="icon"
         />
     </div>

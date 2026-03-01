@@ -8,6 +8,7 @@ import PopupManager from "../components/functional/PopupManager";
 import GlobalModal from "../components/functional/GlobalModal";
 import MaintenanceNotice from "../components/ui/MaintenanceNotice.astro";
 import { supabase } from "../lib/supabase";
+import { cached } from "../lib/cache";
 
 interface Props {
     title: string;
@@ -21,20 +22,32 @@ const {
     showPopup = true,
 } = Astro.props;
 
-// Comprobar modo mantenimiento
-const { data: config } = await supabase.from('site_config').select('maintenance_mode').single();
-const isMaintenance = config?.maintenance_mode || false;
+// Comprobar modo mantenimiento (cacheado 2 min)
+const siteConfig = await cached('site_config', 120, async () => {
+    const { data } = await supabase.from('site_config').select('maintenance_mode, offers_enabled, novedades_enabled, popups_enabled').single();
+    return data;
+});
+const isMaintenance = siteConfig?.maintenance_mode || false;
 
-// Comprobar si el usuario es Admin para bypass
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-let isAdmin = false;
-
-if (accessToken) {
-    const { data: { user } } = await supabase.auth.getUser(accessToken);
-    isAdmin = user?.app_metadata?.role === 'admin';
-}
+// Usuario ya autenticado en middleware → Astro.locals.user
+const user = Astro.locals.user;
+const isAdmin = user?.app_metadata?.role === 'admin';
 
 const showMaintenance = isMaintenance && !isAdmin;
+
+// Pre-cargar popups en servidor (evita 2 queries cliente)
+const popupsEnabled = siteConfig?.popups_enabled !== false;
+let serverPopups: any[] = [];
+if (showPopup && popupsEnabled) {
+    const now = new Date().toISOString();
+    const { data } = await supabase
+        .from('popups')
+        .select('id, titulo, contenido, tipo_accion, valor_accion, imagen_url, configuracion, fecha_fin')
+        .eq('activa', true)
+        .lte('fecha_inicio', now)
+        .order('created_at', { ascending: false });
+    serverPopups = (data || []).filter(p => !p.fecha_fin || p.fecha_fin >= now);
+}
 ---
 
 <!doctype html>
@@ -100,8 +113,8 @@ const showMaintenance = isMaintenance && !isAdmin;
                 <!-- Notificaciones Globales -->
                 <ToastContainer client:load />
 
-                <!-- Sistema de Pop-ups (Marketing) -->
-                {showPopup && <PopupManager client:load />}
+                <!-- Sistema de Pop-ups (Marketing) - datos pre-cargados desde servidor -->
+                {showPopup && popupsEnabled && serverPopups.length > 0 && <PopupManager client:load popups={serverPopups} />}
 
                 <!-- Diálogos y Confirms Globales -->
                 <GlobalModal client:load />

@@ -9,17 +9,24 @@ await supabase.rpc('cleanup_expired_discounts');
 // Obtener productos con descuento activo
 const { data: products } = await supabase
   .from("products")
-  .select(`
-    *,
-    category:categories(name, slug),
-    product_variants(*)
-  `)
+  .select("id, name, slug, price, stock, discount_percentage, discount_ends_at, is_new_arrival, images, category:categories(name, slug)")
   .gt('discount_percentage', 0)
   .or('discount_ends_at.is.null,discount_ends_at.gt.' + new Date().toISOString())
   .order("discount_percentage", { ascending: false });
 
 function calculateDiscountedPrice(price: number, discount: number): number {
   return Math.round(price * (1 - discount / 100));
+}
+
+// Pre-cargar favoritos del usuario (1 query para todos los ProductCards)
+const user = Astro.locals.user;
+let favoriteIds: number[] = [];
+if (user) {
+    const { data: favs } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', user.id);
+    favoriteIds = favs?.map(f => f.product_id) || [];
 }
 ---
 
@@ -59,7 +66,7 @@ function calculateDiscountedPrice(price: number, discount: number): number {
       <>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {products.map((product) => (
-            <ProductCard product={product} />
+            <ProductCard product={product} userId={user?.id} favoriteProductIds={favoriteIds} />
           ))}
         </div>
 

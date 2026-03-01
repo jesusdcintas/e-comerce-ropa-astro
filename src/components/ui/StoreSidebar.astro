@@ -1,5 +1,6 @@
 ---
 import { supabase } from "../../lib/supabase";
+import { cached } from "../../lib/cache";
 
 interface Subcategory {
     id: number;
@@ -16,11 +17,14 @@ interface CategoryWithSubs {
 
 const { currentSlug, showBanner = true } = Astro.props;
 
-// ... (logic remains same)
-const { data: allCategories } = await supabase
-    .from("categories")
-    .select("*")
-    .order("name");
+// Categorías cacheadas (5 min TTL)
+const allCategories = await cached('all_categories', 300, async () => {
+    const { data } = await supabase
+        .from("categories")
+        .select("id, name, slug, parent_id")
+        .order("name");
+    return data;
+});
 
 const mainCategories = allCategories?.filter((c) => !c.parent_id) || [];
 

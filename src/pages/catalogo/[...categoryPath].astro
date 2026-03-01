@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { supabase } from "../../lib/supabase";
+import { cached } from "../../lib/cache";
 import ProductCard from "../../components/ProductCard.astro";
 import StoreSidebar from "../../components/ui/StoreSidebar.astro";
 import SupportBanner from "../../components/ui/SupportBanner.astro";
@@ -22,32 +23,41 @@ if (!currentCategory) {
     return Astro.redirect("/catalogo");
 }
 
-// Función recursiva para obtener IDs de todas las subcategorías
-const getAllCategoryIds = async (catId: number): Promise<number[]> => {
-    const ids = [catId];
-    const { data: children } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("parent_id", catId);
+// Categorías cacheadas (5 min) - 1 sola query en vez de N recursivas
+const allCategoriesFlat = await cached('all_categories_flat', 300, async () => {
+    const { data } = await supabase.from("categories").select("id, parent_id");
+    return data || [];
+});
 
-    if (children && children.length > 0) {
-        for (const child of children) {
-            const childIds = await getAllCategoryIds(child.id);
-            ids.push(...childIds);
-        }
+const getAllCategoryIds = (catId: number): number[] => {
+    const ids = [catId];
+    const children = allCategoriesFlat.filter(c => c.parent_id === catId);
+    for (const child of children) {
+        ids.push(...getAllCategoryIds(child.id));
     }
     return ids;
 };
 
-const categoryIds = await getAllCategoryIds(currentCategory.id);
+const categoryIds = getAllCategoryIds(currentCategory.id);
 
 // Obtener productos de esta categoría y subcategorías
 const { data: products } = await supabase
     .from("products")
-    .select("*, categories(name, slug), product_variants(*)")
+    .select("id, name, slug, price, stock, discount_percentage, discount_ends_at, is_new_arrival, images, category:categories(name, slug)")
     .in("category_id", categoryIds)
     .gt("stock", 0)
     .order("name");
+
+// Pre-cargar favoritos del usuario (1 query para todos los ProductCards)
+const user = Astro.locals.user;
+let favoriteIds: number[] = [];
+if (user) {
+    const { data: favs } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', user.id);
+    favoriteIds = favs?.map(f => f.product_id) || [];
+}
 ---
 
 <BaseLayout title={`${currentCategory.name} - FashionStore`}>
@@ -122,7 +132,7 @@ const { data: products } = await supabase
                         products && products.length > 0 ? (
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
                                 {products.map((product) => (
-                                    <ProductCard product={product} />
+                                    <ProductCard product={product} userId={user?.id} favoriteProductIds={favoriteIds} />
                                 ))}
                             </div>
                         ) : (

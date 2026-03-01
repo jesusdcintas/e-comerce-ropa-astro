@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
 
 interface Popup {
     id: string;
@@ -17,119 +16,54 @@ interface Popup {
     };
 }
 
-const PopupManager: React.FC = () => {
+interface PopupManagerProps {
+    popups: Popup[];
+}
+
+const PopupManager: React.FC<PopupManagerProps> = ({ popups }) => {
     const [activePopup, setActivePopup] = useState<Popup | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        const fetchPopups = async () => {
-            const isHomePage = window.location.pathname === '/';
-            const isAfterLogin = sessionStorage.getItem('just_logged_in') === 'true';
-            const homeAlreadyChecked = sessionStorage.getItem('home_popup_checked') === 'true';
+        // Lógica de elegibilidad (solo cliente: sessionStorage/localStorage)
+        const isHomePage = window.location.pathname === '/';
+        const isAfterLogin = sessionStorage.getItem('just_logged_in') === 'true';
+        const homeAlreadyChecked = sessionStorage.getItem('home_popup_checked') === 'true';
 
-            // Solo mostrar si es la Home (y no se ha comprobado ya en esta sesión) o si venimos de un login
-            const shouldShow = (isHomePage && !homeAlreadyChecked) || isAfterLogin;
+        const shouldShow = (isHomePage && !homeAlreadyChecked) || isAfterLogin;
+        if (!shouldShow || !popups || popups.length === 0) return;
 
-            if (!shouldShow) return;
+        if (isHomePage) {
+            sessionStorage.setItem('home_popup_checked', 'true');
+        }
+        if (isAfterLogin) {
+            sessionStorage.removeItem('just_logged_in');
+        }
 
-            // Si es la home, marcar como ya comprobado para esta sesión de navegación
-            if (isHomePage) {
-                sessionStorage.setItem('home_popup_checked', 'true');
+        // Filtrar por "mostrar una vez" usando localStorage
+        const eligiblePopups = popups.filter(p => {
+            if (isAfterLogin) return true;
+            if (p.configuracion?.mostrar_una_vez) {
+                return !localStorage.getItem(`popup_shown_${p.id}`);
             }
+            return true;
+        });
 
-            // Consumir el flag de login de inmediato si vamos a proceder con la búsqueda
-            if (isAfterLogin) {
-                sessionStorage.removeItem('just_logged_in');
-            }
+        if (eligiblePopups.length > 0) {
+            const popup = eligiblePopups[0];
+            const delay = (popup.configuracion?.delay_segundos || 0) * 1000;
 
-            // 0. Comprobar configuración global
-            try {
-                const configRes = await fetch('/api/admin/config', {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'get' })
-                });
-                const config = await configRes.json();
-                if (config && config.popups_enabled === false) {
-                    console.log("🚫 Pop-ups desactivados globalmente por el administrador.");
-                    return;
+            setTimeout(() => {
+                setActivePopup(popup);
+                setIsVisible(true);
+                if (popup.configuracion?.mostrar_una_vez) {
+                    localStorage.setItem(`popup_shown_${popup.id}`, 'true');
                 }
-            } catch (err) {
-                console.error("Error comprobando config global de popups:", err);
-                // Si falla la config global, seguimos por defecto (o podrías decidir bloquear)
-            }
-
-            const now = new Date().toISOString();
-            console.log("🔍 Buscando pop-ups activos para:", now);
-
-            try {
-                const { data, error } = await supabase
-                    .from('popups')
-                    .select('*')
-                    .eq('activa', true)
-                    .lte('fecha_inicio', now)
-                    .order('created_at', { ascending: false });
-
-                if (error) {
-                    console.error("❌ Error Supabase Popups:", error);
-                    return;
-                }
-
-                if (!data || data.length === 0) {
-                    console.log("ℹ️ No hay pop-ups activos programados en este momento.");
-                    return;
-                }
-
-                // Filtrar por fecha de fin en JS para evitar problemas de sintaxis OR compleja
-                const activeOnes = data.filter(p => !p.fecha_fin || p.fecha_fin >= now);
-
-                if (activeOnes.length === 0) {
-                    console.log("ℹ️ Los pop-ups encontrados ya han expirado.");
-                    return;
-                }
-
-                // Comprobar si acabamos de iniciar sesión
-                const isAfterLogin = sessionStorage.getItem('just_logged_in') === 'true';
-
-                // Filtrar por "mostrar una vez"
-                const eligiblePopups = activeOnes.filter(p => {
-                    // Si acabamos de loguear, ignoramos el "mostrar una vez" para asegurar que lo vea
-                    if (isAfterLogin) {
-                        console.log("🔓 Forzando pop-up por inicio de sesión reciente.");
-                        return true;
-                    }
-
-                    if (p.configuracion?.mostrar_una_vez) {
-                        const shown = localStorage.getItem(`popup_shown_${p.id}`);
-                        if (shown) console.log(`⏭️ Ignorando pop-up ${p.id} (ya mostrado)`);
-                        return !shown;
-                    }
-                    return true;
-                });
-
-                if (eligiblePopups.length > 0) {
-                    const popup = eligiblePopups[0];
-                    const delay = (popup.configuracion?.delay_segundos || 0) * 1000;
-
-                    console.log(`✨ Pop-up listo: "${popup.titulo}". Aparecerá en ${delay / 1000}s`);
-
-                    setTimeout(() => {
-                        setActivePopup(popup);
-                        setIsVisible(true);
-
-                        if (popup.configuracion?.mostrar_una_vez) {
-                            localStorage.setItem(`popup_shown_${popup.id}`, 'true');
-                        }
-                    }, delay);
-                }
-            } catch (err) {
-                console.error("❌ Error fatal cargando pop-ups:", err);
-            }
-        };
-
-        fetchPopups();
-    }, []);
+            }, delay);
+        }
+    }, [popups]);
 
     const closePopup = () => {
         setIsClosing(true);

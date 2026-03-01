@@ -2,21 +2,11 @@
 interface Props {}
 
 import { supabase } from "../../lib/supabase";
+import { cached } from "../../lib/cache";
 import HeaderCounter from "../islands/HeaderCounter";
 
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-let user = null;
-
-if (accessToken) {
-  try {
-    const { data } = await supabase.auth.getUser(accessToken);
-    if (data?.user) {
-      user = data.user;
-    }
-  } catch (error) {
-    // Token inválido
-  }
-}
+// Usuario ya autenticado en middleware → Astro.locals.user
+const user = Astro.locals.user;
 
 const userName =
   user?.user_metadata?.name || user?.email?.split("@")[0] || "Usuario";
@@ -34,13 +24,16 @@ const isAccount =
   pathname.startsWith("/mis-pedidos") ||
   pathname.startsWith("/mis-cupones");
 
-// Obtener colecciones activas para el dropdown
-const { data: headerCollections } = await supabase
-  .from("collections")
-  .select("*")
-  .eq("is_active", true)
-  .order("created_at", { ascending: false })
-  .limit(6);
+// Colecciones activas para el dropdown (cacheado 5 min)
+const headerCollections = await cached('header_collections', 300, async () => {
+  const { data } = await supabase
+    .from("collections")
+    .select("id, name, slug, image_url")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(6);
+  return data;
+});
 ---
 
 <!-- Marquee Superior -->

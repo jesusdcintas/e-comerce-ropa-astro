@@ -53,13 +53,7 @@ if (favoriteIds.length > 0) {
   // Los productos son públicos, así que usamos el cliente normal o el autenticado
   const { data: favoritedProducts, error: prodError } = await supabase
     .from("products")
-    .select(
-      `
-      *,
-      category:categories(name, slug),
-      product_variants(*)
-    `,
-    )
+    .select("id, name, slug, price, stock, discount_percentage, discount_ends_at, is_new_arrival, images, category:categories(name, slug)")
     .in("id", favoriteIds);
 
   if (prodError) {
@@ -122,7 +116,7 @@ if (favoriteIds.length > 0) {
       ) : (
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {favorites.map((product) => (
-            <ProductCard product={product} />
+            <ProductCard product={product} userId={user?.id} favoriteProductIds={favoriteIds} />
           ))}
         </div>
       )

@@ -6,11 +6,21 @@ const supabaseAdmin = createClient(
     import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ cookies }) => {
+    // Proteger: solo admin
+    const accessToken = cookies.get('sb-access-token')?.value;
+    if (!accessToken) {
+        return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+    }
+    const { data: { user } } = await supabaseAdmin.auth.getUser(accessToken);
+    if (!user || user.app_metadata?.role !== 'admin') {
+        return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 403 });
+    }
+
     try {
         const { data, error } = await supabaseAdmin
             .from('cupones')
-            .select('*');
+            .select('id, codigo, tipo, valor, activo, fecha_expiracion');
 
         return new Response(JSON.stringify({
             count: data?.length || 0,
