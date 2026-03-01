@@ -76,7 +76,7 @@ if (coupons) {
         .from("orders")
         .select("total_amount, created_at")
         .eq("user_id", user.id)
-        .in("status", ["paid", "shipped", "delivered"]);
+        .in("status", ["paid", "shipped", "delivered", "completed"]);
 
     const totalSpent =
         orders?.reduce((acc, o) => acc + (o.total_amount || 0), 0) || 0;
@@ -84,17 +84,27 @@ if (coupons) {
     const now = new Date();
 
     for (const c of coupons) {
+        // Log para ver qué llega de la DB
+        // console.log(`Evaluando cupón ${c.codigo}`, c);
+
         // Filtro de expiración
         if (c.fecha_expiracion && new Date(c.fecha_expiracion) < now) continue;
 
-        // Si no tiene regla, es válido (público general o privado directo)
+        // Si no tiene regla_id, es porque es público o asignado directo sin segmentación
         if (!c.regla_id) {
             validCoupons.push(c);
             continue;
         }
 
         const regla = c.reglas_cupones;
-        if (!regla || !regla.activa) continue;
+        if (!regla || !regla.activa) {
+            // Si tiene regla_id pero no la encontramos o está apagada, 
+            // no lo mostramos a menos que sea un cupón asignado directo
+            if (c.cliente_id === user.id) {
+                validCoupons.push(c);
+            }
+            continue;
+        }
 
         let satisfies = false;
 
@@ -108,7 +118,7 @@ if (coupons) {
                     ?.filter((o) => new Date(o.created_at) > dateLimit)
                     .reduce((acc, o) => acc + (o.total_amount || 0), 0) || 0;
             satisfies = spentInPeriod >= (regla.monto_minimo || 0);
-        } else if (regla.tipo_regla === "primera_compra") {
+        } else if (regla.tipo_regla === "primera_compra" || regla.tipo_regla === "regla_1") {
             satisfies = orderCount === 0;
         } else if (regla.tipo_regla === "antiguedad") {
             const { data: profile } = await supabaseAdmin
@@ -122,11 +132,11 @@ if (coupons) {
                     (now.getTime() - regDate.getTime()) / (1000 * 3600 * 24);
                 satisfies = daysDiff >= (regla.periodo_dias || 0);
             }
-        } else if (regla.tipo_regla === "compra_minima") {
+        } else if (regla.tipo_regla === "compra_minima" || regla.tipo_regla === "regla_3") {
             // Esta regla se valida en el checkout (es sobre el carrito actual),
             // pero para mostrarla en el perfil la damos por válida como "disponible"
             satisfies = true;
-        } else if (regla.tipo_regla === "newsletter") {
+        } else if (regla.tipo_regla === "newsletter" || regla.tipo_regla === "regla_4") {
             // Verificar si el usuario está suscrito a newsletter
             const { data: profile } = await supabaseAdmin
                 .from("profiles")
@@ -134,6 +144,8 @@ if (coupons) {
                 .eq("id", user.id)
                 .single();
             satisfies = profile?.newsletter_subscribed === true;
+        } else if (regla.tipo_regla === "vip" || regla.tipo_regla === "regla_2") {
+             satisfies = totalSpent >= (regla.monto_minimo || 50000); // 500€
         }
 
         if (satisfies) {

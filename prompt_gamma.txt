@@ -1,0 +1,46 @@
+Genera una presentación profesional y visual para la entrega de un proyecto web a un cliente del sector textil ("FashionStore"). El tono debe ser elegante, minimalista, persuasivo y sin tecnicismos complejos de programación. 
+
+La presentación debe tener 6 diapositivas con la siguiente estructura y contenido:
+
+**Diapositiva 1: Portada**
+- Título: FashionStore - Tu nueva Casa Digital
+- Subtítulo: El salto definitivo al mercado online con control absoluto.
+- Estilo visual sugerido: Minimalista, elegante (blanco, negro, dorado), con una foto de alta calidad de moda de fondo.
+
+**Diapositiva 2: La Experiencia del Cliente**
+- Título: Navegación Premium
+- Puntos clave:
+  - Carga ultra rápida en móviles y ordenadores.
+  - Diseño limpio donde tu ropa es la protagonista.
+  - Buscador inteligente: Sugiere prendas con foto antes de terminar de escribir.
+  - Recomendador de Talla Inteligente: Reduce devoluciones sugiriendo la talla ideal según peso y altura.
+
+**Diapositiva 3: Proceso de Compra Sin Fricción**
+- Título: Un Carrito que Invita a Comprar
+- Puntos clave:
+  - Carrito lateral deslizable: El cliente nunca sale de la página en la que está.
+  - Aumenta las compras compulsivas.
+  - Pasarela de pagos totalmente segura.
+  - Facturación instantánea y automática por email.
+
+**Diapositiva 4: Tu Trastienda Digital (Panel de Control)**
+- Título: El Control Total en tus Manos
+- Puntos clave:
+  - Totalmente privado y seguro.
+  - Cuadro de Mandos visual (Dashboard): Resumen de ventas y pedidos pendientes al instante.
+  - Subir ropa nueva es tan fácil como arrastrar fotos y poner el precio.
+  - Sin bases de datos aburridas ni manuales técnicos.
+
+**Diapositiva 5: Almacén y Contabilidad Inteligente**
+- Título: Un Sistema que Piensa por Ti
+- Puntos clave:
+  - Stock automático: Si se vende la última camiseta, se agota sola en la web.
+  - Cancelaciones sin dolores de cabeza: Si un pedido se cancela, la prenda vuelve sola a la tienda online.
+  - Facturas de abono automáticas para cuadrar tus cuentas perfectamente a final de mes.
+
+**Diapositiva 6: Marketing a un Clic**
+- Título: Estrategia y Control
+- Puntos clave:
+  - Interruptor de Ofertas: Activa secciones de descuentos con un solo botón (ideal para Black Friday).
+  - Listos para vender 24 horas al día, 7 días a la semana.
+  - Cierre: ¿Hacemos una compra en directo?
