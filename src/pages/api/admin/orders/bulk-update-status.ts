@@ -4,7 +4,8 @@ import { cancelOrder } from '../../../../lib/orders';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         const refreshToken = cookies.get('sb-refresh-token')?.value;
 
         if (!accessToken) {

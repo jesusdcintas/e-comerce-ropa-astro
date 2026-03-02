@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 
-export const GET: APIRoute = async ({ cookies }) => {
-  const accessToken = cookies.get("sb-access-token")?.value;
+export const GET: APIRoute = async ({ cookies, request }) => {
+  const accessToken = cookies.get("sb-access-token")?.value
+      || request.headers.get('Authorization')?.replace('Bearer ', '');
 
   if (!accessToken) {
     return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });

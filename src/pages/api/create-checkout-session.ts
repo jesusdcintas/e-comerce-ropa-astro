@@ -14,7 +14,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         // Autenticar usuarioo
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         let user_id: string | undefined;
 
         if (accessToken) {

@@ -32,7 +32,8 @@ function buildNewsletterContent(campaign: any): NewsletterContent {
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
         // 1. Verificar admin
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }
@@ -227,9 +228,10 @@ async function processNewsletterBatch(
 /**
  * GET: Consultar estado de campaña
  */
-export const GET: APIRoute = async ({ url, cookies }) => {
+export const GET: APIRoute = async ({ url, cookies, request }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }

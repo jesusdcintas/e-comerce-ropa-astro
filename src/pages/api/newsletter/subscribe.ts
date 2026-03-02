@@ -27,7 +27,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         // 2. Intentar obtener el ID del usuario si está autenticado
         let userId: string | undefined;
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (accessToken) {
             const { data: { user } } = await supabaseAdmin.auth.getUser(accessToken);
             if (user) userId = user.id;

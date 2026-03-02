@@ -11,7 +11,8 @@ const supabaseAdmin = createClient(
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
         }
@@ -237,6 +238,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             await supabaseAdmin.from('cupon_notificados').delete().neq('id', '00000000-0000-0000-0000-000000000000');
             await supabaseAdmin.from('cupon_usos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
             const { error } = await supabaseAdmin.from('cupones').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            if (error) throw error;
+            return new Response(JSON.stringify({ success: true }), { status: 200 });
+        }
+
+        if (action === 'update-coupon') {
+            const { id, codigo, descuento_porcentaje, fecha_expiracion, es_publico } = data;
+            const updateData: any = {};
+            if (codigo !== undefined) updateData.codigo = codigo;
+            if (descuento_porcentaje !== undefined) updateData.descuento_porcentaje = descuento_porcentaje;
+            if (fecha_expiracion !== undefined) updateData.fecha_expiracion = fecha_expiracion;
+            if (es_publico !== undefined) updateData.es_publico = es_publico;
+            const { error } = await supabaseAdmin
+                .from('cupones')
+                .update(updateData)
+                .eq('id', id);
             if (error) throw error;
             return new Response(JSON.stringify({ success: true }), { status: 200 });
         }

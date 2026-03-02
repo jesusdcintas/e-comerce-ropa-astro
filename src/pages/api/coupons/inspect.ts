@@ -6,9 +6,10 @@ const supabaseAdmin = createClient(
     import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ cookies, request }) => {
     // Proteger: solo admin
-    const accessToken = cookies.get('sb-access-token')?.value;
+    const accessToken = cookies.get('sb-access-token')?.value
+        || request.headers.get('Authorization')?.replace('Bearer ', '');
     if (!accessToken) {
         return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
     }

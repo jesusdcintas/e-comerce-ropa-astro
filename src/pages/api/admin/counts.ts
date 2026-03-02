@@ -6,9 +6,10 @@ const supabaseAdmin = createClient(
     import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ cookies, request }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
         const { data: { user } } = await supabaseAdmin.auth.getUser(accessToken);

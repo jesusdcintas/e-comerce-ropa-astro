@@ -5,7 +5,8 @@ import { supabase, supabaseAdmin } from "../../../../lib/supabase";
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
         const { orders, label } = await request.json();
-        const accessToken = cookies.get("sb-access-token")?.value;
+        const accessToken = cookies.get("sb-access-token")?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
 
         if (!accessToken) {
             return new Response("No autorizado", { status: 401 });

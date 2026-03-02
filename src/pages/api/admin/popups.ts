@@ -7,9 +7,10 @@ const supabaseAdmin = createClient(
     import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ cookies, request }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) return new Response(null, { status: 401 });
 
         const { data: { user } } = await supabase.auth.getUser(accessToken);
@@ -30,7 +31,8 @@ export const GET: APIRoute = async ({ cookies }) => {
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) return new Response(null, { status: 401 });
 
         const { data: { user } } = await supabase.auth.getUser(accessToken);

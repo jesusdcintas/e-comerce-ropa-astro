@@ -63,9 +63,10 @@ const generateNewsletterHtml = (
  */
 
 // GET: Listar campañas o obtener una específica
-export const GET: APIRoute = async ({ url, cookies }) => {
+export const GET: APIRoute = async ({ url, cookies, request }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }
@@ -125,7 +126,8 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 // POST: Crear nueva campaña
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }
@@ -188,7 +190,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 // PUT: Actualizar campaña (solo si está en draft)
 export const PUT: APIRoute = async ({ request, cookies }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }
@@ -262,7 +265,8 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
 // DELETE: Eliminar campaña (solo si está en draft)
 export const DELETE: APIRoute = async ({ request, cookies }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }

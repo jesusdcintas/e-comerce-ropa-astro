@@ -1,6 +1,7 @@
 
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { invalidateCache } from "../../../lib/cache";
 import { createClient } from "@supabase/supabase-js";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -63,6 +64,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 .single();
 
             if (error) throw error;
+
+            // Invalidar caché SSR para que la web refleje el cambio inmediatamente
+            invalidateCache('site_config');
+
             return new Response(JSON.stringify(data), { status: 200 });
         }
 

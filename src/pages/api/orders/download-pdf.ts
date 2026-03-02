@@ -8,11 +8,12 @@ const supabaseAdmin = createClient(
     import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export const GET: APIRoute = async ({ url, cookies }) => {
+export const GET: APIRoute = async ({ url, cookies, request }) => {
     try {
         const orderId = url.searchParams.get("orderId");
         const type = url.searchParams.get("type") || "ticket"; // ticket, invoice o refund
-        const accessToken = cookies.get("sb-access-token")?.value;
+        const accessToken = cookies.get("sb-access-token")?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
 
         if (!accessToken) {
             return new Response("No autorizado", { status: 401 });

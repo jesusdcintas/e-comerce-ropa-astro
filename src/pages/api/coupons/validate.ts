@@ -11,7 +11,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         // Obtener usuario actual (opcional para invitados)
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         let userId: string | null = null;
 
         if (accessToken) {

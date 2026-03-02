@@ -10,7 +10,8 @@ const supabaseAdmin = createClient(
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
         const { orderId } = await request.json();
-        const accessToken = cookies.get("sb-access-token")?.value;
+        const accessToken = cookies.get("sb-access-token")?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
 
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });

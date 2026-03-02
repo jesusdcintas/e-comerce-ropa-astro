@@ -10,7 +10,8 @@ const supabaseAdmin = createClient(
 
 export const DELETE: APIRoute = async ({ cookies, request }) => {
     try {
-        const accessToken = cookies.get("sb-access-token")?.value;
+        const accessToken = cookies.get("sb-access-token")?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
         }

@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
 
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ cookies, request }) => {
     const supabaseAdmin = createClient(
         import.meta.env.PUBLIC_SUPABASE_URL,
         import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -10,7 +10,8 @@ export const GET: APIRoute = async ({ cookies }) => {
 
     try {
         // 1. Verificar que quien llama es admin
-        const accessToken = cookies.get("sb-access-token")?.value;
+        const accessToken = cookies.get("sb-access-token")?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) return new Response("No token", { status: 401 });
 
         const { data: { user } } = await supabaseAdmin.auth.getUser(accessToken);

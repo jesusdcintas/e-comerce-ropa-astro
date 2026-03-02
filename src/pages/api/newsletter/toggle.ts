@@ -10,7 +10,8 @@ const supabaseAdmin = createClient(
 export const POST: APIRoute = async ({ request, cookies }) => {
     try {
         // 1. Verificar autenticación
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ error: "Debes iniciar sesión" }), { status: 401 });
         }
@@ -62,9 +63,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 };
 
 // GET para consultar estado actual
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ cookies, request }) => {
     try {
-        const accessToken = cookies.get('sb-access-token')?.value;
+        const accessToken = cookies.get('sb-access-token')?.value
+            || request.headers.get('Authorization')?.replace('Bearer ', '');
         if (!accessToken) {
             return new Response(JSON.stringify({ subscribed: false, authenticated: false }), { status: 200 });
         }
