@@ -22,7 +22,7 @@ const calculateDiscountedPrice = (price: number, discount: number) => {
 import { supabase } from "../lib/supabase";
 import { cached } from "../lib/cache";
 const globalConfig = await cached('site_config', 120, async () => {
-    const { data } = await supabase.from("site_config").select("offers_enabled, novedades_enabled").single();
+    const { data } = await supabase.from("site_config").select("*").single();
     return data;
 });
 const globalOffersEnabled = globalConfig?.offers_enabled !== false;

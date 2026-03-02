@@ -24,7 +24,7 @@ const {
 
 // Comprobar modo mantenimiento (cacheado 2 min)
 const siteConfig = await cached('site_config', 120, async () => {
-    const { data } = await supabase.from('site_config').select('maintenance_mode, offers_enabled, novedades_enabled, popups_enabled').single();
+    const { data } = await supabase.from('site_config').select('*').single();
     return data;
 });
 const isMaintenance = siteConfig?.maintenance_mode || false;

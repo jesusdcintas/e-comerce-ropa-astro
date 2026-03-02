@@ -52,7 +52,7 @@ function formatPrice(cents: number) {
 
 // Configuración global cacheada (2 min TTL)
 const globalConfig = await cached('site_config', 120, async () => {
-  const { data } = await supabase.from("site_config").select("offers_enabled, novedades_enabled, popups_enabled").single();
+  const { data } = await supabase.from("site_config").select("*").single();
   return data;
 });
 
