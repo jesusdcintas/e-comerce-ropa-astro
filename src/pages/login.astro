@@ -6,6 +6,10 @@ import { supabase } from "../lib/supabase";
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 const redirect = Astro.url.searchParams.get("redirect");
 
+// Comprobar modo mantenimiento antes de redirigir
+const { data: siteConfigData } = await supabase.from('site_config').select('maintenance_mode').eq('id', 1).maybeSingle();
+const isMaintenance = siteConfigData?.maintenance_mode || false;
+
 if (accessToken) {
   try {
     const {
@@ -15,9 +19,13 @@ if (accessToken) {
       const role = user.app_metadata?.role || user.user_metadata?.role;
       if (role === "admin") {
         return Astro.redirect("/admin");
-      } else {
+      } else if (!isMaintenance) {
+        // Solo redirigir si NO hay mantenimiento activo.
+        // Durante mantenimiento, usuarios no-admin deben poder
+        // ver el login para re-autenticarse como admin.
         return Astro.redirect(redirect || "/");
       }
+      // Si hay mantenimiento y no es admin, continuar mostrando login
     }
   } catch (error) {
     // Token inválido, continuar con login
