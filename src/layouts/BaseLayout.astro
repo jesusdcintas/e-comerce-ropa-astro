@@ -33,7 +33,17 @@ const isMaintenance = siteConfig?.maintenance_mode || false;
 const user = Astro.locals.user;
 const isAdmin = user?.app_metadata?.role === 'admin';
 
-const showMaintenance = isMaintenance && !isAdmin;
+// Rutas que deben funcionar incluso en modo mantenimiento
+// (auth, API, admin) para que el admin pueda loguearse y desactivarlo
+const pathname = Astro.url.pathname;
+const isExemptRoute = pathname.startsWith('/login') ||
+    pathname.startsWith('/registro') ||
+    pathname.startsWith('/recuperar') ||
+    pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/admin');
+
+const showMaintenance = isMaintenance && !isAdmin && !isExemptRoute;
 
 // Pre-cargar popups en servidor (evita 2 queries cliente)
 const popupsEnabled = siteConfig?.popups_enabled !== false;
